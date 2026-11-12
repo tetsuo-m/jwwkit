@@ -1,0 +1,42 @@
+# Local Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Local drawings, exports, and settings
+*.[jJ][wW][wW]
+!/src/resources/empty_template.jww
+*.[jJ][wW][sS]
+*.[jJ][wW][cC]
+*.[jJ][wW][kK]
+*.[jJ][wW][fF]
+*.[jJ][wW]$
+*.[dD][xX][fF]
+*.[dD][wW][gG]
+*.[sS][fF][cC]
+*.[pP]21
+*.[bB][aA][kK]
+*.[pP][dD][fF]
+[aA][iI]_[sS][eE][tT][tT][iI][nN][gG][sS]_[sS][uU][mM][mM][aA][rR][yY].[jJ][sS][oO][nN]
+[jJ][wW][wW]_[wW][oO][rR][kK][fF][lL][oO][wW].[tT][oO][mM][lL]
+
+# Local work and installation checks
+samples/
+output/
+outputs/
+work/
+jww-install-check-*/
+*.log
+*.reg
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,705 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "path": ".gitattributes",
+      "size": 68,
+      "sha256": "30c663d42ee64c8dec648f633abf83d0aedde47789f449343e494344edf1e2d2"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "size": 340,
+      "sha256": "5d3d7f20a527748200456c0df02ab671e5de2aec3875dc63e3cf4df907248d52"
+    },
+    {
+      "path": ".github/workflows/tests.yml",
+      "size": 583,
+      "sha256": "e603d2cbc37623bf912be852f20830d67aa0a7d81c2f9baf42f6b3551b4678f3"
+    },
+    {
+      "path": ".gitignore",
+      "size": 693,
+      "sha256": "35425dd6b816e4304e68e8a20b5b51fdfcc89509fa0b9bd59e07a21575748a27"
+    },
+    {
+      "path": "AGENTS.md",
+      "size": 8079,
+      "sha256": "33cf8ad4786fa0b3301d0a12784c9fc42c858bac72b384d71f7992ff4f345d8f"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "size": 1895,
+      "sha256": "789527532a270e6065d8006d32aee18a605e37bb2a2536e4f95be37b223c78e9"
+    },
+    {
+      "path": "docs/api_list.md",
+      "size": 95540,
+      "sha256": "8e78d1bc09d70a1fa2a2ecb6231ec04d0fb2452ada92593048390bd64c6db372"
+    },
+    {
+      "path": "docs/common_edit_result_coverage.md",
+      "size": 4512,
+      "sha256": "2fd8796821286b28c73ff235309a14e65db9e09a4b4001b1f9d5ca76c70270b8"
+    },
+    {
+      "path": "docs/design/comparison_improvements.md",
+      "size": 1399,
+      "sha256": "e8974ddb3e54cac9ce28c6fbef0475b82a11a97489064b9bc4f23a1b7abda499"
+    },
+    {
+      "path": "docs/design/jwf_writing_proposal.md",
+      "size": 4779,
+      "sha256": "99a1c074f6c985312c6552d508e73b00e7dfe2a6689a0b861fcd66f4fc3496a9"
+    },
+    {
+      "path": "docs/design/opening_settings_roadmap.md",
+      "size": 3609,
+      "sha256": "32d655ea5c5dd018a441bac9fa2a98b98ca026dcec07f7fe581940d0d0250107"
+    },
+    {
+      "path": "docs/design/read_view_continuation.md",
+      "size": 1235,
+      "sha256": "b85d501915f7e5ec1b1e45e6252bae74ad157cbbc50688a5cdff8caca6e85d21"
+    },
+    {
+      "path": "docs/design/text_equivalence_proposal.json",
+      "size": 45702,
+      "sha256": "f67ca0ae59ecfd82d72928e6b54e02375034817e55fa277ba2125c08fd87fd14"
+    },
+    {
+      "path": "docs/design/text_equivalence_proposal.md",
+      "size": 102539,
+      "sha256": "6f824d9a2488f706e291378af036ebdfacfdb0b39c10488497d0a8608ca93526"
+    },
+    {
+      "path": "docs/drawing_comparison.md",
+      "size": 11718,
+      "sha256": "2f97248facf012a510fd0e9147577f7c912e37f4742139de99dff389e256ff87"
+    },
+    {
+      "path": "docs/edit_results.md",
+      "size": 7252,
+      "sha256": "33633e5197440135f56d90bee1e3d67e06798b9add616c8cbe67fde9348fb189"
+    },
+    {
+      "path": "docs/ezjww_adapter_contract.md",
+      "size": 7566,
+      "sha256": "abdea20f2a6954973f0e2cd924b7408ffb2411cea659379bb6f596b925d57159"
+    },
+    {
+      "path": "docs/geometry_view.md",
+      "size": 7735,
+      "sha256": "9d0cea3c29f338fcf8d181790aae248b2cdebda26743308c1903be4e9c924198"
+    },
+    {
+      "path": "docs/jwf_key_catalog.md",
+      "size": 8628,
+      "sha256": "0be8d69b4cbc8deb663473cc4ae2c38b4ce5ea2b5e1cbe181119920f4a12e326"
+    },
+    {
+      "path": "docs/jwf_readonly.md",
+      "size": 9812,
+      "sha256": "844c52082258c8518bedb3c79bf67befc4a5b010fa27211b188f9b43a93cfe5e"
+    },
+    {
+      "path": "docs/plan_api_coverage.md",
+      "size": 9634,
+      "sha256": "5f144937e6cda189e5d25f257b0c8f85766fa71006978a4e8a37d468e0bd6bd0"
+    },
+    {
+      "path": "docs/read_view.md",
+      "size": 9788,
+      "sha256": "949beffa9cbd05e142ee0d322a4034c5fdcded55a9a38b48bf8c47aa0f9e76bf"
+    },
+    {
+      "path": "docs/reading_to_editing.md",
+      "size": 9062,
+      "sha256": "86e77a28cd650d1b7e9771f34e9ddfbdb256bd8d960e179b9cc5c51f53b40d6c"
+    },
+    {
+      "path": "docs/schema_normalization.md",
+      "size": 7620,
+      "sha256": "8204e777138f51e51ceabd36adf89894ca60e860c4b6a8f678b788387e77aa30"
+    },
+    {
+      "path": "docs/search_queries.md",
+      "size": 10124,
+      "sha256": "d79a2379fe32860f1ad58f4b4bd00d32d1a3ef6d9bbe72e51d5a8106528dfdfa"
+    },
+    {
+      "path": "docs/spatial_search.md",
+      "size": 8847,
+      "sha256": "faa39f706ab03bd3f6775bb0b5bf7683f80e423fa84d18bbe4d491231ce76659"
+    },
+    {
+      "path": "docs/tategu_recognition.md",
+      "size": 5615,
+      "sha256": "a189a51f24d4fce2f402eb9356d112b3af5c29d22c26ef719f1d5581415883b2"
+    },
+    {
+      "path": "docs/text_equivalence.md",
+      "size": 4428,
+      "sha256": "39a2ab7ee8c08488431c1e3b1f3d206471868ed4091c910138f5c324fa96f004"
+    },
+    {
+      "path": "docs/usage_guide.md",
+      "size": 69202,
+      "sha256": "60aa6667063169219d2174847e52806bebf9f4bcbb7cfd3a0ce135977f84c407"
+    },
+    {
+      "path": "docs/workflow_settings.md",
+      "size": 9370,
+      "sha256": "6d37ff7f1ac99d2000d266fab69932bb24199f4d3b1bf12846f3c6476bdeee46"
+    },
+    {
+      "path": "jww_workflow.example.toml",
+      "size": 473,
+      "sha256": "99017c86e062bdd18b0482ed008d04c70fc9129f521ec1f2fe84cc0752edd988"
+    },
+    {
+      "path": "LICENSE",
+      "size": 1065,
+      "sha256": "7070dcb366c63b1d289df44dac51f57467268b7da313161fe89624b36bf7bda7"
+    },
+    {
+      "path": "README.md",
+      "size": 11550,
+      "sha256": "495aa9d40e673efddb1fe149af68b6c2ca347e79236245a03cc8154301fac46c"
+    },
+    {
+      "path": "requirements.txt",
+      "size": 14,
+      "sha256": "7c3f5dbeb78416f60b1af15bb0ea500ff8a80e5efd177fddf0f385f951a7e14b"
+    },
+    {
+      "path": "SECURITY.md",
+      "size": 546,
+      "sha256": "a71b18b078e74070366c942514808ff4a2c201a66a3634d8d482af319166e341"
+    },
+    {
+      "path": "src/_comparison_composites.py",
+      "size": 11444,
+      "sha256": "675e2c92396ba04172b420e8a97a217d40a7cf29e56566ad3d0d85e8a32440ed"
+    },
+    {
+      "path": "src/_edit_result_core.py",
+      "size": 12615,
+      "sha256": "e442b7e2dcfb06fef783fa8af31009136b4da318ae693099237c7db91174e353"
+    },
+    {
+      "path": "src/_ezjww_adapter.py",
+      "size": 468,
+      "sha256": "e79221f719300e3f261f2672113710e0ccce4d8a70d6bcf539033379a91c1786"
+    },
+    {
+      "path": "src/_geometry_engine.py",
+      "size": 16318,
+      "sha256": "7fafbe0c6f8b79bf9ffb5f72dcb685ed7b63d22635b0a74676a267fdcb9cb49c"
+    },
+    {
+      "path": "src/_geometry_math.py",
+      "size": 3793,
+      "sha256": "babc024f8767cc25a39ff5d29dd25df65f83c6a814e279391c6bb92bc07e2487"
+    },
+    {
+      "path": "src/_normalization_inspection.py",
+      "size": 5564,
+      "sha256": "d055dc5ba5283df2ee17e87c4df86fabb12253bd5d3e8d7a59e86a82fb0b4c67"
+    },
+    {
+      "path": "src/_replacement_contract.py",
+      "size": 12828,
+      "sha256": "10c0a8b0c45bc3c4d961fd6761d1df95b9d63bb478bb9bcca24a3fd0cffaef75"
+    },
+    {
+      "path": "src/_spatial_distance.py",
+      "size": 4977,
+      "sha256": "f4ab0714ad05de3b9b0ff26a6b00370df147f206b2ed809732a2d6bc923bd707"
+    },
+    {
+      "path": "src/_spatial_query.py",
+      "size": 2078,
+      "sha256": "d22c74d8d58d908de691f174f9454dff1e85dec4dc263e221024200ffc15a4fb"
+    },
+    {
+      "path": "src/_tategu_features.py",
+      "size": 13097,
+      "sha256": "0ce4eadbf9634168d3bb22984e66dfc2137ff372f244bd02c2958a052a9f7ae3"
+    },
+    {
+      "path": "src/_tategu_geometry.py",
+      "size": 4998,
+      "sha256": "70e1f9158d043af87a88ed781cf7fbca64c52d2fa67c6fe64397af6b969c3a4a"
+    },
+    {
+      "path": "src/alignment.py",
+      "size": 4370,
+      "sha256": "39f15719d744987b37604e6381eaa47bd20c9bcef9dec37a3a4e45afb589e8c0"
+    },
+    {
+      "path": "src/cad_model.py",
+      "size": 269,
+      "sha256": "897977a94dac60a7cad1c9bf522d6e482f542b9dd63f984abbede955a847f13b"
+    },
+    {
+      "path": "src/drawing_comparison.py",
+      "size": 27472,
+      "sha256": "e964d0ca73c514225bd9582fbe5f581ca06d2c937b4ce175bb699cef614b2469"
+    },
+    {
+      "path": "src/edit_result.py",
+      "size": 10647,
+      "sha256": "b52a5c82f48338c43eeaac4d848592a92625ba66e3fcdb4b8378da9eba0da2ce"
+    },
+    {
+      "path": "src/geometry_view.py",
+      "size": 10579,
+      "sha256": "ada909a20e458320caeabd407e1c6e231efb27c5bf9a7231c213b67ab606144a"
+    },
+    {
+      "path": "src/hatch_geometry.py",
+      "size": 3722,
+      "sha256": "7cf5ce568c1e7cfbebb3cfe3b419b7fc859365aaced3f05edd580a5a4a63f055"
+    },
+    {
+      "path": "src/jwf.py",
+      "size": 12542,
+      "sha256": "666c927c7d822fb351933cadf3cf3080f499278edeb3f469db44dfc5961cbd1b"
+    },
+    {
+      "path": "src/legacy_document.py",
+      "size": 138,
+      "sha256": "3ec1cf8c71a349d1cc645ccc2d6641944e557cda67e9d26c55954f64a473ef59"
+    },
+    {
+      "path": "src/line_document.py",
+      "size": 723,
+      "sha256": "0e193890710b3742bb275653c5e4290f2cfa217bac1411303b1a91653177983c"
+    },
+    {
+      "path": "src/model/__init__.py",
+      "size": 101,
+      "sha256": "f2928ccbf167afb63193fb88690c3cdacf3e54274251d41f20c3b41625d35938"
+    },
+    {
+      "path": "src/model/base.py",
+      "size": 614,
+      "sha256": "39395e9da79c4537295792c79d475a428e15f90745222c2f04f02efc90a5baba"
+    },
+    {
+      "path": "src/model/block_definition.py",
+      "size": 1213,
+      "sha256": "e0ffe861a772618ad8398e5c6668ac20f9f4a37f294fe58fd5a34294fb9ac838"
+    },
+    {
+      "path": "src/model/block_names.py",
+      "size": 1598,
+      "sha256": "d736161ca2b8e65ecfc0268af7f075756b83236a40ba2326f5bb8c026621d510"
+    },
+    {
+      "path": "src/model/block_operations.py",
+      "size": 9167,
+      "sha256": "7ff59a77a34f09b49db6646cfbc807033a3dd4818ac436ca03369518fb08b1fb"
+    },
+    {
+      "path": "src/model/block_reference.py",
+      "size": 1393,
+      "sha256": "002161fe3ee4f0cf767513b2f315255c4c7313f3a4ead648f25aaf7b941f3b4c"
+    },
+    {
+      "path": "src/model/circle.py",
+      "size": 1663,
+      "sha256": "99d34dfbbb649d965c20a8bfeb3200bd44a32a40646ec6239f5059bbfa272c59"
+    },
+    {
+      "path": "src/model/circular_solid.py",
+      "size": 5060,
+      "sha256": "74523e150bc2fa010f288b7089a2cab31b468b9299fd9c1b43968bb503ce9fed"
+    },
+    {
+      "path": "src/model/common_entities.py",
+      "size": 1198,
+      "sha256": "796b722e78ae5dc028abe71a8f6e5de284dbaaf529a76e6c29b628dacc2bdfd9"
+    },
+    {
+      "path": "src/model/dimension.py",
+      "size": 2076,
+      "sha256": "f736d3075ef7578d4f7846d9b2fbcbaf9ba57ead4b848ff3b0c24d2939f157e0"
+    },
+    {
+      "path": "src/model/display_state.py",
+      "size": 2184,
+      "sha256": "d34fb480e865cfb8f14de6fbe39922c6aa8ae22555988dc80d236d9c5c1535eb"
+    },
+    {
+      "path": "src/model/document.py",
+      "size": 34431,
+      "sha256": "abeaa416be75bd2054a73dddbd9a1123a2e4e51f10e005216df11c564295c985"
+    },
+    {
+      "path": "src/model/editing.py",
+      "size": 14504,
+      "sha256": "91f56f92c3ff5dfe4323d505e7e170535fed03659edbb4ed2ba1ea4d84157733"
+    },
+    {
+      "path": "src/model/group_audit.py",
+      "size": 5703,
+      "sha256": "54fd269e4e8e3c9e0fa3fc1f39f7baec59130a88ccef4b4e9d0908698e9e92fb"
+    },
+    {
+      "path": "src/model/group_import.py",
+      "size": 17413,
+      "sha256": "9911fe12364d5f27d86886382bf2e8a617b61a9fe08b66fa37b6d23d63d7c1bb"
+    },
+    {
+      "path": "src/model/line.py",
+      "size": 1024,
+      "sha256": "c3790bf4a6f2ccfadf04dcfcd7381a9ceef92146987df900b3f8b35f22973450"
+    },
+    {
+      "path": "src/model/point.py",
+      "size": 1508,
+      "sha256": "76b0eec008dc73be41099fd87d0b893f109bc09afc472c5b7c1957beaa98b39a"
+    },
+    {
+      "path": "src/model/preflight.py",
+      "size": 7759,
+      "sha256": "c1e4cc2bef0fdf5472e1da78ec4d7bb4bdc5f597519f72028009c5c3b15f29db"
+    },
+    {
+      "path": "src/model/preset_rigid.py",
+      "size": 2258,
+      "sha256": "fd5163ed650dd554ecb4c2f18fde261feaa90eee3f47dcfe607de67396555ed8"
+    },
+    {
+      "path": "src/model/query.py",
+      "size": 14680,
+      "sha256": "bdf995cad136be426e8201f79615fc42ed8ee2458c8eb14c3a05dfb2a4c6c20d"
+    },
+    {
+      "path": "src/model/query_fields.py",
+      "size": 12554,
+      "sha256": "98783276cc324fc5aad34accb3c09180532ec99baddd65f943b1c2b2fab3c8ed"
+    },
+    {
+      "path": "src/model/query_regex_worker.py",
+      "size": 685,
+      "sha256": "dd747a37c4c16e3748ccb30039ba30c3219c777731f612764bb13a2ac3e0aab2"
+    },
+    {
+      "path": "src/model/query_text.py",
+      "size": 5696,
+      "sha256": "71581fae567f7f43ba36249c417280463119edbf6789fd0f7af2843db9d7320e"
+    },
+    {
+      "path": "src/model/rigid_audit.py",
+      "size": 4070,
+      "sha256": "06598440e71edfe12390cbdf5415218f67a92d9392f43010dc97cc8f4cc0b2fd"
+    },
+    {
+      "path": "src/model/solid.py",
+      "size": 2375,
+      "sha256": "57deaf82886c3ce2f6e52c996ac20a7fb51f0b66687d086be689bfd5453b6cd6"
+    },
+    {
+      "path": "src/model/spatial.py",
+      "size": 4405,
+      "sha256": "d42bcb7203f4a3bb78d1250430c2120eb2c042e6059679b0a7e35ce4e635e1c6"
+    },
+    {
+      "path": "src/model/summary.py",
+      "size": 5471,
+      "sha256": "31656a3d597dc659ec7fc7b2c306fa02c5b6f49d471eeed836b53fbfc43b223a"
+    },
+    {
+      "path": "src/model/text.py",
+      "size": 1799,
+      "sha256": "31f53853600df89641c4a5cd2eb9ba236efe39463ff5c3f99c762a6d25ed33c1"
+    },
+    {
+      "path": "src/model/text_metrics.py",
+      "size": 3894,
+      "sha256": "64f78ef75f5507c53b7a954963ae90bba6ab101d205a247cdea4b282d3df7e3c"
+    },
+    {
+      "path": "src/model/transformations.py",
+      "size": 9621,
+      "sha256": "c92013f575264ca9c58169f2ecff79bc0dd96e03bb405b2edae8e1c5538f66df"
+    },
+    {
+      "path": "src/normalization.py",
+      "size": 14898,
+      "sha256": "acda3e07e09e89fe4bc2f955b63cee85b24fd485c0b2004ac41b418fc0a62e94"
+    },
+    {
+      "path": "src/read_view.py",
+      "size": 18950,
+      "sha256": "f5f29272da35d1a2e87f11dddc9acf84c9e085e8380355202e9a05744ef7e59d"
+    },
+    {
+      "path": "src/reader/__init__.py",
+      "size": 91,
+      "sha256": "39f55a221d1a280c1e19ea5b67bdc2506856edc54d3778cffb8150357d83367b"
+    },
+    {
+      "path": "src/reader/archive.py",
+      "size": 14916,
+      "sha256": "d3306f123385fd9918f3561dce8c77213b74dbda6fa59be49a0e7871fe678bdd"
+    },
+    {
+      "path": "src/reader/images.py",
+      "size": 2551,
+      "sha256": "bb90e5a67a96fdda4029212f4b949e3a640b5500bc62e20149f6cc31e6531cd5"
+    },
+    {
+      "path": "src/reader/jws.py",
+      "size": 9182,
+      "sha256": "71e605cdd2480c86cf10dc3c85e1332f608f81f7068dc8adca7db8dcdbfe3dbd"
+    },
+    {
+      "path": "src/reader/jws_placement.py",
+      "size": 4263,
+      "sha256": "0bd116884795383b9ad5e11420e7c1a29595fe03577bb7469f0d7c5ab95822d9"
+    },
+    {
+      "path": "src/reader/sxf.py",
+      "size": 2482,
+      "sha256": "4f6129db8fb7383dc91a52912d7ca31b2832dfedb6a0bf4b0f80576c2b07a8e4"
+    },
+    {
+      "path": "src/reader/template_names.py",
+      "size": 1133,
+      "sha256": "6b1d20b1a272dcf5cbf895c670ef3cdb39745b2b9457dbc83ce67fc96e620d25"
+    },
+    {
+      "path": "src/reader/text_presets.py",
+      "size": 1251,
+      "sha256": "4f939f88fdea6ef65b1ffc37cea0da8bec02395274c1ae82f8d2a82fec2c0fa1"
+    },
+    {
+      "path": "src/record_reader.py",
+      "size": 260,
+      "sha256": "784a9a280e13960d5c464024aeb11b7242b1ac9498f20ce4c9933dfb1b89eea6"
+    },
+    {
+      "path": "src/replacement_workflow.py",
+      "size": 2912,
+      "sha256": "7bc081e89d5baf1b70bcad37e0e0abbf6a7aed672a0b371dffc7544e76cde360"
+    },
+    {
+      "path": "src/resources/empty_template.jww",
+      "size": 17431,
+      "sha256": "0913d5f6755b7038c11cda8be75c2502511ce85a007f9bcc2f10df049f6eff1e"
+    },
+    {
+      "path": "src/resources/halfwidth_kana_composition_v1.json",
+      "size": 1016,
+      "sha256": "eb4b82da929ccc0269d5d9ebd7fbd8efd5fb1c1463af643774e590aff4b38184"
+    },
+    {
+      "path": "src/resources/header.json",
+      "size": 86,
+      "sha256": "15d3c2fa912ff082027ce366e97879ea5e1746037934833319a22ddc2d7265d9"
+    },
+    {
+      "path": "src/resources/jwf_schema.json",
+      "size": 20463,
+      "sha256": "f61588ca8bac0cce7099ea90ca5a01170fcb3b9922d71edff63834da582faf50"
+    },
+    {
+      "path": "src/resources/README.md",
+      "size": 521,
+      "sha256": "72e831d8b7cbe6e6e367889331b3c8064be7ddac5919040cae5781a2675d9de2"
+    },
+    {
+      "path": "src/resources/text_equivalence_v1.json",
+      "size": 47470,
+      "sha256": "a821077704367a49c36d4125d613c6e93c95b578bfbfec6ab5bf55d5c7f2db40"
+    },
+    {
+      "path": "src/safe_edit.py",
+      "size": 34092,
+      "sha256": "942d34f534f8c9873fb526847a61553b6b5852543f84d3c348a69896b0f4c28a"
+    },
+    {
+      "path": "src/spatial_search.py",
+      "size": 9764,
+      "sha256": "7ab5fc62e2663692243cd6a034f76dd4e95970fdaaf4f53eb5cd9ba877f1e0d0"
+    },
+    {
+      "path": "src/tategu_recognition.py",
+      "size": 11755,
+      "sha256": "64ce002b74999979b27b5dca84a55fe1a007568c34a54b42fb9ac175227ca328"
+    },
+    {
+      "path": "src/workflow_settings.py",
+      "size": 10355,
+      "sha256": "56d679dab44a1e3cc30fe39b32c2869ff2eeb35af280941f67e028f3d4ea684e"
+    },
+    {
+      "path": "src/writer/__init__.py",
+      "size": 103,
+      "sha256": "7ffff39f6192918bb3a175deee1d9b497e0981ad630f3bdffd3f73b9928e3eb4"
+    },
+    {
+      "path": "src/writer/header.py",
+      "size": 4785,
+      "sha256": "5beb5c1994703f9a25b3b21b30c5626e18eb29ed3a9e946453eda7d228dfaf13"
+    },
+    {
+      "path": "src/writer/legacy_document.py",
+      "size": 3022,
+      "sha256": "29071b65fe8a96fc4c8c03fadb6f140b97e570c14da6259a6afa004d36ba8c15"
+    },
+    {
+      "path": "src/writer/mfc.py",
+      "size": 6331,
+      "sha256": "700f10ad127b17115c3b9df4b252ebb18823b34ab7aeae0cfe437a6415a0e60a"
+    },
+    {
+      "path": "src/writer/preserved.py",
+      "size": 15141,
+      "sha256": "381d225106942726749c7e3a88cee662c82e83665674672381c3e89a76fd9144"
+    },
+    {
+      "path": "src/writer/strings.py",
+      "size": 726,
+      "sha256": "381ed069aeda3bad54c4d368b1693c007ac3c8b41330a02c11c664202301e37f"
+    },
+    {
+      "path": "src/writer/template_constants.py",
+      "size": 353,
+      "sha256": "5188369c29783546cde6c3a8a45d2187ff0a7cbd17bcab2288637cfd3a4e9072"
+    },
+    {
+      "path": "src/writer/template_document.py",
+      "size": 22956,
+      "sha256": "62f61c35b92a93eca70f2a38c060d59897357e508f91d91f5844324f4f12fd4c"
+    },
+    {
+      "path": "tests/test_block_names.py",
+      "size": 1566,
+      "sha256": "662dcd86ddbc9b33832c5dff1d6ec8ac1f85eb58126f4f350f9b2d9696680a2e"
+    },
+    {
+      "path": "tests/test_circular_solid_editing.py",
+      "size": 5892,
+      "sha256": "bba8a25f0da42f6a29f927e5da20ae7919b365bddc9f56d3c4fb8d0aea5ebdec"
+    },
+    {
+      "path": "tests/test_common_edit_result_guide.py",
+      "size": 1190,
+      "sha256": "0670923463a5480d4b55be742c60d689c0c4ed7d633271093cdcd6bb2b1835f9"
+    },
+    {
+      "path": "tests/test_common_edit_results.py",
+      "size": 19373,
+      "sha256": "f8f81008a2e2f5f5977e08297867bb989fe0d9012a838fe6af477462ec55c532"
+    },
+    {
+      "path": "tests/test_extended_counts.py",
+      "size": 3195,
+      "sha256": "c60896e45f2833ea86a5c31360869f8fc86986b02b11e4586d7eb234655e8e4b"
+    },
+    {
+      "path": "tests/test_geometry_guide.py",
+      "size": 1259,
+      "sha256": "1c1c31c39730cea7b7a8d55a431f5f87ed5377d0d30acb08b915af04a72fff1e"
+    },
+    {
+      "path": "tests/test_plan_target_resolution.py",
+      "size": 1889,
+      "sha256": "02780d314f87fce988093a3da9605be4e3e1a1fac92f2ad37750d0f83020a9ab"
+    },
+    {
+      "path": "tests/test_query_guide.py",
+      "size": 2556,
+      "sha256": "dd0c4c4a5eb3c3464d831ae1cc6ff830c1afb468ccfd7c59d312dfb239e8c545"
+    },
+    {
+      "path": "tests/test_query_plans.py",
+      "size": 8173,
+      "sha256": "533cb158c4bfb633f1617876b76f0db90b20cc8800f324c989b67f8417b692d9"
+    },
+    {
+      "path": "tests/test_read_view_guide.py",
+      "size": 1315,
+      "sha256": "cac661d04440a6dd6d320d6d62d481ea3556c2ac259f4faa85edcc5b5d05b4f5"
+    },
+    {
+      "path": "tests/test_reading_to_editing_guide.py",
+      "size": 3268,
+      "sha256": "8fd6a02c80206a77fc237721ec198ba2df69655523dc2132d8a42385ce6ee301"
+    },
+    {
+      "path": "tests/test_replacement_workflow.py",
+      "size": 15655,
+      "sha256": "5f2aec22d593654484eef96514e4cbfaaf6ef114a82ad6f001c438121489b28c"
+    },
+    {
+      "path": "tests/test_search_query.py",
+      "size": 16149,
+      "sha256": "3466e4d8af05d0a8d92dc8a79c86ccb79ce13ae030d16158b0064534eb7aba6a"
+    },
+    {
+      "path": "tests/test_spatial_guide.py",
+      "size": 1197,
+      "sha256": "87394cc10e23335d5cab0f63952376e20445313c019ed0a3f72328c01b4f8778"
+    },
+    {
+      "path": "tests/test_tategu_recognition.py",
+      "size": 10870,
+      "sha256": "f2985bf51a4c1d16ce803e1b6c38d21a42f64178dab2dcc7c27ed91f13f51473"
+    },
+    {
+      "path": "tests/test_text_equivalence.py",
+      "size": 10256,
+      "sha256": "739dfd23702b7bd2f660574ceb6c036b441ec8e43b30a266482c9805d651afb9"
+    },
+    {
+      "path": "tests/test_text_equivalence_guide.py",
+      "size": 866,
+      "sha256": "99a7e5391d4fb139e3aaf4bdc9bbb197e9b20f2c9cec5e039caed02424f42d5f"
+    },
+    {
+      "path": "tests/test_workflow_settings.py",
+      "size": 8057,
+      "sha256": "d368e0f6c7cffa427e69ce97095068d2bec5e8d1fe58a09e0231076e191d41cf"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "size": 3078,
+      "sha256": "e67affc43de411e2f6c9a76266eb672626abd392b12fe1b02edb0ecaad7fc2e6"
+    },
+    {
+      "path": "tools/check_installation.py",
+      "size": 39511,
+      "sha256": "a515314abcead2ca070441f96b1ac79f395405ca4616159463553ede985596ef"
+    },
+    {
+      "path": "tools/compare_drawings.py",
+      "size": 1947,
+      "sha256": "e3f65615e38eecdf40911aa592c899b74616ba2f94169a85c0e867a7b8e3a644"
+    },
+    {
+      "path": "tools/inspect_jwf.py",
+      "size": 1612,
+      "sha256": "c0c5ac1646e3a74235d4584d85d109ba71a18839b04dbeb98bf0235d63976711"
+    },
+    {
+      "path": "tools/recognize_planar_tategu.py",
+      "size": 1175,
+      "sha256": "d1b2147925881dddea61d05017538fc42dd2a443b1874e79a98e88f824f3c07a"
+    },
+    {
+      "path": "tools/summarize_drawing.py",
+      "size": 700,
+      "sha256": "17b572d2bd80a4e8148761ddac65f772d71d06878a9acafb543e1f8ae27d2ab7"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "size": 6605,
+      "sha256": "be4d69bf6210fc079c90a3a5cba7aa5fce5e1405bb81b497b39cd0066835a3d5"
+    }
+  ]
+}
