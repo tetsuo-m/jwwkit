@@ -1,9 +1,7 @@
-import sys,struct,unittest,math
-from pathlib import Path
-ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
-from reader.archive import Cursor,RecordError,read_entity_sequences
-from writer.mfc import records_bytes
-from alignment import solve_two_point_alignment
+import struct,unittest,math
+from jwwkit.reader.archive import Cursor,RecordError,read_entity_sequences
+from jwwkit.writer.mfc import records_bytes
+from jwwkit.alignment import solve_two_point_alignment
 
 class ExtendedCountTests(unittest.TestCase):
     def line(self):

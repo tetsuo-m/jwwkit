@@ -10,8 +10,8 @@
 
 ```python
 import json
-from read_view import create_read_view
-from spatial_search import at_point, nearest
+from jwwkit.read_view import create_read_view
+from jwwkit.spatial_search import at_point, nearest
 
 view = create_read_view('input.jww')
 scope = {'field': 'entity_type', 'in': ['LINE', 'CIRCLE', 'ARC', 'POINT']}

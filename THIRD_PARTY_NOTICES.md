@@ -2,7 +2,7 @@
 
 ## Unicode Character Database 16.0.0
 
-文字検索の固定対応表には、Unicode Character Database 16.0.0に由来するデータを含みます。Unicode, Inc. © 2024。対象は `src/resources/text_equivalence_v1.json`、`src/resources/halfwidth_kana_composition_v1.json` と、`docs/design/text_equivalence_proposal.md`、`docs/design/text_equivalence_proposal.json` に掲載した対応表です。case folding、空白の分類、半角カナの合成などに使っています。対応表はjwwkitの検索用に抽出・整形したものです。[Unicode 16.0.0 UCD](https://www.unicode.org/Public/16.0.0/ucd/ReadMe.txt) · [CaseFolding.txt](https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt) · [Unicode License v3](https://www.unicode.org/license.txt)
+文字検索の固定対応表には、Unicode Character Database 16.0.0に由来するデータを含みます。Unicode, Inc. © 2024。対象は `src/jwwkit/resources/text_equivalence_v1.json`、`src/jwwkit/resources/halfwidth_kana_composition_v1.json` と、`docs/design/text_equivalence_proposal.md`、`docs/design/text_equivalence_proposal.json` に掲載した対応表です。case folding、空白の分類、半角カナの合成などに使っています。対応表はjwwkitの検索用に抽出・整形したものです。[Unicode 16.0.0 UCD](https://www.unicode.org/Public/16.0.0/ucd/ReadMe.txt) · [CaseFolding.txt](https://www.unicode.org/Public/16.0.0/ucd/CaseFolding.txt) · [Unicode License v3](https://www.unicode.org/license.txt)
 
 ```text
 UNICODE LICENSE V3

@@ -18,11 +18,11 @@ rebro_schema0 = "normalize"
 
 ```python
 from pathlib import Path
-from cad_model import CadDocument
-from workflow_settings import load_workflow_settings, resolve_opening_settings
-from normalization import (inspect_schema_normalization, write_schema_normalization_plan,
+from jwwkit import CadDocument
+from jwwkit.workflow_settings import load_workflow_settings, resolve_opening_settings
+from jwwkit.normalization import (inspect_schema_normalization, write_schema_normalization_plan,
                            execute_schema_normalization_plan, normalization_edit_dependencies)
-from safe_edit import write_plan
+from jwwkit.safe_edit import write_plan
 
 def prepare_normalization(work_dir, sources, output_dir, plan_path,
                           instruction_overrides=None, instruction_evidence=None):

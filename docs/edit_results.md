@@ -3,8 +3,8 @@
 従来のCadDocumentの戻り値と例外、safe_edit.execute_planの結果は変えない。共通結果が必要な場合だけedit_resultの新しい窓口を使う。直接編集する承認不要の入口は追加しない。元図面を上書きせず、具体的な計画とSHAをチャットで示し、利用者承認後に実行する。
 
 ```python
-from cad_model import CadDocument
-from edit_result import write_edit_plan, preview_plan_result, execute_plan_result
+from jwwkit import CadDocument
+from jwwkit.edit_result import write_edit_plan, preview_plan_result, execute_plan_result
 
 def prepare_move(source, output, plan_path, indices, delta_real_mm):
     cad = CadDocument.open(source)

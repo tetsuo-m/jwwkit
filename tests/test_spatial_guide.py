@@ -1,13 +1,13 @@
+from jwwkit import template_path, guide_paths
 from pathlib import Path
-import json,os,re,sys,tempfile,unittest
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from cad_model import CadDocument
+import json,os,re,tempfile,unittest
+from jwwkit.cad_model import CadDocument
 class SpatialGuideTests(unittest.TestCase):
     def test_every_guide_example_runs_and_source_stays_unchanged(self):
         with tempfile.TemporaryDirectory()as tmp:
             folder=Path(tmp);source=folder/'input.jww'
-            doc=CadDocument.open(R/'src/resources/empty_template.jww');doc.add_line((0,0),(10,20));doc.save(source)
-            before=source.read_bytes();blocks=re.findall(r'```python\n(.*?)```',(R/'docs/spatial_search.md').read_text(encoding='utf-8'),re.S)
+            doc=CadDocument.open(template_path());doc.add_line((0,0),(10,20));doc.save(source)
+            before=source.read_bytes();blocks=re.findall(r'```python\n(.*?)```',(guide_paths()['usage_guide'].with_name('spatial_search.md')).read_text(encoding='utf-8'),re.S)
             self.assertEqual(len(blocks),1);old=Path.cwd()
             try:
                 os.chdir(folder)

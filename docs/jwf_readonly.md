@@ -17,8 +17,8 @@
 
 ```python
 from pathlib import Path
-from jwf import JwfDocument, jwf_setting_catalog
-from cad_model import CadDocument
+from jwwkit import JwfDocument, jwf_setting_catalog
+from jwwkit import CadDocument
 
 config = JwfDocument.open(Path("settings.jwf"), errors="preserve")
 red = config.get("PCOLLOR_1").number(0)  # 先頭のR値。0始まり。
@@ -31,7 +31,7 @@ stored = config.compare_drawing(CadDocument.open(Path("drawing.jww")))
 
 JWFの要約や差分は、業務名やパスを含むことがあるため、図面と同じ範囲で扱う。JSONに保存するときはensure_ascii=Trueで不完全CP932のsurrogate escapeを欠損せず記録する。
 
-コマンドで調べる場合：`python tools/inspect_jwf.py --source settings.jwf --other other.jwf --drawing drawing.jww --preserve-invalid --output new_report.json`。同名出力は拒否する。比較にSampleを使う場合は既定では適用0件同士の比較となる。END後の例を意図して参照するときだけ `--include-after-end` を指定し、既定値や有効環境と混同しない。
+コマンドで調べる場合：`jwwkit inspect-jwf --source settings.jwf --other other.jwf --drawing drawing.jww --preserve-invalid --output new_report.json`。同名出力は拒否する。比較にSampleを使う場合は既定では適用0件同士の比較となる。END後の例を意図して参照するときだけ `--include-after-end` を指定し、既定値や有効環境と混同しない。
 
 ## JWW保存の区別と比較の意味
 
@@ -63,7 +63,7 @@ AIが図面を作成・編集するときは、ローカルの `AI_settings_summ
 
 ## JWF作成・書出しの設計記録
 
-JWFの作成や書出しは未実装です。検討内容は[JWF作成・書出しの設計記録](design/jwf_writing_proposal.md)にあります。
+JWFの作成や書出しは未実装です。検討内容は[JWF作成・書出しの設計記録](https://github.com/tetsuo-m/jwwkit/blob/main/docs/design/jwf_writing_proposal.md)にあります。
 
 ## 根拠
 

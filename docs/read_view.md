@@ -9,7 +9,7 @@
 ```python
 import json
 from pathlib import Path
-from read_view import create_read_view, resolve_file_reference
+from jwwkit.read_view import create_read_view, resolve_file_reference
 
 view = create_read_view('input.jww')
 brief = view.entities(mode='summary')
@@ -86,4 +86,4 @@ SHAが違えば**解析前に拒否**する。版を書き換えたもの、再�
 
 任意の属性名/eval/getattrは使わない。型・要素種別・範囲・最大128トークン・欠落/重複定義・循環/深さ64を検査する。子を展開して図面要素数へ加算しない。persisted_recordは元ファイルの同じ経路の値であって、編集で子の順が変わった場合の同一性を保証する対応表ではない（origin_relationに明記）。
 
-設計の背景は[ページ継続の検討](design/read_view_continuation.md)を参照してください。
+設計の背景は[ページ継続の検討](https://github.com/tetsuo-m/jwwkit/blob/main/docs/design/read_view_continuation.md)を参照してください。

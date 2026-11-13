@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jwwkit"
+version = "0.2.0"
+description = "Read, inspect, and safely edit Jw_cad drawing files"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
+authors = [{name = "tetsuo-m"}]
+dependencies = ["ezjww>=0.2.13,<0.3"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.scripts]
+jwwkit = "jwwkit.cli:main"
+
+[project.urls]
+Repository = "https://github.com/tetsuo-m/jwwkit"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["jwwkit", "jwwkit.*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+jwwkit = ["resources/*.jww", "resources/*.json", "resources/*.md", "resources/*.toml", "guides/AGENTS.md", "guides/docs/*.md"]

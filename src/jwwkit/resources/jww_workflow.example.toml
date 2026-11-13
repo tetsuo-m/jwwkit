@@ -1,0 +1,14 @@
+# Inactive generic example: copy to a separate job folder as jww_workflow.toml.
+# This is not a user setting and grants no editing/normalization approval.
+schema_version = 2
+profile = "careful"
+
+[building_replacement]
+# archive_group = 8
+# archive_group = "first_empty"
+# old_group_action = "archive"
+
+[opening]
+rebro_schema0 = "reject"
+# Use "normalize" only for an explicit schema6 plan, then obtain its approval.
+# careful/quick never enables normalization implicitly.

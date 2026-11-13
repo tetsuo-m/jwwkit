@@ -14,7 +14,7 @@ dist/
 
 # Local drawings, exports, and settings
 *.[jJ][wW][wW]
-!/src/resources/empty_template.jww
+!/src/jwwkit/resources/empty_template.jww
 *.[jJ][wW][sS]
 *.[jJ][wW][cC]
 *.[jJ][wW][kK]

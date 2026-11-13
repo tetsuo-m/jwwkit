@@ -1,3 +1,4 @@
+from jwwkit import template_path
 """Two-stage approvals using search conditions, synthetic source only."""
 from pathlib import Path
 import json
@@ -6,9 +7,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'src'))
-from cad_model import CadDocument
-from safe_edit import write_plan,verify_plan,execute_plan,file_sha256,_hash
+from jwwkit.cad_model import CadDocument
+from jwwkit.safe_edit import write_plan,verify_plan,execute_plan,file_sha256,_hash
 
 
 class QueryPlanTests(unittest.TestCase):
@@ -16,7 +16,7 @@ class QueryPlanTests(unittest.TestCase):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.folder=Path(self.tmp.name);self.source=self.folder/'source.jww'
         self.plan=self.folder/'review.json';self.output=self.folder/'edited.jww'
-        doc=CadDocument.open(ROOT/'src/resources/empty_template.jww')
+        doc=CadDocument.open(template_path())
         doc.add_line((0,0),(20,0));doc.add_text((0,0),content='AW-01');doc.add_line((0,0),(5,0),layer=1)
         doc.save(self.source);self.original=self.source.read_bytes()
         self.query={'all':[{'field':'entity_type','in':['LINE']},{'field':'layer','in':[0]}]}
@@ -62,9 +62,9 @@ class QueryPlanTests(unittest.TestCase):
 
     def test_changed_rule_version_is_refused_before_output(self):
         receipt=self.make()
-        from model.query_text import rules
+        from jwwkit.model.query_text import rules
         altered=dict(rules(),width_rule='different')
-        with patch('model.query_text.rules',return_value=altered):
+        with patch('jwwkit.model.query_text.rules',return_value=altered):
             with self.assertRaisesRegex(ValueError,'Search selection'):
                 execute_plan(self.plan,approved_sha256=receipt['sha256'])
         self.assertFalse(self.output.exists())
@@ -81,8 +81,8 @@ class QueryPlanTests(unittest.TestCase):
         import subprocess
         receipt=self.make(selection={'field':'text','match':'regex','value':'^AW-'},
             actions=[dict(op='set_text',indices=[1],kwargs=dict(content='AW-02'))])
-        code='import sys;sys.path.insert(0,sys.argv[1]);from safe_edit import execute_plan;execute_plan(sys.argv[2],approved_sha256=sys.argv[3])'
-        process=subprocess.run([sys.executable,'-c',code,str(ROOT/'src'),str(self.plan),receipt['sha256']],capture_output=True,text=True,timeout=30)
+        code='import sys;from jwwkit.safe_edit import execute_plan;execute_plan(sys.argv[1],approved_sha256=sys.argv[2])'
+        process=subprocess.run([sys.executable,'-I','-c',code,str(self.plan),receipt['sha256']],capture_output=True,text=True,timeout=30)
         self.assertEqual(process.returncode,0,process.stderr)
         self.assertEqual(CadDocument.open(self.output).entities[1].geometry['content'],'AW-02')
 
@@ -97,7 +97,7 @@ class QueryPlanTests(unittest.TestCase):
 
     def test_timeout_during_reverification_stops_before_edit(self):
         receipt=self.make()
-        with patch('model.query.search',side_effect=TimeoutError('controlled search timeout')):
+        with patch('jwwkit.model.query.search',side_effect=TimeoutError('controlled search timeout')):
             with self.assertRaises(TimeoutError):execute_plan(self.plan,approved_sha256=receipt['sha256'])
         self.assertFalse(self.output.exists());self.assertEqual(self.source.read_bytes(),self.original)
 

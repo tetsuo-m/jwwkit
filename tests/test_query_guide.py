@@ -1,19 +1,19 @@
+from jwwkit import template_path, guide_paths
 """Extract and execute every Python block of the query usage guide."""
-import copy,json,re,sys,tempfile,unittest
+import copy,json,re,tempfile,unittest
 from pathlib import Path
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from cad_model import CadDocument
-from safe_edit import execute_plan,file_sha256
+from jwwkit.cad_model import CadDocument
+from jwwkit.safe_edit import execute_plan,file_sha256
 
 
 class QueryGuideTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.folder=Path(self.tmp.name);self.source=self.folder/'input.jww'
-        cad=CadDocument.open(R/'src/resources/empty_template.jww');cad.set_group_scale(0,100)
+        cad=CadDocument.open(template_path());cad.set_group_scale(0,100)
         cad.add_line((0,0),(20,0),layer=3);cad.add_arc((0,0),10,0,2,layer=5)
         cad.add_text((0,0),content='AW-01');cad.save(self.source)
-        blocks=re.findall(r'```python\n(.*?)\n```',(R/'docs/search_queries.md').read_text(encoding='utf-8'),re.S)
+        blocks=re.findall(r'```python\n(.*?)\n```',(guide_paths()['usage_guide'].with_name('search_queries.md')).read_text(encoding='utf-8'),re.S)
         self.assertEqual(len(blocks),1);self.ns={}
         for code in blocks:exec(compile(code,'docs/search_queries.md','exec'),self.ns)
 
@@ -34,7 +34,7 @@ class QueryGuideTests(unittest.TestCase):
         self.assertEqual(self.source.read_bytes(),before)
 
     def test_zero_matches_stops_without_creating_plan(self):
-        empty=self.folder/'empty.jww';CadDocument.open(R/'src/resources/empty_template.jww').save(empty)
+        empty=self.folder/'empty.jww';CadDocument.open(template_path()).save(empty)
         plan=self.folder/'review.json'
         with self.assertRaisesRegex(ValueError,'0件'):
             self.ns['plan_search_move'](empty,self.folder/'new.jww',plan)

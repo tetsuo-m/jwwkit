@@ -1,11 +1,10 @@
+from jwwkit import template_path
 """Independent synthetic primitives. No answer/question drawing is read by unit tests."""
-from pathlib import Path
-import copy,math,sys,unittest
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from cad_model import CadDocument
-from line_document import Line,Circle,Text,Point
-from model.common_entities import model_entity
-from tategu_recognition import recognize_planar_tategu,tategu_input_fingerprint
+import copy,math,unittest
+from jwwkit.cad_model import CadDocument
+from jwwkit.line_document import Line,Circle,Text,Point
+from jwwkit.model.common_entities import model_entity
+from jwwkit.tategu_recognition import recognize_planar_tategu,tategu_input_fingerprint
 
 
 def swing(w=930,d=80,f=40):
@@ -55,7 +54,7 @@ def fold(w=1110):
 
 
 def scene(parts,*,marked=False,angle=0,mirror=False,scale=1,translation=(0,0)):
-    doc=CadDocument.open(R/'src/resources/empty_template.jww');doc.set_group_scale(0,scale)
+    doc=CadDocument.open(template_path());doc.set_group_scale(0,scale)
     records=[];cs=math.cos(angle);sn=math.sin(angle)
     def p(x,y):
         if mirror:y=-y
@@ -168,7 +167,7 @@ class TateguTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'pair limit'):recognize_planar_tategu(doc,tolerances=options(doc),max_candidate_pairs=1)
 
     def test_multiple_type_hypotheses_are_preserved(self):
-        from tategu_recognition import _deduplicate
+        from jwwkit.tategu_recognition import _deduplicate
         a=dict(type_candidates=['開戸'],position_real_mm=[0,0],clear_width_mm=900,element_indices=[1,2,3],evidence=['arc'],ambiguities=[])
         b=dict(a,type_candidates=['折れ戸'],evidence=['diagonals'],clear_width_mm=850)
         result=_deduplicate([a,b],.1,1)

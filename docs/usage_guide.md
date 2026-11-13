@@ -1,6 +1,6 @@
 # 業務の使い道から選ぶ利用ガイド
 
-表記揺れの半角カナ合成は固定表を使い、Python内蔵Unicodeの違いで拒否しません。対応の内容は変更せず、実行確認済みPythonと依存導入の制約は[README](../README.md)を参照してください。
+先に `pip install jwwkit` でインストールし、`jwwkit check` で確認してください。同梱文書の場所は `jwwkit guide` で表示できます。実行確認済みPythonと依存ライブラリは[README](https://github.com/tetsuo-m/jwwkit/blob/main/README.md)を参照してください。
 
 読取りビュー・共通形状/文字枠・位置検索・明示した文字の表記揺れ・共通編集結果を、確認→承認計画→保存読戻しの順に使う。文字枠の数値丸めガード、設定v2のopening、レブロschema0の別承認による一括正規化を含む。既存のSXF/群取込み/表示状態/位置合わせ/建築差し替え/JWS/図面比較/JWF読取りにも対応する。
 
@@ -33,7 +33,7 @@ AIは、利用者から頼まれた作業に必要な範囲で図面を読んで
 
 JWFとJWWのどちらの設定が画面に適用されるかは、利用者が自身のJw_cad環境で確認する。既存の計画/承認/読戻し/差分報告は継続する。使用したJWFと要約のSHAも計画/報告へ記録し、同じ画面や印刷を保証したと説明しない。利用者は作業に使うJWFと要約をローカルに用意し、AIは図面と同じ範囲で扱う。
 
-詳しい運用は [JWF読取り・要約の使い方](jwf_readonly.md)、未実装の書出し案は [JWF作成・書出しの進め方](design/jwf_writing_proposal.md) を参照する。
+詳しい運用は [JWF読取り・要約の使い方](jwf_readonly.md)、未実装の書出し案は [JWF作成・書出しの進め方](https://github.com/tetsuo-m/jwwkit/blob/main/docs/design/jwf_writing_proposal.md) を参照する。
 
 ## 空テンプレートから新しく図面を作る
 
@@ -53,25 +53,23 @@ approved_sha256は、人の承認をソフトウェアが証明する署名で�
 
 ```python
 from pathlib import Path
-import copy, json, math, sys
-PROJECT = Path.cwd()
-sys.path.insert(0, str(PROJECT / "src"))
-from cad_model import CadDocument
-from safe_edit import (file_sha256 as digest, entity_view as view, snapshot,
+import copy, json, math
+from jwwkit import CadDocument, guide_paths
+from jwwkit.safe_edit import (file_sha256 as digest, entity_view as view, snapshot,
                        write_plan, verify_plan, execute_plan, save_checked, diff_report)
 
 def run_approved(plan_path, approved_sha256):
     return execute_plan(plan_path, approved_sha256=approved_sha256)
 ```
 
-計画関数の返り値はpath/sha256/plan。まずこれをローカルで表示してチャット承認を得る。承認後にrun_approved(計画パス,承認したSHA256)を別の呼出しで実行する。1回のコードで計画作成から自動で実行へつなげない。このガイドのPythonコードは `tools/check_installation.py` が合成図面で確認する。
+計画関数の返り値はpath/sha256/plan。まずこれをローカルで表示してチャット承認を得る。承認後にrun_approved(計画パス,承認したSHA256)を別の呼出しで実行する。1回のコードで計画作成から自動で実行へつなげない。このガイドのPythonコードは `jwwkit check` が合成図面で確認する。
 
 ## (1) 図面を読んで集計する
 
 依頼例：「レイヤ別数量、文字一覧、ブロック数をJSONにしてください。」
 使用：open/write_summary/summary/block_reference_counts/get_layer_name/get_group_name。読取りのみは編集承認不要。
 
-コマンドで集計する場合は `python tools/summarize_drawing.py --source input.jww --output summary.json`。このツールは配布版にも含む。
+コマンドで集計する場合は `jwwkit summarize --source input.jww --output summary.json`。
 
 ```python
 def read_report(source=Path("input.jww"), output=Path("summary.json")):
@@ -323,7 +321,7 @@ def report_plan_refusal(source, plan_path, output):
 依頼例：「指示した2点の対応で、この対象だけを位置合わせしてください。」座標は実寸mm。図面の向きの差を回転角として使い、既定は縮尺を変えない。距離許容と角度許容は毎回指定する。角度許容は補正前の向きの差の上限であり、補正後の残差ではない。angle_unitsはrad（ラジアン）またはdeg（度）、計画と結果には両方を載せる。
 
 ```python
-from alignment import solve_two_point_alignment
+from jwwkit.alignment import solve_two_point_alignment
 
 def plan_alignment(source, indices, source_points, target_points, output, plan_path,
                    *, distance_tolerance, angle_tolerance, angle_units="deg", allow_scale=False):
@@ -459,7 +457,7 @@ def plan_building_replacement(source, incoming, output, plan_path, *, archive_gr
             "source_group": building_group, "target_group": building_group, "sync_scale": False,
             "sync_group_name": False, "sync_layer_names": False, "settings_policy": settings_policy}},
         {"op": "align_two_points", "indices": ["incoming"], "kwargs": kw}]
-    return write_plan(cad, old, actions, output, plan_path, dependencies=[incoming, evidence, PROJECT / "docs/usage_guide.md"])
+    return write_plan(cad, old, actions, output, plan_path, dependencies=[incoming, evidence, guide_paths()["usage_guide"]])
 
 def check_replacement_groups(output, evidence_path):
     evidence = json.loads(Path(evidence_path).read_text(encoding="utf-8"))
@@ -518,7 +516,7 @@ def plan_archive_cleanup(source, output, plan_path, *, archive_group):
 設計変更を調べる例（0は対象群の番号へ置き換える）：
 
 ```powershell
-python tools/compare_drawings.py --left before.jww --right after.jww --left-groups 0 --right-groups 0 --output design_changes.json
+jwwkit compare --left before.jww --right after.jww --left-groups 0 --right-groups 0 --output design_changes.json
 ```
 
 複数群なら `--left-groups 0 1 --right-groups 0 1` とする。全体比較では非表示の退避群も含むため、旧建築との対応が結果へ混ざる。比較完了を示すcompleteと、差の有無は別に確認する。未比較/曖昧/部分被覆があれば終了2でJSONを残す。
@@ -569,7 +567,7 @@ Rebro **2026 Rev.6 ビルド0918.1310**の提供されたv6/v7各1件で、全63
 
 短線の欠落・図面全体のブロック化・再保存時のパレット変化は上記の正確なソフト版と提供入力での観測として扱う。直接読込みはこれらを修復しない。入力や診断結果は冒頭の図面データの扱いに従う。動作確認は空テンプレートから生成した合成図面/JWFだけで行い、メーカー図面がなくても完了する。
 
-配布フォルダへ業務データを入れる前に `python -B tools/check_installation.py` を実行する。利用ガイドと補助文書のコード例、保存・読戻し、未対応操作の拒否を合成入力で確認する。結果の `passed` が `true` になれば導入確認に合格。
+業務データを扱う前に `jwwkit check` を実行する。利用ガイドと補助文書のコード例、保存・読戻し、未対応操作の拒否を合成入力で確認する。結果の `passed` が `true` になれば導入確認に合格。
 
 ## 平面建具の読取り候補
 
@@ -585,7 +583,7 @@ Rebro **2026 Rev.6 ビルド0918.1310**の提供されたv6/v7各1件で、全63
 
 ## 作業方針を切り替える差し替え
 
-[workflow_settings.md](workflow_settings.md) に、TOMLのcareful/quickと退避先番号/first_empty、チャット優先、設定を固定したschema4計画の手順を記載した。既存のarchive専用例は現在の動作を維持し、設定を暗黙に読まない。新入口はwork_dirを明示し、削除も全対象の一覧とSHAへの承認後にだけ実行する。削除の動作は合成図面で確認している。実際の図面で削除する場合も、対象を確かめて計画を承認する。現在の開く設定と正規化の手順は[正規化ガイド](schema_normalization.md)を参照する。設計の背景は[開く設定の設計記録](design/opening_settings_roadmap.md)にある。
+[workflow_settings.md](workflow_settings.md) に、TOMLのcareful/quickと退避先番号/first_empty、チャット優先、設定を固定したschema4計画の手順を記載した。既存のarchive専用例は現在の動作を維持し、設定を暗黙に読まない。新入口はwork_dirを明示し、削除も全対象の一覧とSHAへの承認後にだけ実行する。削除の動作は合成図面で確認している。実際の図面で削除する場合も、対象を確かめて計画を承認する。現在の開く設定と正規化の手順は[正規化ガイド](schema_normalization.md)を参照する。設計の背景は[開く設定の設計記録](https://github.com/tetsuo-m/jwwkit/blob/main/docs/design/opening_settings_roadmap.md)にある。
 
 # 追加の検索手順
 

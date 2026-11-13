@@ -1,12 +1,11 @@
 """Circular-solid editing preserves every non-target field and refuses unknown forms."""
-import copy,math,sys,tempfile,unittest
+import copy,math,tempfile,unittest
 from dataclasses import replace
 from pathlib import Path
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from cad_model import CadDocument
-from line_document import JwwDocument
-from safe_edit import snapshot,write_plan,execute_plan
-from writer.preserved import entity_record
+from jwwkit.cad_model import CadDocument
+from jwwkit.line_document import JwwDocument
+from jwwkit.safe_edit import snapshot,write_plan,execute_plan
+from jwwkit.writer.preserved import entity_record
 
 class CircularSolidEditingTests(unittest.TestCase):
  def setUp(self):

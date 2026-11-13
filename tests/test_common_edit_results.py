@@ -1,14 +1,15 @@
+from importlib.resources import files
+from jwwkit import template_path
 """All 31 APIs through real approval plans; fixtures are synthetic only."""
-import ast,copy,json,math,sys,tempfile,unittest
+import ast,copy,json,math,tempfile,unittest
 from pathlib import Path
 from unittest.mock import patch
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from cad_model import CadDocument
-from line_document import JwwDocument,Line,Text
-from writer.preserved import _document_bytes
-from safe_edit import write_plan,execute_plan,file_sha256
-from edit_result import write_edit_plan,execute_plan_result,preview_plan_result,EditExecutionError
-from _edit_result_core import NAMES,METHODS,capture,apply_method,Rejected,Failed
+from jwwkit.cad_model import CadDocument
+from jwwkit.line_document import JwwDocument,Line,Text
+from jwwkit.writer.preserved import _document_bytes
+from jwwkit.safe_edit import write_plan,execute_plan,file_sha256
+from jwwkit.edit_result import write_edit_plan,execute_plan_result,preview_plan_result,EditExecutionError
+from jwwkit._edit_result_core import NAMES,METHODS,capture,apply_method,Rejected,Failed
 
 CASES={
  'delete_entity':([0],{},(0,0,1)), 'delete_entities':([0,4],{},(0,0,2)),
@@ -73,7 +74,7 @@ for _name in NAMES:setattr(MethodTests,'test_'+_name,method_test(_name))
 
 class ContractTests(Base):
     def test_ast_coverage_exactly_31_and_legacy_paths_excluded(self):
-        tree=ast.parse((R/'src/model/document.py').read_text(encoding='utf-8'))
+        tree=ast.parse((files('jwwkit.model').joinpath('document.py')).read_text(encoding='utf-8'))
         cls=next(n for n in tree.body if isinstance(n,ast.ClassDef)and n.name=='CadDocument')
         found={n.name for n in cls.body if isinstance(n,ast.FunctionDef)and not n.name.startswith('_')and any(isinstance(a,ast.Attribute)and a.attr=='_require_editable'for a in ast.walk(n))}
         self.assertEqual(found,set(NAMES));self.assertEqual(len(CASES),31)
@@ -146,7 +147,7 @@ class ContractTests(Base):
     def test_save_failure_and_retained_unverified_file_raise(self):
         r=self.plan_for([dict(op='move_entity',indices=[0],kwargs=dict(delta=[1,0]))],[0])
         def bad(cad,before,source_sha,output,**kw):cad.save(output);raise OSError('saved-output verification failure')
-        with patch('safe_edit.save_checked',side_effect=bad):
+        with patch('jwwkit.safe_edit.save_checked',side_effect=bad):
             with self.assertRaises(EditExecutionError)as ctx:self.run_plan(r)
         d=ctx.exception.result;self.assertEqual(d['status'],'failed');self.assertEqual(d['phase'],'saved');self.assertTrue(d['files_created']);self.assertIsNone(d['counts']['modified'])
         self.assertFalse(d['validation']['all_fields_match']);self.assertEqual(self.source.read_bytes(),self.raw)
@@ -178,7 +179,7 @@ class ContractTests(Base):
             with self.assertRaises(Failed):apply_method(self.doc,'move_entities',[0],[1,0])
         self.assertEqual(_document_bytes(self.doc),original)
     def test_oversized_single_detail_is_explicitly_omitted(self):
-        from _edit_result_core import result,present
+        from jwwkit._edit_result_core import result,present
         r=result('test','applied','memory');r['counts']['modified']=1;r['changes']=[dict(payload='X'*1048577)]
         p=present(r);self.assertEqual(p['counts']['modified'],1);self.assertEqual(p['changes'],[]);self.assertEqual(p['detail_page']['total'],1);self.assertTrue(p['detail_page']['truncated'])
     def test_result_record_write_failure_retains_verified_counts(self):
@@ -204,10 +205,10 @@ class ContractTests(Base):
         r=write_edit_plan(self.doc,[0],[dict(op='move_entity',indices=[0],kwargs=dict(delta=[1,0]))],self.output,collision)
         self.assertEqual(r['status'],'rejected');self.assertFalse(collision.exists());self.assertFalse(self.output.exists())
     def test_existing_workflow_schema4_keeps_full_save_audit(self):
-        from replacement_workflow import plan_building_replacement
+        from jwwkit.replacement_workflow import plan_building_replacement
         paths=[]
         for name in ('a','b'):
-            d=CadDocument.open(R/'src/resources/empty_template.jww')
+            d=CadDocument.open(template_path())
             for g in (1,2,3):d.set_group_scale(g,100)
             d.add_line((0,0),(10,1 if name=='b'else 0),layer_group=1);d.add_line((1,1),(2,2),layer_group=2)
             for p in ((0,0),(10,0)):d.add_point(p,layer_group=3,is_temporary=True)

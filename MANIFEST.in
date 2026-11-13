@@ -1,0 +1,5 @@
+include README.md LICENSE THIRD_PARTY_NOTICES.md
+recursive-include src/jwwkit/resources *.json *.jww *.md *.toml
+recursive-include src/jwwkit/guides *.md
+prune tests
+global-exclude *.py[cod]

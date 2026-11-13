@@ -8,9 +8,9 @@
 
 ```python
 import json
-from cad_model import CadDocument
-from read_view import create_read_view
-from geometry_view import entity_geometry, geometry_page, text_frame_distance
+from jwwkit import CadDocument
+from jwwkit.read_view import create_read_view
+from jwwkit.geometry_view import entity_geometry, geometry_page, text_frame_distance
 
 view = create_read_view(CadDocument.open('input.jww'))
 first = entity_geometry(view, 0, units='real', text_mode='frame')
@@ -53,7 +53,7 @@ with open('geometry.json', 'x', encoding='utf-8') as stream:
 
 `geometry_page` のdetailsは既定100/最大1000ルートまで、total/returned/truncatedを返す。子はpartsに含まれ、ルート件数へ二重計上しない。countは形状計算なし。summaryは全ルートを順次評価し、判定別件数・未判定の理由を返す。`evaluation_complete` と `examined` を必ず確認する。時間上限（既定30秒、最大300秒）はルート間で確認する協調的な上限で、1つのルートの計算中に強制終了するものではない。上限で残りを計算できなければTIME_LIMITと未完了を明記する。未判定0を意味するdetermination_completeとは区別する。
 
-1ルートあたりmax_segments=10000、max_children=100000、max_depth=64を既定の上限とし、limitsでは小さくする指定だけ受ける。件数上限はJSONバイト数や厳密なRAM上限ではない。別プロセスの続き取得・カーソル・offsetは**今回作らない**。背景は[ページ継続の検討](design/read_view_continuation.md)を参照。
+1ルートあたりmax_segments=10000、max_children=100000、max_depth=64を既定の上限とし、limitsでは小さくする指定だけ受ける。件数上限はJSONバイト数や厳密なRAM上限ではない。別プロセスの続き取得・カーソル・offsetは**今回作らない**。背景は[ページ継続の検討](https://github.com/tetsuo-m/jwwkit/blob/main/docs/design/read_view_continuation.md)を参照。
 
 ## 保存値・意味値・表示値
 

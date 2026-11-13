@@ -1,8 +1,6 @@
 """Large selections stay linear while original-lineage refusals stay strict."""
-from pathlib import Path
-import sys,unittest
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
-from safe_edit import _apply_edit_actions
+import unittest
+from jwwkit.safe_edit import _apply_edit_actions
 
 class Row:
     reads=0

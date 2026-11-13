@@ -17,11 +17,11 @@ AIは、利用者から頼まれた作業に必要な範囲で図面を読んで
 位置検索は、この例では文字の配置を確かめるために使う。編集対象は同じ群のAW文字全件であり、最近の1件へ勝手に絞らない。位置による選択を編集条件に加えるときは、対象と根拠を別途計画で示す。旧ビューの参照を直接編集指示として使わない。
 
 ```python
-from cad_model import CadDocument
-from read_view import create_read_view
-from geometry_view import geometry_page
-from spatial_search import nearest
-from edit_result import write_edit_plan, execute_plan_result
+from jwwkit import CadDocument
+from jwwkit.read_view import create_read_view
+from jwwkit.geometry_view import geometry_page
+from jwwkit.spatial_search import nearest
+from jwwkit.edit_result import write_edit_plan, execute_plan_result
 
 def aw_condition(group):
     return {'all': [

@@ -30,7 +30,7 @@ jwwkitは、それらの図面資産を、AIやプログラムから安全に扱
 - **Jw_cadの環境設定ファイル（.jwf）**の読み取りと比較
 - **他のCADが出力したJWW**：TFAS 14eの出力はそのまま、Rebroの出力は対象のクラス宣言欄の明示的な正規化の後に扱えます
 - **AIに使わせるための安全な編集手順（safe_edit）**：「計画 → 確認・承認 → 実行」の2段階で編集し、意図しない変更を防ぎます。編集の結果は、追加・変更・削除・拒否・注意を共通の形で返します
-- **AI向けの利用ガイド**：AIエージェントにこのライブラリを使わせるときの手引き（`AGENTS.md` と `docs/usage_guide.md`）
+- **AI向けの利用ガイド**：AIエージェントにこのライブラリを使わせるときの手引き（`jwwkit guide` で場所を表示）
 
 ## できないこと・対応していないこと
 
@@ -56,28 +56,35 @@ jwwkitは、それらの図面資産を、AIやプログラムから安全に扱
 
 ## インストール
 
-WindowsのPython 3.14で動作を確認しています。リポジトリを取得したフォルダで、PowerShellから次を実行します。
+Windowsで使う手順です。作業フォルダを開き、PowerShellから実行します。
 
 ```powershell
-py -3.14 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -B tools/check_installation.py
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install jwwkit
+.\.venv\Scripts\jwwkit.exe check
+.\.venv\Scripts\jwwkit.exe guide
 ```
 
-最後の確認で `passed: true` と表示されれば、導入は完了です。
+`check` の結果が `"passed": true` なら導入確認は合格です。`guide` は同梱の `AGENTS.md` と利用ガイドの場所を表示します。仮想環境を有効にした場合は `jwwkit check` と `jwwkit guide` で実行できます。
 
-- 公開フォルダの確認環境：Windows、Python 3.14.10。依存パッケージの対応条件は配布元を参照してください
-- 依存ライブラリ：ezjww 0.2.13（版を固定しています）
+- WindowsのPython 3.14と3.15でwheelからの導入を確認しました。
+- 実行時の依存ライブラリは `ezjww>=0.2.13,<0.3` です。
 
-次の版（0.2.0）でpipでインストールできるようパッケージ化を予定しています。その際にimportの書き方が変わります。
+### 開発用のインストール
+
+取得したリポジトリの直下で、新しい仮想環境を作って有効にします。その環境で次を実行します。
+
+```powershell
+python -m pip install -e .
+python -m jwwkit check
+python -B -m unittest discover -s tests
+```
 
 ## 使い方
 
 ```python
 from pathlib import Path
-import sys
-sys.path.insert(0, "src")  # リポジトリのフォルダで実行する場合
-from cad_model import CadDocument
+from jwwkit import CadDocument
 
 # 図面を読み込む
 drawing_dir = Path("../drawing-work")  # ライブラリの外にある作業フォルダに置き換える
@@ -98,12 +105,21 @@ doc.save(drawing_dir / "sample_copy.jww")
 
 サンプル図面は、今後追加する予定です。それまでは、ご自身で作成した図面でお試しください（業務の図面を使う場合は、必ずバックアップを取ってから）。
 
-AIに既存図面の編集を頼む場合、AIが示す計画の内容とSHA256を確かめ、会話で了承を伝えてください。元図面の上書きはできないため、編集結果は別名で保存します。空テンプレートから新規作図を頼む場合は、先に作る内容と保存先を確認します。詳しくは [AGENTS.md](AGENTS.md) と [利用ガイド](docs/usage_guide.md) を参照してください。関数の一覧は `docs/api_list.md` にあります。
+AIに既存図面の編集を頼む場合、AIが示す計画の内容とSHA256を確かめ、会話で了承を伝えてください。元図面の上書きはできないため、編集結果は別名で保存します。空テンプレートから新規作図を頼む場合は、先に作る内容と保存先を確認します。詳しくは [AGENTS.md](https://github.com/tetsuo-m/jwwkit/blob/main/AGENTS.md) と [利用ガイド](https://github.com/tetsuo-m/jwwkit/blob/main/docs/usage_guide.md) を参照してください。関数の一覧は [API一覧](https://github.com/tetsuo-m/jwwkit/blob/main/docs/api_list.md) を参照してください。
+
+### コマンド
+
+- `jwwkit summarize --source input.jww --output summary.json` で図面を集計します。
+- `jwwkit compare --left before.jww --right after.jww --output comparison.json` で図面を比較します。
+- `jwwkit inspect-jwf --source settings.jwf --output settings.json` でJWFを読み取ります。
+- `jwwkit recognize-tategu --source input.jww --tolerances tolerances.json --output candidates.json` で建具の候補を抽出します。許容値は [建具候補の抽出](https://github.com/tetsuo-m/jwwkit/blob/main/docs/tategu_recognition.md) を参照してください。
+
+出力には新しいファイル名を指定してください。Pythonから手引きの場所を得るには `jwwkit.guide_paths()`、空テンプレートの場所を得るには `jwwkit.template_path()` を使います。
 
 ## 検証について
 
 jwwkitは、業務で安心して使えることを目標に、一つひとつ検証しながら作りました。
-無編集保存でのバイト一致、編集後にJw_cadで開いて再保存できること、DXF・PDF出力での照合など、検証の方法と結果は [VERIFICATION.md](VERIFICATION.md) にまとめています。
+無編集保存でのバイト一致、編集後にJw_cadで開いて再保存できること、DXF・PDF出力での照合など、検証の方法と結果は [VERIFICATION.md](https://github.com/tetsuo-m/jwwkit/blob/main/VERIFICATION.md) にまとめています。
 
 ## 作った人について
 
@@ -114,7 +130,7 @@ Jw_cad本体や付属ファイルは含んでいません。ライブラリの�
 
 ## サポートについて
 
-- 不具合や危険な動作は、[非公開の報告手順](SECURITY.md)に沿って報告してください。改善要望はGitHubのIssueで受け付けます。
+- 不具合や危険な動作は、[非公開の報告手順](https://github.com/tetsuo-m/jwwkit/blob/main/SECURITY.md)に沿って報告してください。改善要望はGitHubのIssueで受け付けます。
 - 返信は不定期です。すべての要望に応えられるとは限りません。
 - 報告や要望に図面は添付しないでください。
 
@@ -127,7 +143,7 @@ JWW形式を扱うオープンソースには、ほかにも次のようなも�
 
 ## ライセンス
 
-[MIT License](LICENSE) · [第三者のデータと依存ライブラリ](THIRD_PARTY_NOTICES.md)
+[MIT License](https://github.com/tetsuo-m/jwwkit/blob/main/LICENSE) · [第三者のデータと依存ライブラリ](https://github.com/tetsuo-m/jwwkit/blob/main/THIRD_PARTY_NOTICES.md)
 
 「Jw_cad」は、その作者の方々に帰属する名称です。
 「Rebro」と「TFAS」は、それぞれの権利者に帰属する名称です。
@@ -136,4 +152,4 @@ JWW形式を扱うオープンソースには、ほかにも次のようなも�
 
 ## English summary
 
-jwwkit is an unofficial Python library for reading and **safely editing existing Jw_cad (.jww) drawings** without altering untouched elements (a no-edit save is byte-identical to the original). It supports registered figures (JWS), blocks, per-group scales, drawings with more than 65,535 elements, SXF extended line colors/types, importing layer groups from another drawing with two-point alignment, drawing comparison, structured search, and a two-step plan/approve/execute editing workflow designed for AI agents. It is tested on Windows with Python 3.14 and Jw_cad 10.03.6, and uses ezjww (MIT) for header reading and cross-checking. Not affiliated with the authors of Jw_cad — please do not contact them about this library. Always back up your drawings before editing.
+jwwkit is an unofficial Python library for reading and **safely editing existing Jw_cad (.jww) drawings** without altering untouched elements (a no-edit save is byte-identical to the original). It supports registered figures (JWS), blocks, per-group scales, drawings with more than 65,535 elements, SXF extended line colors/types, importing layer groups from another drawing with two-point alignment, drawing comparison, structured search, and a two-step plan/approve/execute editing workflow designed for AI agents. It is tested on Windows with Python 3.14 and 3.15 and with Jw_cad 10.03.6, and uses ezjww (MIT) for header reading and cross-checking. Not affiliated with the authors of Jw_cad — please do not contact them about this library. Always back up your drawings before editing.

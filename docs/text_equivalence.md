@@ -3,7 +3,7 @@
 検索条件のnormalizationを明示した場合だけ同一視する。保存文字は変更しない。TEXTと寸法内の文字をそれぞれ1本文として扱い、別の要素を連結しない。既存のwidth_fold/ignore_caseは従来どおり使え、新しいnormalizationとの同時指定は拒否する。
 
 ```python
-from cad_model import CadDocument
+from jwwkit import CadDocument
 
 def find_aw(source):
     cad = CadDocument.open(source)
@@ -31,7 +31,7 @@ def find_aw(source):
 
 処理順は幅→case→空白→ハイフン。全文字の一般NFKCは行わない。旧字体・異体字・丸数字・漢数字・ひらがな/カタカナ・大小カナ等は同一視しない。全角「カ＋結合濁点」も「ガ」に変えない。空白の除去だけで非空の検索値が空になる指定は、意図せぬ全件一致を避けるため拒否する。
 
-当初の候補は[設計記録](design/text_equivalence_proposal.md)を参照。実行時はsrc/resources/text_equivalence_v1.jsonの固定表を使う（Unicode16.0.0、casefold1557項目）。表の全対応を試験し、SHAを検査する。半角カナの合成も固定表28組（src/resources/halfwidth_kana_composition_v1.json）を使い、Python内蔵Unicodeの表を呼ばない。承認済みの単字表・casefold・空白・ハイフンの対応は変更しない。半角カナ1〜3字の全254,079組について旧Unicode16の結果と一致する。動作を確認したPythonは[README](../README.md)を参照。表SHAが変わった既存計画は再検索で拒否し、別の承認計画を作る。正規表現のエンジンや旧ignore_caseの規則までPythonから独立したという意味ではない。
+当初の候補は[設計記録](https://github.com/tetsuo-m/jwwkit/blob/main/docs/design/text_equivalence_proposal.md)を参照。実行時はjwwkit/resources/text_equivalence_v1.jsonの固定表を使う（Unicode16.0.0、casefold1557項目）。表の全対応を試験し、SHAを検査する。半角カナの合成も固定表28組（jwwkit/resources/halfwidth_kana_composition_v1.json）を使い、Python内蔵Unicodeの表を呼ばない。承認済みの単字表・casefold・空白・ハイフンの対応は変更しない。半角カナ1〜3字の全254,079組について旧Unicode16の結果と一致する。動作を確認したPythonは[README](https://github.com/tetsuo-m/jwwkit/blob/main/README.md)を参照。表SHAが変わった既存計画は再検索で拒否し、別の承認計画を作る。正規表現のエンジンや旧ignore_caseの規則までPythonから独立したという意味ではない。
 
 長音を含めると「コード」と「コ-ド」まで同じになるため、意味が変わり得る注意を結果にも返す。長音を含めるのは別の明示指定であり、width=trueやdash_onlyだけでは含めない。
 

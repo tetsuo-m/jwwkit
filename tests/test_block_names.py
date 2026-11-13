@@ -1,10 +1,6 @@
-import sys
 import unittest
-from pathlib import Path
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT/'src'))
-from model.block_names import block_name_info, MARKER
-from model.common_entities import CadBlockDefinition
+from jwwkit.model.block_names import block_name_info, MARKER
+from jwwkit.model.common_entities import CadBlockDefinition
 
 
 class BlockNameTests(unittest.TestCase):

@@ -1,9 +1,8 @@
+from jwwkit import template_path
 """Synthetic query tests. No real drawing is edited."""
 import copy
 from dataclasses import replace
 import json
-from pathlib import Path
-import sys
 import tempfile
 import unittest
 import math
@@ -11,18 +10,16 @@ import subprocess
 import time
 from unittest.mock import patch
 
-ROOT=Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT/'src'))
-from cad_model import CadDocument
-from model.common_entities import model_entity
-from line_document import Line,Text,Circle,Point,BlockDefinition
-from model.dimension import Dimension
-from model.editing import find_entities as old_find
+from jwwkit.cad_model import CadDocument
+from jwwkit.model.common_entities import model_entity
+from jwwkit.line_document import Line,Text,Circle,Point,BlockDefinition
+from jwwkit.model.dimension import Dimension
+from jwwkit.model.editing import find_entities as old_find
 
 
 class QueryTests(unittest.TestCase):
     def setUp(self):
-        self.doc=CadDocument.open(ROOT/'src/resources/empty_template.jww')
+        self.doc=CadDocument.open(template_path())
         self.doc.set_group_scale(0,100);self.doc.set_group_scale(1,50)
         records=[Line((0,0),(20,0),layer=3).record(),
                  Circle((0,0),10,is_full_circle=False,arc_angle=2,layer=5).record(),
@@ -179,7 +176,7 @@ class QueryTests(unittest.TestCase):
         def track(*args,**kw):
             process=popen(*args,**kw);processes.append(process);return process
         start=time.perf_counter()
-        with patch('model.query_text.subprocess.Popen',side_effect=track):
+        with patch('jwwkit.model.query_text.subprocess.Popen',side_effect=track):
             with self.assertRaisesRegex(TimeoutError,'worker terminated'):
                 self.doc.search_entities({'field':'text','match':'regex','value':'(a+)+$'},limits={'regex_seconds':.3})
         self.assertLess(time.perf_counter()-start,5)
@@ -233,8 +230,8 @@ class QueryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'local paper'):
             self.doc.search_entities(dict(q,units='real'),scope='drawing_and_definitions')
         # Explicit saved nested reference, not a world-space recursive traversal.
-        from model.common_entities import CadBlockDefinition
-        from model.block_reference import BlockReference
+        from jwwkit.model.common_entities import CadBlockDefinition
+        from jwwkit.model.block_reference import BlockReference
         nested=CadBlockDefinition(99,'nested',{},(model_entity(BlockReference((0,0),a.number).record()),))
         self.doc.block_definitions=(*self.doc.block_definitions,nested)
         self.assertEqual(self.doc.search_entities({'field':'entity_type','in':['LINE']},scope='definitions')['match_count'],1)
@@ -242,7 +239,7 @@ class QueryTests(unittest.TestCase):
 
     def test_invalid_scope_and_unresolved_definition_are_explicit(self):
         with self.assertRaises(ValueError):self.doc.search_entities({'field':'entity_type','in':['LINE']},scope='world')
-        from model.block_reference import BlockReference
+        from jwwkit.model.block_reference import BlockReference
         self.doc.entities=(model_entity(BlockReference((0,0),999).record()),)
         result=self.doc.search_entities({'field':'block_name','in':['x']})
         self.assertFalse(result['complete']);self.assertIn('Unresolved',result['unresolved'][0]['reason'])

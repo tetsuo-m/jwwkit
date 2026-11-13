@@ -1,9 +1,8 @@
 """Explicit read-only policy; immutable snapshots and strict fields."""
 from pathlib import Path
-import copy,hashlib,json,sys,tempfile,unittest
+import copy,hashlib,json,tempfile,unittest
 from unittest.mock import patch
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from workflow_settings import load_workflow_settings,resolve_workflow_settings,_verify_resolved,_assert_live_snapshot
+from jwwkit.workflow_settings import load_workflow_settings,resolve_workflow_settings,_verify_resolved,_assert_live_snapshot
 
 class SettingsTests(unittest.TestCase):
     def setUp(self):
@@ -74,7 +73,7 @@ class SettingsTests(unittest.TestCase):
     def test_snapshot_validation_does_not_read_live_file(self):
         r=resolve_workflow_settings(self.config('schema_version=1\nprofile="quick"'))
         self.path.unlink()
-        with patch('workflow_settings.load_workflow_settings',side_effect=AssertionError('No live read')):self.assertEqual(_verify_resolved(r),r)
+        with patch('jwwkit.workflow_settings.load_workflow_settings',side_effect=AssertionError('No live read')):self.assertEqual(_verify_resolved(r),r)
     def test_snapshot_tampering_and_unknown_instruction_are_refused(self):
         r=resolve_workflow_settings(self.config('schema_version=1'))
         for key,value in (('effective',{'old_group_action':'delete'}),('selected_profile','quick'),('extra',True)):

@@ -34,9 +34,9 @@ profile = "quick"
 次の関数を合成図面で実行する試験と、配布版だけの検証へ登録している。原本名は任意のローカル名へ置き換える。作業フォルダは配布コードと分け、設定を置くフォルダとして明示する。
 
 ```python
-from replacement_workflow import plan_building_replacement, replacement_reference_points
-from workflow_settings import load_workflow_settings, resolve_workflow_settings
-from safe_edit import execute_plan
+from jwwkit.replacement_workflow import plan_building_replacement, replacement_reference_points
+from jwwkit.workflow_settings import load_workflow_settings, resolve_workflow_settings
+from jwwkit.safe_edit import execute_plan
 
 def read_policy(work_dir, instruction_overrides=None):
     return resolve_workflow_settings(load_workflow_settings(work_dir),
@@ -87,7 +87,7 @@ schema4は設定の原文/生SHA、解析値、組込みprofile表の版、指�
 
 deleteは旧建築の図形だけを削除し、設定レコードと共有/未使用ブロック定義を自動削除しない。archiveと違って例外となる退避群もないため、全ての非対象群を不変監査する。保存後の検証に失敗すれば成功とせず、残った出力の場所を報告する。実図面でのdelete受入れは、別の一覧/計画/SHAによる承認が必要。
 
-既存利用ガイドのarchive専用手順は後方互換で残し、設定ファイルを暗黙には読まない。この新入口を使う場合だけwork_dirを指定する。開く設定の背景は[設計記録](design/opening_settings_roadmap.md)を参照する。
+既存利用ガイドのarchive専用手順は後方互換で残し、設定ファイルを暗黙には読まない。この新入口を使う場合だけwork_dirを指定する。開く設定の背景は[設計記録](https://github.com/tetsuo-m/jwwkit/blob/main/docs/design/opening_settings_roadmap.md)を参照する。
 
 
 ## 設定v2：明示的に開く方針を解決する

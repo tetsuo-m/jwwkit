@@ -4,6 +4,12 @@
 書き方は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、
 版番号は [セマンティック バージョニング](https://semver.org/lang/ja/) に従います。
 
+## [0.2.0]
+
+- `pip install jwwkit` で導入できるようになりました。導入確認や図面の集計・比較などは `jwwkit` コマンドから実行できます。AI向けの手引きと空テンプレートも同梱します。
+- importの名前が変わりました。`from jwwkit import CadDocument` のように使い、編集計画などの各機能は `jwwkit.safe_edit` などから読み込みます。
+- 実行時の依存ライブラリを `ezjww>=0.2.13,<0.3` として指定します。
+
 ## [0.1.0] - 2026-11-11
 
 最初の公開版です。

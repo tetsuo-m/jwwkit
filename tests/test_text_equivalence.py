@@ -1,22 +1,23 @@
+from importlib.resources import files
+from jwwkit import template_path
 """Every approved character mapping and query/plan integration; synthetic only."""
-import copy,json,sys,unittest,tempfile,hashlib,itertools
+import copy,json,unittest,tempfile,hashlib,itertools
 from pathlib import Path
 from unittest.mock import patch
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from model.query_text import equivalence_table,equivalent_text,normalization_options,equivalence_rules,TABLE_SHA256
-from cad_model import CadDocument
-from line_document import Text,Line
-from model.common_entities import model_entity
+from jwwkit.model.query_text import equivalence_table,equivalent_text,normalization_options,equivalence_rules,TABLE_SHA256
+from jwwkit.cad_model import CadDocument
+from jwwkit.line_document import Text,Line
+from jwwkit.model.common_entities import model_entity
 
 def query(value,**options):return dict(field='text',match='exact',value=value,normalization=options)
 def doc(texts):
-    d=CadDocument.open(R/'src/resources/empty_template.jww')
+    d=CadDocument.open(template_path())
     d.entities=tuple(model_entity(Text((0,0),(10,0),t).record(),source_index=i)for i,t in enumerate(texts))
     return d
 
 class EquivalenceTests(unittest.TestCase):
     def test_fixed_kana_matches_exhaustive_approved_unicode16_golden(self):
-        from model.query_text import width_fold
+        from jwwkit.model.query_text import width_fold
         chars=[chr(x)for x in range(0xff61,0xffa0)]
         digest=hashlib.sha256()
         # All 254079 strings of 1..3 halfwidth characters, including isolated,
@@ -27,16 +28,16 @@ class EquivalenceTests(unittest.TestCase):
         self.assertEqual(digest.hexdigest(),'599b02129e9506a8277f1e208f624603947ffb533051dd271bb882a250e131fa')
 
     def test_width_uses_no_runtime_unicode_and_preserves_run_boundaries(self):
-        from model.query_text import width_fold
+        from jwwkit.model.query_text import width_fold
         options=normalization_options(dict(width=True),'exact')
         for version in ('14.0.0','15.0.0','16.0.0','17.0.0','18.0.0'):
-            with patch('model.query_text.unicodedata.unidata_version',version),patch('model.query_text.unicodedata.normalize',side_effect=AssertionError('Runtime normalization forbidden')):
+            with patch('jwwkit.model.query_text.unicodedata.unidata_version',version),patch('jwwkit.model.query_text.unicodedata.normalize',side_effect=AssertionError('Runtime normalization forbidden')):
                 self.assertEqual(equivalent_text('Ａ ｶﾞ ﾊﾟ ﾜﾞ ｳﾞ',options),'A ガ パ ヷ ヴ')
                 self.assertEqual(width_fold('カﾞｶ\u3099①'),'カ\u3099カ\u3099①')
                 self.assertEqual(width_fold('ｶﾞﾞﾟ'),'ガ\u3099\u309a')
 
     def test_kana_composition_checksum_refuses_tampering(self):
-        from model import query_text
+        from jwwkit.model import query_text
         query_text._kana_composition.cache_clear()
         try:
             with patch.object(query_text,'KANA_COMPOSITION_SHA256','0'*64):
@@ -44,11 +45,11 @@ class EquivalenceTests(unittest.TestCase):
         finally:query_text._kana_composition.cache_clear()
 
     def test_resource_exactly_matches_all_approved_maps(self):
-        approved=json.loads((R/'docs/design/text_equivalence_proposal.json').read_text(encoding='utf-8'));table=equivalence_table()
+        approved=json.loads((Path(__file__).with_name('fixtures')/'approved_text_equivalence.json').read_text(encoding='utf-8'));table=equivalence_table()
         for key in approved:
             if key not in {'status', 'notice'}:
                 self.assertEqual(table[key], approved[key])
-        self.assertEqual(hashlib.sha256((R/'src/resources/text_equivalence_v1.json').read_bytes()).hexdigest(),TABLE_SHA256)
+        self.assertEqual(hashlib.sha256((files('jwwkit').joinpath('resources', 'text_equivalence_v1.json')).read_bytes()).hexdigest(),TABLE_SHA256)
 
     def test_all_width_and_case_mappings(self):
         t=equivalence_table()
@@ -129,7 +130,7 @@ class EquivalenceTests(unittest.TestCase):
         with self.assertRaises(TimeoutError):d.search_entities(q,limits={'regex_seconds':.05})
 
     def test_dimension_text_is_one_subject_and_other_entities_not_applicable(self):
-        from model.dimension import Dimension
+        from jwwkit.model.dimension import Dimension
         d=doc([]);r=Dimension(Line((0,0),(10,0)),Text((0,0),(10,0),'ＡＷ－01')).record()
         d.entities=(model_entity(r),model_entity(Line((0,0),(1,1)).record()))
         self.assertEqual(d.find_entities(query=query('AW-01',width=True)),(0,))
@@ -141,14 +142,14 @@ class EquivalenceTests(unittest.TestCase):
         self.assertTrue(r['text_match_details']['truncated']);self.assertEqual(r['text_match_details']['total'],101)
 
     def test_plan_records_rules_and_rejects_changed_table_identity(self):
-        from safe_edit import write_plan,verify_plan
+        from jwwkit.safe_edit import write_plan,verify_plan
         with tempfile.TemporaryDirectory()as temp:
-            p=Path(temp);d=CadDocument.open(R/'src/resources/empty_template.jww')
+            p=Path(temp);d=CadDocument.open(template_path())
             d.add_text((0,0),content='ＡＷ－01');d.save(p/'in.jww');d=CadDocument.open(p/'in.jww')
             q=query('AW-01',width=True)
             write_plan(d,[0],[dict(op='delete_entities',indices=[0],kwargs={})],p/'out.jww',p/'plan.json',selection=q)
             h=hashlib.sha256((p/'plan.json').read_bytes()).hexdigest()
             verify_plan(p/'plan.json',approved_sha256=h)
             changed=equivalence_rules();changed['table_sha256']='0'*64
-            with patch('model.query_text.equivalence_rules',return_value=changed):
+            with patch('jwwkit.model.query_text.equivalence_rules',return_value=changed):
                 with self.assertRaises(ValueError):verify_plan(p/'plan.json',approved_sha256=h)

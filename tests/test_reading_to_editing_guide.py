@@ -1,18 +1,18 @@
+from jwwkit import template_path, guide_paths
 """Execute the integrated workflow guide with synthetic data, never GUI."""
 from pathlib import Path
-import json,re,sys,tempfile,unittest
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from cad_model import CadDocument
+import json,re,tempfile,unittest
+from jwwkit.cad_model import CadDocument
 
 class ReadingEditingGuideTests(unittest.TestCase):
  @classmethod
  def setUpClass(cls):
-  text=(R/'docs/reading_to_editing.md').read_text(encoding='utf-8')
+  text=(guide_paths()['usage_guide'].with_name('reading_to_editing.md')).read_text(encoding='utf-8')
   blocks=re.findall(r'```python\n(.*?)\n```',text,re.S);assert len(blocks)==1
   cls.ns={};exec(compile(blocks[0],'docs/reading_to_editing.md','exec'),cls.ns)
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.folder=Path(self.tmp.name)
-  self.source=self.folder/'input.jww';c=CadDocument.open(R/'src/resources/empty_template.jww')
+  self.source=self.folder/'input.jww';c=CadDocument.open(template_path())
   c.set_group_scale(0,50);c.set_group_scale(1,25)
   c.add_text((0,0),content='ＡＷ－01',units='real');c.add_text((200,0),content='aw ‐02',units='real')
   c.add_text((0,0),content='OTHER',layer_group=1,units='real');c.add_line((0,100),(100,100),units='real');c.save(self.source)

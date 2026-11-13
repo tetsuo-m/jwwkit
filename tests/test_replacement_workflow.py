@@ -1,19 +1,19 @@
+from jwwkit import template_path
 """Synthetic drawings only; approvals below belong exclusively to these fixtures."""
 from pathlib import Path
-import copy,hashlib,json,sys,tempfile,unittest
+import copy,hashlib,json,tempfile,unittest
 from unittest.mock import patch
-R=Path(__file__).resolve().parents[1];sys.path.insert(0,str(R/'src'))
-from cad_model import CadDocument
-from line_document import Line
-from safe_edit import execute_plan,verify_plan,file_sha256,_hash
-from replacement_workflow import plan_building_replacement,replacement_reference_points
+from jwwkit.cad_model import CadDocument
+from jwwkit.line_document import Line
+from jwwkit.safe_edit import execute_plan,verify_plan,file_sha256,_hash
+from jwwkit.replacement_workflow import plan_building_replacement,replacement_reference_points
 
 class ReplacementWorkflowTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.folder=Path(self.tmp.name)
         self.config=self.folder/'jww_workflow.toml';self.source=self.folder/'source.jww';self.incoming=self.folder/'incoming.jww'
         for path in (self.source,self.incoming):
-            d=CadDocument.open(R/'src/resources/empty_template.jww')
+            d=CadDocument.open(template_path())
             for group in (1,2,3):d.set_group_scale(group,100)
             d.set_group_scale(8,50)
             d.add_line((0,0),(1000,100 if path==self.incoming else 0),layer_group=1,units='real')
@@ -63,7 +63,7 @@ class ReplacementWorkflowTests(unittest.TestCase):
     def test_file_change_or_deletion_after_plan_does_not_change_execution(self):
         self.config.write_text('schema_version=1\nprofile="quick"',encoding='utf-8');r=self.plan()
         self.config.write_text('this is now invalid TOML',encoding='utf-8')
-        with patch('workflow_settings.load_workflow_settings',side_effect=AssertionError('No live config reads')):report=self.approve_synthetic(r)
+        with patch('jwwkit.workflow_settings.load_workflow_settings',side_effect=AssertionError('No live config reads')):report=self.approve_synthetic(r)
         self.assertEqual(report['deleted_count'],1)
         self.config.write_text('schema_version=1\nprofile="quick"',encoding='utf-8');r2=self.plan('second');self.config.unlink()
         self.assertEqual(self.approve_synthetic(r2)['deleted_count'],1)
@@ -111,14 +111,14 @@ class ReplacementWorkflowTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.plan(archive_group=8)
         with self.assertRaises(ValueError):self.plan('reference',archive_group=8,building_group=3)
     def test_legacy_schema3_null_selection_is_still_rejected(self):
-        from safe_edit import write_plan
+        from jwwkit.safe_edit import write_plan
         d=CadDocument.open(self.source);r=write_plan(d,[0],[dict(op='delete_entities',indices=[0],kwargs={})],self.folder/'legacy.jww',self.folder/'legacy.json')
         p=r['plan'];p.update(schema_version=3,selection=None,selection_sha256=None)
         path=self.folder/'bad_legacy.json';path.write_text(json.dumps(p),encoding='utf-8')
         with self.assertRaises(ValueError):verify_plan(path,approved_sha256=file_sha256(path))
 
     def test_full_no_empty_group_and_protection_candidate_evidence(self):
-        from _replacement_contract import archive_candidates
+        from jwwkit._replacement_contract import archive_candidates
         d=CadDocument.open(self.source);d.header=copy.deepcopy(d.header);d.header['layer_groups'][4]['protect']=1
         rows=archive_candidates(d,1)
         self.assertEqual(rows[0]['reason'],'writing');self.assertEqual(rows[4]['reason'],'protected')
@@ -134,23 +134,23 @@ class ReplacementWorkflowTests(unittest.TestCase):
         with self.assertRaises(ValueError):self.plan('bad_tol',archive_group=8,distance_tolerance=None)
 
     def test_settings_changed_during_prepare_stops_before_plan_publication(self):
-        import replacement_workflow as rw
+        from jwwkit import replacement_workflow as rw
         real=rw.prepare
         def change(*args,**kw):
             result=real(*args,**kw);self.config.write_text('schema_version=1\nprofile="quick"',encoding='utf-8');return result
-        with patch('replacement_workflow.prepare',side_effect=change):
+        with patch('jwwkit.replacement_workflow.prepare',side_effect=change):
             with self.assertRaisesRegex(ValueError,'changed during planning'):self.plan(archive_group=8)
         self.assertFalse((self.folder/'case.plan.json').exists())
 
     def test_post_save_failure_retains_output_but_never_reports_success(self):
         r=self.plan(archive_group=8)
-        with patch('_replacement_contract.audit_result',side_effect=[dict(passed=True),ValueError('injected readback failure')]):
+        with patch('jwwkit._replacement_contract.audit_result',side_effect=[dict(passed=True),ValueError('injected readback failure')]):
             with self.assertRaisesRegex(RuntimeError,'output retained'):self.approve_synthetic(r)
         self.assertTrue((self.folder/'case.jww').exists());self.assertFalse((self.folder/'case.changes.json').exists())
         self.assertEqual(file_sha256(self.source),self.input_hashes[self.source])
 
     def test_schema4_selection_proof_can_be_used_and_tampering_is_rejected(self):
-        from safe_edit import write_plan
+        from jwwkit.safe_edit import write_plan
         r=self.plan(archive_group=8);q={'field':'layer_group','in':[1]}
         p=self.folder/'selected.json';out=self.folder/'selected.jww'
         receipt=write_plan(CadDocument.open(self.source),None,r['plan']['actions'],out,p,dependencies=[self.incoming],selection=q,workflow=r['plan']['workflow'])
@@ -158,15 +158,15 @@ class ReplacementWorkflowTests(unittest.TestCase):
         self.assertTrue(self.approve_synthetic(receipt)['workflow_audit']['passed'])
 
     def test_open_and_legacy_plan_do_not_load_workflow_configuration(self):
-        from safe_edit import write_plan
+        from jwwkit.safe_edit import write_plan
         self.config.write_text('schema_version=1\nprofile="quick"',encoding='utf-8')
-        with patch('workflow_settings.load_workflow_settings',side_effect=AssertionError('No implicit open/settings read')):
+        with patch('jwwkit.workflow_settings.load_workflow_settings',side_effect=AssertionError('No implicit open/settings read')):
             d=CadDocument.open(self.source)
             receipt=write_plan(d,[0],[dict(op='delete_entities',indices=[0],kwargs={})],self.folder/'old.jww',self.folder/'old.json')
         self.assertEqual(receipt['plan']['schema_version'],2)
 
     def test_first_empty_counts_hidden_metadata_roots(self):
-        from _replacement_contract import archive_candidates
+        from jwwkit._replacement_contract import archive_candidates
         d=CadDocument.open(self.source);d._source_records=copy.deepcopy(d._source_records)
         d._source_records['entities'].append({'type':'TEXT','base':{'layer_group':4},'content':'Printer_PaperSize=9'})
         self.assertEqual(archive_candidates(d,1)[4]['reason'],'occupied')
@@ -178,20 +178,20 @@ class ReplacementWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'references'):self.plan()
 
     def test_fault_injected_import_omission_is_rejected_before_plan(self):
-        import safe_edit
+        from jwwkit import safe_edit
         real=safe_edit._apply_edit_actions
         def drop(cad,plan,**kw):
             result=real(cad,plan,**kw);cad.entities=tuple(e for e in cad.entities if e.source_index is not None);return result
-        with patch('safe_edit._apply_edit_actions',side_effect=drop):
+        with patch('jwwkit.safe_edit._apply_edit_actions',side_effect=drop):
             with self.assertRaisesRegex(ValueError,'counts disagree'):self.plan(archive_group=8)
         self.assertFalse((self.folder/'case.plan.json').exists())
 
     def test_fault_injected_original_attribute_change_is_rejected_before_plan(self):
-        import safe_edit
+        from jwwkit import safe_edit
         real=safe_edit._apply_edit_actions
         def change(cad,plan,**kw):
             result=real(cad,plan,**kw);cad.entities[0].attributes['pen_color']=7;return result
-        with patch('safe_edit._apply_edit_actions',side_effect=change):
+        with patch('jwwkit.safe_edit._apply_edit_actions',side_effect=change):
             with self.assertRaisesRegex(ValueError,'original element changed'):self.plan(archive_group=8)
         self.assertFalse((self.folder/'case.plan.json').exists())
 

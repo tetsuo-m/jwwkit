@@ -7,7 +7,7 @@ AIは、利用者から頼まれた作業に必要な範囲で図面を読んで
 ## 基本例
 
 ```python
-from drawing_comparison import compare_drawings, write_comparison
+from jwwkit.drawing_comparison import compare_drawings, write_comparison
 result = compare_drawings("before.jww", "after.jww",
                           left_scope={"groups": [0]}, right_scope={"groups": [0]})
 write_comparison(result, "comparison.json")
@@ -19,7 +19,7 @@ write_comparison(result, "comparison.json")
 
 自分が実行した編集の確認には、`safe_edit.execute_plan` の戻り値と、別名出力に対応する `edited.changes.json` を使う。元要素番号を追跡し、承認計画SHA・原本/出力SHA・保存読戻しの一致・変更/追加/削除数を確認する。独立比較で同じ形が対応したことを、承認した編集だけが行われた証拠へ置き換えない。非対象群の完全不変は既存の群監査で確認する。
 
-コマンドからも使用できる：`python tools/compare_drawings.py --left before.jww --right after.jww --left-groups 0 --right-groups 0 --output new_report.json`。既存出力は拒否。結果が完全なら終了コード0、保留があればJSONを書いたうえで2。元ファイル変更/不正指定/読取り失敗は例外で停止する。
+コマンドからも使用できる：`jwwkit compare --left before.jww --right after.jww --left-groups 0 --right-groups 0 --output new_report.json`。既存出力は拒否。結果が完全なら終了コード0、保留があればJSONを書いたうえで2。元ファイル変更/不正指定/読取り失敗は例外で停止する。
 
 ## 対応範囲
 

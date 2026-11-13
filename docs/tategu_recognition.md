@@ -21,7 +21,7 @@ JSONの必須欄はschema_version=1、binding（kindとsha256）、coincidence_m
 ```python
 import json
 from pathlib import Path
-from tategu_recognition import recognize_planar_tategu
+from jwwkit.tategu_recognition import recognize_planar_tategu
 
 options = json.loads(Path('approved_tolerances.json').read_text(encoding='utf-8'))
 result = recognize_planar_tategu('input.jww', tolerances=options)
@@ -29,7 +29,7 @@ with Path('candidates.json').open('x', encoding='utf-8') as stream:
     json.dump(result, stream, ensure_ascii=False, allow_nan=False, indent=2)
 ```
 
-コマンドは `python tools/recognize_planar_tategu.py --source input.jww --tolerances approved_tolerances.json --output candidates.json`。出力重複を拒否する。終了値0はcomplete、2は保留を含む結果を保存した状態。入力違い・不正指定等は例外で停止する。結果JSONには図面の座標・番号が入るため、図面と同じ範囲で扱う。
+コマンドは `jwwkit recognize-tategu --source input.jww --tolerances approved_tolerances.json --output candidates.json`。出力重複を拒否する。終了値0はcomplete、2は保留を含む結果を保存した状態。入力違い・不正指定等は例外で停止する。結果JSONには図面の座標・番号が入るため、図面と同じ範囲で扱う。
 
 ## 初版の保留
 

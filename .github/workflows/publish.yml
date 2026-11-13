@@ -1,0 +1,121 @@
+name: Publish distributions
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Candidate tag for TestPyPI, for example v0.2.0rc1'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'tetsuo-m/jwwkit'
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      python-versions: ${{ steps.metadata.outputs.python-versions }}
+      commit: ${{ steps.metadata.outputs.commit }}
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+      RELEASE_TARGET: ${{ github.event_name == 'workflow_dispatch' && 'testpypi' || 'pypi' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.release_tag) || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install build tools
+        run: python -m pip install setuptools==84.2.1 build==1.6.1 twine==7.0.0
+      - name: Verify tag, build, and audit distributions
+        run: python -X utf8 tools/build_release.py --tag $env:RELEASE_TAG --target $env:RELEASE_TARGET --out dist --report release-audit.json
+      - name: Record the built version and test matrix
+        id: metadata
+        run: |
+          $report = Get-Content release-audit.json -Raw | ConvertFrom-Json
+          "version=$($report.version)" >> $env:GITHUB_OUTPUT
+          "commit=$(git rev-parse HEAD)" >> $env:GITHUB_OUTPUT
+          $versions = ConvertTo-Json -InputObject @($report.windows_test_versions) -Compress
+          "python-versions=$versions" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v7
+        with:
+          name: distributions
+          path: dist/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-audit
+          path: release-audit.json
+          if-no-files-found: error
+
+  test:
+    name: Test wheel on Windows / Python ${{ matrix.python-version }}
+    needs: build
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(needs.build.outputs.python-versions) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.build.outputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+      - uses: actions/download-artifact@v8
+        with:
+          name: distributions
+          path: dist
+      - name: Install and verify the release wheel
+        env:
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+        run: python -m pip install "dist/jwwkit-${env:RELEASE_VERSION}-py3-none-any.whl"
+      - name: Check installation
+        run: python -I -B -X utf8 -m jwwkit check
+      - name: Run public tests
+        run: python -I -B -X utf8 -m unittest discover -s tests
+
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/jwwkit/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: distributions
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/jwwkit/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: distributions
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1

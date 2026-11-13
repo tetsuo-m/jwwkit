@@ -5,8 +5,8 @@
 次のコードは、任意の入力ファイル名を受け取る実行例である。文字・図形の内容をガイドへ転記する必要はない。`inspect_drawing`は検索だけ、`plan_search_move`は計画JSONを作って終了する。計画の内容とSHAを利用者にチャットで示し、承認を得るまで`execute_plan`を呼ばない。
 
 ```python
-from cad_model import CadDocument
-from safe_edit import write_plan
+from jwwkit import CadDocument
+from jwwkit.safe_edit import write_plan
 
 LONG_SHAPES = {"all": [
     {"field": "layer_group", "in": [0]},

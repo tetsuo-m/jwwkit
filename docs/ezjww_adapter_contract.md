@@ -1,6 +1,6 @@
 # ezjww窓口の内部契約
 
-対象はezjww **0.2.13**。唯一の実行用窓口は `src/_ezjww_adapter.py` の `read_native_document(path)`。利用者向け公開APIではない。`src/reader/archive.py` と `src/writer/template_document.py` はこの窓口を使う。モデルの不要な直接importを除き、src内のezjww import/呼出しをこの1モジュールへ集約した。テストと開発監査の直接呼出しは独立した比較相手として維持する。
+対象はezjww **0.2.13**。唯一の実行用窓口は `src/jwwkit/_ezjww_adapter.py` の `read_native_document(path)`。利用者向け公開APIではない。`src/jwwkit/reader/archive.py` と `src/jwwkit/writer/template_document.py` はこの窓口を使う。モデルの不要な直接importを除き、src内のezjww import/呼出しをこの1モジュールへ集約した。テストと開発監査の直接呼出しは独立した比較相手として維持する。
 
 ## 呼出し契約
 
