@@ -17,6 +17,11 @@ SOLID_KEYS = tuple(f'point{i}_{axis}' for i in (1,4,2,3) for axis in ('x','y'))
 # Observed with ezjww 0.2.13 and 0.7.13: above this many block definitions,
 # ezjww returns an empty block_defs list. read_document rejects such drawings.
 EZJWW_BLOCK_DEFINITION_LIMIT = 10000
+# (file version, class schema) pairs accepted besides schema == version.
+# (600, 700): Jw_cad 10.03.6 saving in the v6 format writes every class
+# declaration with schema 700; the record layout still follows version 600.
+# Accepted only when all declarations use it, read-only (see preserved.py).
+OBSERVED_CLASS_SCHEMA_PAIRS = frozenset({(600, 700)})
 
 
 class RecordError(ValueError):
@@ -107,7 +112,15 @@ def _read_records(c):
         c.take(84)
     c.take(380)
     header_end = c.pos
+    # Only the JWW path accepts the observed pairs; JWS shares the sequence reader.
+    c.accepted_schema_pairs = OBSERVED_CLASS_SCHEMA_PAIRS
     entities, definitions, spans = read_entity_sequences(c, version)
+    schemas = {d['schema'] for d in c.class_declarations}
+    class_schema = version
+    if c.schema_profile == 'strict' and schemas - {version}:
+        if len(schemas) != 1:
+            raise RecordError(f'Unsupported class schema mix (mixed class schemas are unobserved): {sorted(schemas)}')
+        class_schema, = schemas
     if c.schema_profile == 'rebro_schema0':
         if definitions or any(r['type'] not in ('LINE','CIRCLE','ARC','TEXT') for r in entities):
             raise RecordError('Unobserved structure for rebro_schema0')
@@ -125,6 +138,7 @@ def _read_records(c):
                 tail_offset=tail_offset, raw_trailer=raw_trailer, images=images,
                 spans=spans, version=version, memo=memo,
                 schema_profile=c.schema_profile, class_declarations=c.class_declarations,
+                class_schema=class_schema,
                 layer_names=layer_names, color_names=color_names, line_type_names=line_type_names)
 
 
@@ -233,6 +247,8 @@ def read_entity_sequences(c, version):
                 if schema != version:
                     accepted = (profile == 'rebro_schema0' and version in (600,700)
                                 and schema == 0 and name in ('CDataSen','CDataEnko','CDataMoji'))
+                    accepted = accepted or (profile == 'strict'
+                                and (version, schema) in getattr(c, 'accepted_schema_pairs', ()))
                     if not accepted:
                         hint = ('; schema=0: explicit schema_profile="rebro_schema0" permits only '
                                 'observed v600/v700 CDataSen/CDataEnko/CDataMoji (read-only)'

@@ -2,7 +2,7 @@
 from pathlib import Path
 import hashlib,struct
 from jwwkit.reader.archive import Cursor,_read_records,read_records_bytes
-from jwwkit.writer.preserved import serialize_body
+from jwwkit.writer.preserved import serialize_body,keeps_class_declarations
 from jwwkit.model.rigid_audit import exact
 
 CLASSES=frozenset(('CDataSen','CDataEnko','CDataMoji'))
@@ -16,7 +16,7 @@ def _roundtrip(raw,parsed,zero=False):
     for encoding in (('cp932','utf-16le')if parsed['version']==600 else ('utf-16le','cp932')):
         try:
             body=serialize_body(parsed['entities'],parsed['block_defs'],parsed['version'],encoding=encoding,
-                raw_trailer=parsed['raw_trailer'],class_declarations=parsed['class_declarations']if zero else None)
+                raw_trailer=parsed['raw_trailer'],class_declarations=parsed['class_declarations']if zero or keeps_class_declarations(parsed) else None)
             if raw[:parsed['header_end']]+body==raw:return
         except (ValueError,UnicodeError,struct.error):pass
     raise ValueError('Unedited serialization is not byte-identical')

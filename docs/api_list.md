@@ -44,7 +44,7 @@ CadDocument.open(path: str | Path, *, include_metadata: bool=False, schema_profi
 
 既存図面を読み、要素と保存用の原情報を保持する。
 
-対応範囲・拒否条件：観測済みv600/v700。schema_profile="strict"既定。明示"rebro_schema0"はSen/Enko/Mojiのschema0だけの読取り/無編集別名保存用で、31編集APIと直接編集の保存を拒否。混在/他クラス/画像/定義へ広げない。include_metadata=Falseは設定を公開要素から除く。未知構造/診断付きは保存不能の場合がある。ブロック定義が10,000個を超える図面は、ezjwwが定義を返さず照合できないため、`RecordError`（`Block definitions exceed the ezjww limit`）で拒否する（現在は読めない）。
+対応範囲・拒否条件：観測済みv600/v700。schema_profile="strict"既定。明示"rebro_schema0"はSen/Enko/Mojiのschema0だけの読取り/無編集別名保存用で、31編集APIと直接編集の保存を拒否。混在/他クラス/画像/定義へ広げない。include_metadata=Falseは設定を公開要素から除く。未知構造/診断付きは保存不能の場合がある。今のJw_cad（10.03.6で確認）がv6形式で保存した図面（ファイルの版600、要素のクラスの版がすべて700）も、既定のstrictで開ける。要素の並びはv600のまま。読取りと無編集の別名保存（原本とバイト一致、クラスの版700を保つ）だけで、31編集APIと直接編集の保存は拒否する（編集するには、Jw_cadでVer.7.00形式に保存し直す）。600と700の混在、ほかのクラスの版の組み合わせは拒否する。ブロック定義が10,000個を超える図面は、ezjwwが定義を返さず照合できないため、`RecordError`（`Block definitions exceed the ezjww limit`）で拒否する（現在は読めない）。
 
 根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L49)。
 
@@ -462,7 +462,7 @@ read_records(path, *, schema_profile='strict')
 
 既知JWWの全生要素・定義・本文情報を読み込む。
 
-対応範囲・拒否条件：strict既定。明示schema_profile="rebro_schema0"はv600/v700のschema0のSen/Enko/Mojiだけで宣言の順序/値も返す。混在・他クラス・画像/定義は拒否。未知クラス/末尾、切断、64bit/非正規/上限超の個数と未知参照を拒否。65535以上はWORDマーカー+DWORD。
+対応範囲・拒否条件：strict既定。明示schema_profile="rebro_schema0"はv600/v700のschema0のSen/Enko/Mojiだけで宣言の順序/値も返す。strictはクラスの版がファイルの版と同じ宣言と、観測済みの組（ファイルの版600・クラスの版700、宣言がすべて700のときだけ）を受け付け、結果のclass_schemaに宣言の版を返す。600と700の混在は拒否。混在・他クラス・画像/定義は拒否。未知クラス/末尾、切断、64bit/非正規/上限超の個数と未知参照を拒否。65535以上はWORDマーカー+DWORD。
 
 根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L63)。
 
@@ -474,7 +474,7 @@ read_records_bytes(data, *, schema_profile='strict')
 
 既知JWWの全生要素・定義・本文情報をbytesから読み込む。
 
-対応範囲・拒否条件：strict既定。明示schema_profile="rebro_schema0"はv600/v700のschema0のSen/Enko/Mojiだけで宣言の順序/値も返す。混在・他クラス・画像/定義は拒否。未知クラス/末尾、切断、64bit/非正規/上限超の個数と未知参照を拒否。65535以上はWORDマーカー+DWORD。
+対応範囲・拒否条件：strict既定。明示schema_profile="rebro_schema0"はv600/v700のschema0のSen/Enko/Mojiだけで宣言の順序/値も返す。strictはクラスの版がファイルの版と同じ宣言と、観測済みの組（ファイルの版600・クラスの版700、宣言がすべて700のときだけ）を受け付け、結果のclass_schemaに宣言の版を返す。600と700の混在は拒否。混在・他クラス・画像/定義は拒否。未知クラス/末尾、切断、64bit/非正規/上限超の個数と未知参照を拒否。65535以上はWORDマーカー+DWORD。
 
 根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L68)。
 
@@ -486,7 +486,7 @@ read_document(path, *, schema_profile='strict')
 
 標準Readerと生本文Readerを照合し、文字・寸法属性を補完する。
 
-対応範囲・拒否条件：strict既定、schema0等のクラススキーマ違反は拒否。明示schema_profile="rebro_schema0"は観測済み3クラス限定、失敗時のフォールバックなし。それ以外のstrict本文読込み失敗では限定フォールバックと診断を返す場合があり、診断は安全な編集保存を保証しない。
+対応範囲・拒否条件：strict既定、schema0等のクラススキーマ違反は拒否（観測済みの組のv600・クラスの版700は受け付け、混在は拒否）。明示schema_profile="rebro_schema0"は観測済み3クラス限定、失敗時のフォールバックなし。それ以外のstrict本文読込み失敗では限定フォールバックと診断を返す場合があり、診断は安全な編集保存を保証しない。
 
 根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L263)。
 
