@@ -14,6 +14,9 @@ BASE_KEYS = ('group', 'pen_style', 'pen_color', 'pen_width', 'layer', 'layer_gro
 XY_KEYS = ('start_x', 'start_y', 'end_x', 'end_y')
 TEXT_KEYS = (*XY_KEYS, 'text_type', 'size_x', 'size_y', 'spacing', 'angle')
 SOLID_KEYS = tuple(f'point{i}_{axis}' for i in (1,4,2,3) for axis in ('x','y'))
+# Observed with ezjww 0.2.13 and 0.7.13: above this many block definitions,
+# ezjww returns an empty block_defs list. read_document rejects such drawings.
+EZJWW_BLOCK_DEFINITION_LIMIT = 10000
 
 
 class RecordError(ValueError):
@@ -293,6 +296,13 @@ def read_document(path, *, schema_profile='strict'):
         elif a != b:
             raise RecordError('Native/raw numeric or attribute mismatch')
     check(raw['entities'], native['entities'])
+    # ezjww 0.2.13 returns no block definitions (and no diagnostic) when a drawing
+    # has more than 10000. Keep rejecting, but say why; never fill in or skip the check.
+    if not native['block_defs'] and len(raw['block_defs']) > EZJWW_BLOCK_DEFINITION_LIMIT:
+        raise RecordError(
+            f'Block definitions exceed the ezjww limit: jwwkit read {len(raw["block_defs"])} '
+            f'definitions, but ezjww returns none above {EZJWW_BLOCK_DEFINITION_LIMIT}, '
+            'so they cannot be cross-checked')
     check(raw['block_defs'], native['block_defs'])
     native['entities'] = raw['entities']
     native['block_defs'] = raw['block_defs']

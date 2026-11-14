@@ -44,7 +44,7 @@ CadDocument.open(path: str | Path, *, include_metadata: bool=False, schema_profi
 
 既存図面を読み、要素と保存用の原情報を保持する。
 
-対応範囲・拒否条件：観測済みv600/v700。schema_profile="strict"既定。明示"rebro_schema0"はSen/Enko/Mojiのschema0だけの読取り/無編集別名保存用で、31編集APIと直接編集の保存を拒否。混在/他クラス/画像/定義へ広げない。include_metadata=Falseは設定を公開要素から除く。未知構造/診断付きは保存不能の場合がある。
+対応範囲・拒否条件：観測済みv600/v700。schema_profile="strict"既定。明示"rebro_schema0"はSen/Enko/Mojiのschema0だけの読取り/無編集別名保存用で、31編集APIと直接編集の保存を拒否。混在/他クラス/画像/定義へ広げない。include_metadata=Falseは設定を公開要素から除く。未知構造/診断付きは保存不能の場合がある。ブロック定義が10,000個を超える図面は、ezjwwが定義を返さず照合できないため、`RecordError`（`Block definitions exceed the ezjww limit`）で拒否する（現在は読めない）。
 
 根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L49)。
 
