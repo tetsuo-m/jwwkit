@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jwwkit"
-version = "0.2.0rc1"
+version = "0.2.0"
 description = "Read, inspect, and safely edit Jw_cad drawing files"
 readme = "README.md"
 requires-python = ">=3.11"
