@@ -4,6 +4,10 @@
 書き方は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、
 版番号は [セマンティック バージョニング](https://semver.org/lang/ja/) に従います。
 
+## [未公開]
+
+- ブロック定義が10,000個を超える図面を開いたときの拒否の理由を分かりやすくしました。依存のezjwwがこの場合に定義を返さず照合できないため、引き続き読めません（拒否します）が、理由が `Block definitions exceed the ezjww limit` と、jwwkitが数えた定義の数で示されます。それ以外の読取りの結果は変わりません。
+
 ## [0.2.0]
 
 - `pip install jwwkit` で導入できるようになりました。導入確認や図面の集計・比較などは `jwwkit` コマンドから実行できます。AI向けの手引きと空テンプレートも同梱します。

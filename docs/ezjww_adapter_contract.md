@@ -56,6 +56,8 @@ nameはnativeの復号/表示用代替名を含むことがある。原保存名
 
 独自wrapperは数値/属性/要素数をnativeと突き合わせるが、font_name/content/timestampは比較から除外し、内包base/typeのnative欠落も従来どおり許容する。その後entities/block_defsを原文字・内包属性・日時を保持する独自rawへ置換する。adapterはこの処理を引き受けず、順序や条件も変えない。
 
+ブロック定義の数の上限：ezjwwは、定義が10,000個を超える図面で`block_defs`を空のlistで返し、diagnosticsも出さない（0.2.13と0.7.13で同じ動きを確認。10,000個までは全件を返す）。図面直下の`entities`は影響を受けず、`validation`では配置が未解決として数えられる。ezjww側には報告済み（monozukuri-ai/ezjwwのIssue #17）。独自wrapperは図面直下の照合の後、定義の照合の直前に「native定義0個かつraw定義が10,000個超」を見分け、`RecordError`（`Block definitions exceed the ezjww limit`）で拒否する。nativeの定義を補ったり照合を外したりはしない。それ以外の数の不一致は従来の`Native/raw record count mismatch`のまま。公開試験`tests/test_block_definition_limit.py`は、この上限が変わると落ちる。
+
 ### 設定・参照検証・診断
 
 - metadata_settingsの各項目はentity_index:int、key/value/raw:str。対応するentities[entity_index]はTEXTで、contentとrawが対応する。値を数値/boolへ勝手に変換せず、原文字で保持。設定キーを既知6種へ限定した新分類処理は追加しない。
