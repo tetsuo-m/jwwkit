@@ -47,9 +47,9 @@ class CadDocument:
 
     @classmethod
     def open(cls, path: str | Path, *, include_metadata: bool = False, schema_profile: str = 'strict') -> "CadDocument":
-        """strict既定で原ヘッダー・本文を保持する。rebro_schema0は読取り/無編集別名保存のみ。"""
+        """strict既定で原ヘッダー・本文を保持する。rebro_schema0と、v600でクラスの版700（今のJw_cad）は読取り/無編集別名保存のみ。"""
         source = Path(path)
-        from jwwkit.writer.preserved import capture_source
+        from jwwkit.writer.preserved import capture_source, keeps_class_declarations
         source_bytes, source_records = capture_source(source, schema_profile=schema_profile)
         parsed = read_document(source, schema_profile=schema_profile)
         if source.read_bytes() != source_bytes:
@@ -72,7 +72,7 @@ class CadDocument:
                    _readonly_state=copy.deepcopy(dict(header=parsed['header'],
                        metadata_settings=tuple(parsed['metadata_settings']), diagnostics=tuple(parsed['diagnostics']),
                        includes_metadata=include_metadata, _source_metadata_indices=tuple(sorted(metadata_indices))))
-                       if schema_profile == 'rebro_schema0' else None)
+                       if keeps_class_declarations(source_records) else None)
 
     def save(self, path: str | Path) -> None:
         """既知v600/v700図面を別名保存する。ヘッダー編集は縮尺・名称・確認済み表示状態APIに対応。"""
@@ -82,6 +82,12 @@ class CadDocument:
     def _require_editable(self):
         if self._source_records and self._source_records.get('schema_profile') == 'rebro_schema0':
             raise ValueError('rebro_schema0 is read-only; editing is not yet supported')
+        if self._source_records and self._source_records.get('class_schema', self.version) != self.version:
+            raise ValueError(
+                'This Jw_cad v6-format file stores its classes as schema 700 (current Jw_cad output). '
+                'jwwkit can read it and save an unedited copy, but editing it is not supported yet '
+                '(edited saves are unverified in Jw_cad). To edit, re-save the drawing in Jw_cad '
+                'in the Ver.7.00 (v7) format and open that file instead.')
 
     def get_sxf_colors(self, *, include_unnamed=False):
         """SXF色の名前・番号・表示/印刷RGB・生幅・点半径を独立コピーで読む。"""

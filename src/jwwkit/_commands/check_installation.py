@@ -350,6 +350,27 @@ def check(*, compare_command, inspect_jwf_command, summarize_command):
             except ValueError as exc:assert 'read-only' in str(exc)
             else:raise AssertionError('Schema0 editing was accepted')
         results.append('explicit_schema0_readonly_file_roundtrip_v600_v700')
+        # Jw_cad 10.03.6 v6-format output: file version 600, every class schema 700 (read-only).
+        header=bytearray(template[:end]);struct.pack_into('<I',header,8,600)
+        raw=bytes(header)+serialize_body([Line((0,0),(10,0)).record(),Text((0,0),(5,0),'synthetic').record(),
+                                          Circle((5,5),2).record()],[],600)
+        fixture=bytearray(raw)
+        for declaration in read_records_bytes(raw)['class_declarations']:struct.pack_into('<H',fixture,declaration['offset']+2,700)
+        source700=folder/'v600_schema700.jww';source700.write_bytes(fixture)
+        readonly=CadDocument.open(source700)
+        assert readonly._source_records['class_schema']==700
+        target700=folder/'v600_schema700_copy.jww';readonly.save(target700)
+        assert target700.read_bytes()==source700.read_bytes()
+        assert {d['schema'] for d in read_records_bytes(target700.read_bytes())['class_declarations']}=={700}
+        try:readonly.add_line((0,0),(1,0))
+        except ValueError as exc:assert 'Ver.7.00' in str(exc)
+        else:raise AssertionError('v600/schema700 editing was accepted')
+        mixed=bytearray(fixture);struct.pack_into('<H',mixed,read_records_bytes(raw)['class_declarations'][0]['offset']+2,600)
+        for bad,message in ((bytes(mixed),'Unsupported class schema mix'),(bytes(fixture)+bytes(4),'Unsupported trailer/layout')):
+            try:read_records_bytes(bad)
+            except RecordError as exc:assert message in str(exc)
+            else:raise AssertionError('Unobserved v600/schema700 variant was accepted')
+        results.append('v600_schema700_readonly_file_roundtrip')
         results.append('jwf_documentation_read_diff_no_settings_application')
         verified=folder/'verified.jwf'
         widths=' '.join(str(cad.get_text_preset(i)['size_x']) for i in range(1,11))

@@ -17,6 +17,10 @@ class LegacyDocument:
         self._raw,parsed=capture_source(source)
         if parsed['version'] != 600 or parsed['block_defs']:
             raise ValueError('Only observed v600 drawings without blocks')
+        if parsed.get('class_schema', parsed['version']) != parsed['version']:
+            # Jw_cad v6 output with class schema 700 is read-only (CadDocument); this
+            # writer would re-declare classes with schema 600.
+            raise ValueError('Class schema 700 v600 files are read-only; use CadDocument.open (no editing)')
         if any(e['type'] not in ('LINE','CIRCLE','ARC','POINT','TEXT','SOLID') for e in parsed['entities']):
             raise ValueError('Unsupported legacy entity type')
         checked = read_document(source)

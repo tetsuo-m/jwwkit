@@ -28,6 +28,12 @@ def serialize_body(entities, definitions, version, *, encoding=None, raw_trailer
     return body
 
 
+def keeps_class_declarations(parsed):
+    """原宣言をそのまま書き戻す読取り専用の図面か（rebro_schema0、観測済みのクラスの版の組）。"""
+    return (parsed.get('schema_profile') == 'rebro_schema0'
+            or parsed.get('class_schema', parsed['version']) != parsed['version'])
+
+
 def capture_source(path, *, schema_profile='strict'):
     """開く時点の原データを捕捉し、本文再直列化の全バイト一致を確認する。"""
     source = Path(path)
@@ -40,7 +46,7 @@ def capture_source(path, *, schema_profile='strict'):
     for encoding in encodings:
         try:
             body = serialize_body(parsed["entities"], parsed["block_defs"], parsed["version"], encoding=encoding, raw_trailer=parsed["raw_trailer"],
-                class_declarations=parsed['class_declarations'] if schema_profile == 'rebro_schema0' else None)
+                class_declarations=parsed['class_declarations'] if keeps_class_declarations(parsed) else None)
         except (UnicodeError, ValueError) as exc:
             serialization_errors.append(f'{encoding}: {exc}')
             continue
@@ -128,8 +134,8 @@ def _document_bytes(document):
             blocking.append(diagnostic)
     if blocking:
         raise ValueError(f"未確認の構造があるため保存できません: {document.diagnostics}")
-    if document._source_records.get('schema_profile') == 'rebro_schema0':
-        return _readonly_schema0_bytes(document)
+    if keeps_class_declarations(document._source_records):
+        return _readonly_bytes(document)
     if document.includes_metadata:
         raise ValueError("Metadata-inclusive editing is not supported")
     expected_header = copy.deepcopy(document._source_header)
@@ -222,36 +228,55 @@ def _document_bytes(document):
     return data
 
 
-def _readonly_schema0_bytes(document):
-    """Reparse, compare the full public model, then serialize original declarations."""
-    from jwwkit.model.common_entities import model_entity
-    original = read_records_bytes(document._source_bytes, schema_profile='rebro_schema0')
+def _readonly_bytes(document):
+    """Reparse, compare the full public model, then serialize original declarations.
+
+    Used for rebro_schema0 and for observed (version, class schema) pairs such as
+    (600, 700); both are read-only and must save byte-identically.
+    """
+    from jwwkit.model.common_entities import CadBlockDefinition, model_entity
+    profile = document._source_records.get('schema_profile', 'strict')
+    label = profile if profile == 'rebro_schema0' else 'Jw_cad v6 file with class schema 700'
+    original = read_records_bytes(document._source_bytes, schema_profile=profile)
+    if not keeps_class_declarations(original):
+        raise ValueError(f'{label} source snapshot was changed')
     if document._readonly_state is None or any(getattr(document, key) != value
             for key, value in document._readonly_state.items()):
-        raise ValueError('rebro_schema0 is read-only; model settings were changed')
+        raise ValueError(f'{label} is read-only; model settings were changed')
     indices = set(document._source_metadata_indices)
     expected = tuple(model_entity(raw, source_index=i) for i, raw in enumerate(original['entities'])
                      if document.includes_metadata or i not in indices)
+    expected_blocks = tuple(CadBlockDefinition(d['number'], d['name'], dict(d['base']),
+                            tuple(model_entity(e) for e in d['entities'])) for d in original['block_defs'])
     if (document.version != original['version'] or document.header != document._source_header
             or document.entities != expected
             or tuple(e.source_index for e in document.entities) != tuple(e.source_index for e in expected)
-            or document.block_definitions or document._name_edits or document._group_scale_edits
+            or document.block_definitions != expected_blocks or document._name_edits or document._group_scale_edits
             or document._state_edits or document._new_block_records):
-        raise ValueError('rebro_schema0 is read-only; edited documents cannot be saved')
+        raise ValueError(f'{label} is read-only; edited documents cannot be saved')
     # The source records (including CString bytes and declaration metadata) must also stay intact.
     for key in ('entities','block_defs','class_declarations','raw_trailer','version','header_end'):
         if document._source_records[key] != original[key]:
-            raise ValueError('rebro_schema0 source snapshot was changed')
+            raise ValueError(f'{label} source snapshot was changed')
     # Rebuild from the current model too: Python numeric equality alone misses signed-zero changes.
     current = list(original['entities'])
     for entity in document.entities:
         current[entity.source_index] = entity_record(entity)
-    body = serialize_body(current, original['block_defs'], original['version'],
+    definitions = []
+    for definition, source in zip(document.block_definitions, original['block_defs']):
+        record = copy.deepcopy(source)
+        record.update(number=definition.number, name=definition.name, base=copy.deepcopy(dict(definition.attributes)),
+                      entities=[entity_record(entity) for entity in definition.entities])
+        definitions.append(record)
+    body = serialize_body(current, definitions, original['version'],
         encoding=document._source_records['body_encoding'], raw_trailer=original['raw_trailer'],
         class_declarations=original['class_declarations'])
     result = document._source_bytes[:original['header_end']] + body
     if result != document._source_bytes:
-        raise ValueError('Read-only schema-0 serialization must be byte-identical')
+        raise ValueError(f'Read-only {label} serialization must be byte-identical')
+    # Re-read the candidate: declarations (including their schema) must be unchanged.
+    if read_records_bytes(result, schema_profile=profile)['class_declarations'] != original['class_declarations']:
+        raise ValueError(f'{label}: class declarations changed on save')
     return result
 
 
