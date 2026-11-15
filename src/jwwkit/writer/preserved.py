@@ -42,6 +42,36 @@ NEW_CLASS_DECLARATION_MESSAGE = (
     'To make this edit, re-save the drawing in Jw_cad in the Ver.7.00 (v7) format and open that file instead.')
 
 
+IMAGE_REFERENCE_MESSAGE = (
+    'This edit makes an image text (^@BM%temp%...) point to an image that is not embedded in the drawing; '
+    'Jw_cad could not show it, so the save is rejected')
+
+
+def dangling_image_references(parsed):
+    """v700の^@BM%temp%文字のうち、同梱の画像を指さないものの名前（小文字）を数える。"""
+    from collections import Counter
+    embedded = {image['identifier'].lower()[:-3] for image in parsed.get('images', ())}
+    found = Counter()
+
+    def walk(records):
+        for record in records:
+            if record['type'] == 'TEXT':
+                content = record['content']
+            elif record['type'] == 'DIMENSION':
+                content = record['text']['content']
+            else:
+                if record['type'] == 'BLOCK_DEF':
+                    walk(record['entities'])
+                continue
+            if content[:10].lower() == '^@bm%temp%':
+                name = content[10:].split(',', 1)[0].lower()
+                if name not in embedded:
+                    found[name] += 1
+    walk(parsed['entities'])
+    walk(parsed['block_defs'])
+    return found
+
+
 def keeps_class_declarations(parsed):
     """無編集の書き戻しで原宣言をそのまま使う図面か（rebro_schema0、観測済みのクラスの版の組、古い版）。"""
     return (parsed.get('schema_profile') == 'rebro_schema0' or is_read_only_version(parsed['version'])
@@ -259,6 +289,11 @@ def _document_bytes(document):
     if (checked['entities'] != entities or checked['block_defs'] != definitions
             or checked["raw_trailer"] != original["raw_trailer"]):
         raise ValueError("保存前検証で本文が一致しません")
+    if document.version == 700:
+        # Image texts may only point to embedded images, unless the source already had such a text.
+        before = dangling_image_references(original)
+        if any(count > before.get(name, 0) for name, count in dangling_image_references(checked).items()):
+            raise ValueError(IMAGE_REFERENCE_MESSAGE)
     return data
 
 

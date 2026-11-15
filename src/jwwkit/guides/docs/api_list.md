@@ -44,7 +44,7 @@ CadDocument.open(path: str | Path, *, include_metadata: bool=False, schema_profi
 
 既存図面を読み、要素と保存用の原情報を保持する。
 
-対応範囲・拒否条件：観測済みv600/v700と、読取り専用の古い版（下）。schema_profile="strict"既定。明示"rebro_schema0"はSen/Enko/Mojiのschema0だけの読取り/無編集別名保存用で、31編集APIと直接編集の保存を拒否。混在/他クラス/画像/定義へ広げない。include_metadata=Falseは設定を公開要素から除く。未知構造/診断付きは保存不能の場合がある。今のJw_cad（10.03.6で確認）がv6形式で保存した図面（ファイルの版600、要素のクラスの版がすべて700）も、既定のstrictで開ける。要素の並びはv600のまま。無編集の別名保存は原本とバイト一致（include_metadata=Trueで開いた場合は無編集の別名保存だけ）。編集はv600と同じ条件で保存でき、宣言はすべてクラスの版700で書き、末尾は付けない。ただし、図面に宣言のないクラスの要素が要る保存（ソリッドのない図面へのソリッドの追加、定義のない図面でのブロックの作成など）と、import_groupは拒否する（Jw_cadでVer.7.00形式に保存し直せば、その編集ができる）。600と700の混在、ほかのクラスの版の組み合わせは拒否する。ブロック定義が10,000個を超える図面は、ezjwwが定義を返さず照合できないため、`RecordError`（`Block definitions exceed the ezjww limit`）で拒否する（現在は読めない）。古い版（#17）：観測した組（ファイルの版, クラスの版）だけを読取り専用で開く。（230,230）（300,300）（351,351）は実物の図面、（230,700）（300,700）（351,700）（420,700）は今のJw_cadが古い形式で保存した見本による。（420,700）の根拠は見本1件だけ。ヘッダーは公式の説明の区間の表どおりに読み、本文は線幅（351以上）・寸法のSXFの部分（420以上）・点のコード（252以上）の条件で読む。420未満の寸法は、ezjwwと同じくsxf_mode=None、補助の線・点は空。252未満の点の線種番号は0と1だけ。古い版の大きな個数は（230,700）だけ。無編集の別名保存は原本とバイト一致。31編集API・import_group・直接編集の保存・版の変換（versionを変えた保存）は拒否し、Jw_cadでVer.7.00形式に保存し直す道を示す。v220・v252、ほかの組（v420のクラスの版0・230・310・1、v300/v351の1、v230の65535など）、宣言の混在、宣言のない古い版は拒否する。
+対応範囲・拒否条件：観測済みv600/v700と、読取り専用の古い版（下）。schema_profile="strict"既定。明示"rebro_schema0"はSen/Enko/Mojiのschema0だけの読取り/無編集別名保存用で、31編集APIと直接編集の保存を拒否。混在/他クラス/画像/定義へ広げない。include_metadata=Falseは設定を公開要素から除く。未知構造/診断付きは保存不能の場合がある。今のJw_cad（10.03.6で確認）がv6形式で保存した図面（ファイルの版600、要素のクラスの版がすべて700）も、既定のstrictで開ける。要素の並びはv600のまま。無編集の別名保存は原本とバイト一致（include_metadata=Trueで開いた場合は無編集の別名保存だけ）。編集はv600と同じ条件で保存でき、宣言はすべてクラスの版700で書き、末尾は付けない。ただし、図面に宣言のないクラスの要素が要る保存（ソリッドのない図面へのソリッドの追加、定義のない図面でのブロックの作成など）と、import_groupは拒否する（Jw_cadでVer.7.00形式に保存し直せば、その編集ができる）。600と700の混在、ほかのクラスの版の組み合わせは拒否する。ブロック定義が10,000個を超える図面は、ezjwwが定義を返さず照合できないため、`RecordError`（`Block definitions exceed the ezjww limit`）で拒否する（現在は読めない）。古い版（#17）：観測した組（ファイルの版, クラスの版）だけを読取り専用で開く。（230,230）（300,300）（351,351）は実物の図面、（230,700）（300,700）（351,700）（420,700）は今のJw_cadが古い形式で保存した見本による。（420,700）の根拠は見本1件だけ。ヘッダーは公式の説明の区間の表どおりに読み、本文は線幅（351以上）・寸法のSXFの部分（420以上）・点のコード（252以上）の条件で読む。420未満の寸法は、ezjwwと同じくsxf_mode=None、補助の線・点は空。252未満の点の線種番号は0と1だけ。古い版の大きな個数は（230,700）だけ。無編集の別名保存は原本とバイト一致。31編集API・import_group・直接編集の保存・版の変換（versionを変えた保存）は拒否し、Jw_cadでVer.7.00形式に保存し直す道を示す。v220・v252、ほかの組（v420のクラスの版0・230・310・1、v300/v351の1、v230の65535など）、宣言の混在、宣言のない古い版は拒否する。同梱の画像（v700の末尾、#19）：0〜256枚。区間は原本のバイトのまま保ち、作り直さない。入れ物（名前が.gzで終わる、大きさの欄、gzipがちょうど1つ、ほどいた大きさの一致、余りなし、1枚128MB・合計512MBの上限）は厳しく検査する。中身はJw_cadが元のファイルのまま入れるので、BMP・JPEG・PNG・GIF・TIFFを、それぞれの公開の仕様の決まりとして最後まで矛盾なく読めることで確かめる（画素は読まない）。形式の終わり（JPEGのEOI、PNGのIEND、GIFの終わりの印、BMPの画素）の後ろの余り、BMPのファイルの大きさの欄・RLEの画像の大きさの欄の食い違い、124バイトの情報部のBMPの画素と色の情報の間の隙間・色の情報の後ろの余り、TIFFの奇数の位置のIFDは、拒否せずに受け入れ、embedded_imagesのtrailing_bytesとnotesに記録し、verified=Falseにする。形式を始まりから終わりまで読めない（途中で切れる、区切りの長さが超える、画素がファイルに収まらない、CRCが合わないなど）ときだけ拒否する。拡張子（bmp、jpg/jpeg/jpe、png、gif、tif/tiff）と中身の形式が合うこと。壊れた形は`Invalid embedded image:`、5形式以外の中身や拡張子、圧縮しない同梱、BMPのBI_JPEG/BI_PNG/BI_ALPHABITFIELDSは`Embedded image unverified:`で拒否する。Jw_cadの出力として確かめていない組み合わせは拒否せず、embedded_imagesと集計のembedded_imagesのverified=Falseで示す。集計のembedded_imagesにもtrailing_bytesとnotesがあり、印付きで受け入れた画像（notesあり）と、確かめていない形の画像（notesが空）を区別できる。編集した保存でも区間は原本のまま。v700で、同梱されていない名前を指す^@BM%temp%文字が新しくできる保存は拒否する。
 
 根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L49)。
 
@@ -1629,7 +1629,7 @@ CadDocument.import_group(path, source_group, target_group, *, sync_scale=False, 
 
 対応範囲・拒否条件：同版のみ。取込み元か取込み先が、v600でクラスの版700（今のJw_cadのv6形式）の図面なら、変更前に拒否する（Ver.7.00形式に保存し直せば取り込める）。settings_policyはstrictが既定で全体設定差を拒否。明示destinationだけ同一性比較を外し、先の全体設定生バイト（未確定3バイト含む）を保持、源の要素属性番号は維持し見え方は先に従う。未定義色/線種番号は両方で事前拒否。計画には両設定ハッシュ/差を明記。sync_scale/sync_group_name/sync_layer_namesは独立bool。同名定義は番号以外の全内容一致だけ再利用、明示block_renames可。画像/新規入れ子/優先参照群変更/未知構造は全体拒否。文字種付き寸法はv700/mode0/補助線2点4のゼロ座標/同縮尺だけ。文字種1は根flag0,2で外側群だけ変更。文字種3は実測した属性の組み合わせ（根/線flag8192、文字flag16400/幅67/線種2、MSゴシック有限角（剛体回転の照合を含む）、宣言文字種3のサイズ/色一致、既定の観測ペン/補助属性）だけ、外側と文字の群を変更し、線/補助の群・全flagを保持。元/先の元縮尺が異なる場合はsync_scaleでも拒否。未観測の文字種/フラグ/様式・非ゼロ補助・定義内寸法・保持内包群設定の不一致は拒否。座標は原点位置を保持。文字種1は実図面で照合済み、文字種3はネイティブ21件対照と承認済みAPI1205件取込みのJWW全属性/DXF全数値/PDF受入れ合格。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L564)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L571)。
 
 ### `solve_two_point_alignment`
 
@@ -1881,7 +1881,7 @@ figure.place_as_block(cad, '登録A', (1000, 2000), units='real')
 CadDocument.summary()
 ```
 
-レイヤ別件数、文字全文、寸法文字、定義と参照を区別した要約を辞書で返す。
+レイヤ別件数、文字全文、寸法文字、定義と参照を区別した要約を辞書で返す。同梱の画像は、embedded_images（名前・形式・幅・高さ・trailing_bytes・notes・verified）。
 
 対応範囲・拒否条件：直下と定義内を分離。設定込みモデル、非有限値、不正層/群、未解決参照/重複定義を拒否。write_summaryは同名出力を拒否し、NaN禁止・不完全CP932はJSONエスケープで保持。
 
@@ -1914,6 +1914,18 @@ CadDocument.entity_counts
 対応範囲・拒否条件：現在の公開entitiesだけ集計する。定義内子要素・既定で除外した設定要素は数えない。
 
 根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L561)。
+
+### `CadDocument.embedded_images`
+
+```python
+CadDocument.embedded_images
+```
+
+同梱の画像の形を返すプロパティ（名前・形式・幅・高さ・ビット数・ほどいた大きさ・圧縮した大きさ・SHA256・trailing_bytes・notes・verified）。
+
+対応範囲・拒否条件：読取りだけ。画像の追加・入替え・削除はしない。verifiedは、Jw_cad 10.03.6の見本か実物で確かめた組み合わせならTrue。Falseの画像は、形式の決まりとしては正しいが、Jw_cadの出力として確かめていないことを示す注意で、拒否や保存の妨げにはならない。trailing_bytesは形式の終わりの後ろの余りのバイト数（ふつうは0）、notesは受け入れた注意の短い文のtuple（余り、大きさの欄の食い違い、TIFFの奇数の位置のIFD、JPEGの後ろに続く別のJPEG）。notesのある画像はverified=False。画像のない図面やv700以外では空のtuple。
+
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L565)。
 
 ### `safe_edit.diff_report`
 
