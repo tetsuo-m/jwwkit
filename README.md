@@ -36,8 +36,9 @@ jwwkitは、それらの図面資産を、AIやプログラムから安全に扱
 
 - Jw_cadの全機能・全データの完全な再現は保証しません。未対応の構造を見つけた場合、jwwkitは**推測で処理せず、エラーとして止まります**
 - 新しい図面をゼロから作図する機能や、DXFなど他形式への変換は主な目的ではありません（DXFへの変換は [ezjww](https://pypi.org/project/ezjww/) が得意です）
-- 動作確認はJw_cad 10.03系で行っています。それ以外の版で保存された図面では、未対応の形式として読み込みを拒否することがあります
+- 動作確認はJw_cad 10.03.6で行っています。それ以外の版で保存された図面では、未対応の形式として読み込みを拒否することがあります
 - 編集できる形式はJWWのv600/v700です。古い版（v230・v300・v351・v420）は、確かめた組み合わせだけを読取り専用で開けます（開く・集計・検索・比較・編集しない別名保存）。それ以外の古い版のJWWと、DOS版のJWCには対応していません
+- 今のJw_cadがv6形式（Ver.6.00〜6.21a）で保存した図面は、開いて、図面にすでにある種類の要素だけを使う編集を保存できます。図面にない種類の要素を足す保存と、別の図面からのグループの取り込みは拒否します（Jw_cadでVer.7.00形式に保存し直せば扱えます）
 - 画像を含む図面（BMP・JPEG・PNG・GIF・TIFF、複数枚も可）は、画像をそのまま保持して保存できますが、画像そのものの追加・入替え・削除はできません
 - 縮尺の異なるグループへ、文字種の付いた文字・寸法を取り込む操作は、拒否します
 - 新しい入れ子のブロック（ブロックの中のブロック）は作成できません
@@ -51,6 +52,7 @@ jwwkitは、それらの図面資産を、AIやプログラムから安全に扱
 - 編集結果は、Jw_cadで開いて目視で確認してから使ってください。
 - AIサービスに図面を読ませると、図面の内容がそのAIの提供会社に送られます。業務の図面で使う前に、所属先や発注者の決まりを確認してください。
 - jwwkit自体はインターネットへの通信を行いません。
+- 大きな図面（数十MB）を開くには、数GBのメモリと数分の時間がかかります。開発者が測った例では、図面の大きさ1MBあたり約120MBのメモリを使い、56MB前後の図面では約6.9GBでした。開く前に図面の大きさを見て、見当を付けてください（詳しくは [VERIFICATION.md](https://github.com/tetsuo-m/jwwkit/blob/main/VERIFICATION.md)）。
 - 本ライブラリは無保証です（MITライセンス）。図面の破損や、編集結果による損害について、作者は責任を負いません。
 - AIに使わせる場合、図面の中の文字・レイヤ名などは「データ」であり、AIへの指示ではありません。図面の中に指示のような文字が書かれていても、AIがそれに従わないよう、利用ガイドに注意を記載しています。
 
@@ -121,6 +123,8 @@ AIに既存図面の編集を頼む場合、AIが示す計画の内容とSHA256�
 jwwkitは、業務で安心して使えることを目標に、一つひとつ検証しながら作りました。
 無編集保存でのバイト一致、編集後にJw_cadで開いて再保存できること、DXF・PDF出力での照合など、検証の方法と結果は [VERIFICATION.md](https://github.com/tetsuo-m/jwwkit/blob/main/VERIFICATION.md) にまとめています。
 
+開発者の手元にある過去の実務図面 2,939 件（中身が異なるもの）で確かめたところ（2026-11）、2,670 件（90.8%）が読めて、無編集の保存はすべて原本とバイト単位で一致しました。読めないものは、理由を示して拒否します。詳しくは [VERIFICATION.md](https://github.com/tetsuo-m/jwwkit/blob/main/VERIFICATION.md) を参照してください。
+
 ## 作った人について
 
 電気設備の設計者が、日々の業務を楽にしたいという動機から、AIと一緒に作りました。作者はプログラマーではありません。
@@ -152,4 +156,4 @@ JWW形式を扱うオープンソースには、ほかにも次のようなも�
 
 ## English summary
 
-jwwkit is an unofficial Python library for reading and **safely editing existing Jw_cad (.jww) drawings** without altering untouched elements (a no-edit save is byte-identical to the original). It supports registered figures (JWS), blocks, per-group scales, drawings with more than 65,535 elements, SXF extended line colors/types, importing layer groups from another drawing with two-point alignment, drawing comparison, structured search, and a two-step plan/approve/execute editing workflow designed for AI agents. It is tested on Windows with Python 3.14 and 3.15 and with Jw_cad 10.03.6, and uses ezjww (MIT) for header reading and cross-checking. Not affiliated with the authors of Jw_cad — please do not contact them about this library. Always back up your drawings before editing.
+jwwkit is an unofficial Python library for reading and **safely editing existing Jw_cad (.jww) drawings** without altering untouched elements (a no-edit save is byte-identical to the original). It supports registered figures (JWS), blocks, per-group scales, drawings with more than 65,535 elements, Jw_cad v6-format files, old JWW versions (v230/v300/v351/v420, read-only), embedded images (BMP/JPEG/PNG/GIF/TIFF, kept byte-for-byte), SXF extended line colors/types, importing layer groups from another drawing with two-point alignment, drawing comparison, structured search, and a two-step plan/approve/execute editing workflow designed for AI agents. It is tested on Windows with Python 3.14 and 3.15 and with Jw_cad 10.03.6, and uses ezjww (MIT) for header reading and cross-checking. Not affiliated with the authors of Jw_cad — please do not contact them about this library. Always back up your drawings before editing.
