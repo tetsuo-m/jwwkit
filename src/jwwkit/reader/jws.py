@@ -10,7 +10,7 @@ import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .archive import Cursor, RecordError, read_entity_sequences
+from .archive import Cursor, JWS_OBSERVED_OLD_CLASSES, RecordError, read_entity_sequences
 from jwwkit.model.common_entities import model_entity, CadBlockDefinition
 
 # E091: identical in all 116 business JWS700 files. Meaning is unproven;
@@ -63,6 +63,7 @@ class JwsDocument:
                 raise RecordError('JWS scales must be positive')
             if bounds[0] > bounds[2] or bounds[1] > bounds[3]:
                 raise RecordError('Inverted JWS bounds')
+            c.jws_observed_old_classes = JWS_OBSERVED_OLD_CLASSES
             entities, definitions, _ = read_entity_sequences(c, version)
             if c.pos != len(data):
                 raise RecordError('Unsupported JWS trailer')

@@ -179,7 +179,10 @@ class JwfDocument:
                     if len(s.values())!=4:raise ValueError('Expected RGB plus screen width')
                     rgb=[s.number(i) for i in range(3)]
                     if any(type(v) is not int or not 0<=v<=255 for v in rgb):raise ValueError('Invalid RGB')
-                    packed=document.header['palette']['pen_colors'][int(key[-1])]
+                    palette=document.header.get('palette')
+                    # ezjww returns no palette for v230 drawings: not comparable, not guessed.
+                    if not palette or not palette.get('pen_colors'):raise ValueError('Drawing pen palette is unavailable (ezjww returns none for v230)')
+                    packed=palette['pen_colors'][int(key[-1])]
                     fields=[dict(field=i,value=v,drawing=(packed>>(i*8))&255) for i,v in enumerate(rgb)]
                     # The known palette exposes COLORREF only, not screen width.
                     rows.append(dict(key=key,field=3,status='not_comparable',reason='Screen width mapping not verified'))

@@ -1,4 +1,4 @@
-"""Bounded record supplement for observed v600/v700 layouts.
+"""Bounded record supplement for observed v230/v300/v351/v420/v600/v700 layouts.
 
 Native ezjww remains the header/metadata reader. This supplement retains
 CP932 strings and embedded dimension attributes that its public model loses.
@@ -22,7 +22,62 @@ EZJWW_BLOCK_DEFINITION_LIMIT = 10000
 # declaration with schema 700; the record layout still follows version 600.
 # Accepted only when all declarations use it; edits may not add new class
 # declarations (see preserved.py).
-OBSERVED_CLASS_SCHEMA_PAIRS = frozenset({(600, 700)})
+OBSERVED_CLASS_SCHEMA_PAIRS = frozenset({(600, 700), (230, 700), (300, 700), (351, 700), (420, 700)})
+# Old file versions (#17) are read-only. Accepted only in the observed pairs:
+# schema == version for 230/300/351 (real drawings, #8), and schema 700 for
+# 230/300/351/420 (Jw_cad 10.03.6 saving in the old formats; 420 from one sample only).
+JWW_VERSIONS = (230, 300, 351, 420, 600, 700)
+SAME_CLASS_SCHEMA_VERSIONS = frozenset({230, 300, 351, 600, 700})
+# Canonical extended counts (65535 marker + DWORD >= 65535) in old versions were
+# observed only in (230, 700) drawings.
+OLD_EXTENDED_COUNT_PAIRS = frozenset({(230, 700)})
+# Old JWS versions have their own observed class lists; only the JWS reader applies them.
+JWS_OBSERVED_OLD_CLASSES = {
+    230: frozenset({'CDataSen', 'CDataEnko', 'CDataMoji'}),
+    351: frozenset({'CDataSen', 'CDataEnko', 'CDataMoji', 'CDataSolid', 'CDataList'}),
+    420: frozenset({'CDataSen', 'CDataEnko'}),
+}
+NONCANONICAL_COUNT_MESSAGE = ('Unsupported noncanonical/64-bit sequence count (a count below 65535 written in the '
+                              'DWORD form; ezjww returns no elements for it, so it cannot be cross-checked)')
+
+
+def is_read_only_version(version):
+    """Old file versions are read-only (unedited save-as only)."""
+    return version not in (600, 700)
+
+
+def header_layout(version):
+    """Header spans after the memo, per the official description and the version conditions (#8).
+
+    Steps: ('skip', n) or ('strings', key, count, bytes after each string).
+    """
+    at_least_300 = version >= 300
+    steps = [
+        # Drawing size .. grid reference point (write group 4, 16 groups x
+        # (20 + 16 layers x 8), dummies, dimension settings, printer/scale fields).
+        ('skip', 2532),
+        # 256 layer names + 16 layer group names.
+        ('strings', 'layer_names', 272, 0),
+        ('skip', 28),  # shadow conditions
+    ]
+    if at_least_300:
+        steps.append(('skip', 16))  # sky map conditions (300 and later)
+    steps.append(('skip', 52))  # 2.5D unit, saved screen scale/origin, range memory
+    steps.append(('skip', 8 * 28 if at_least_300 else 4 * 24))  # mark jumps
+    if at_least_300:
+        steps.append(('skip', 56))  # text drawing state (300 and later)
+    # Parallel lines .. print settings 664, Ver.2.23-2.30 items 100 (present from v230).
+    steps.append(('skip', 664 + 100))
+    if version >= 420:
+        steps += [
+            ('skip', 257 * 8),  # SXF extended colors: screen color and width (4 + 4) each
+            ('strings', 'color_names', 257, 16),  # name, print color 4, print width 4, point radius 8
+            ('skip', 33 * 16),  # SXF extended line types: pattern (4 x 4) each
+            ('strings', 'line_type_names', 33, 84),  # name, segment count 4 + pitch 10 x 8
+        ]
+    # 380: text types 1-10 x (24 + color 4), write text 32, text alignment/offsets 68.
+    steps.append(('skip', 380))
+    return steps
 
 
 class RecordError(ValueError):
@@ -70,7 +125,7 @@ class Cursor:
 
 
 def read_records(path, *, schema_profile='strict'):
-    """v600/v700本文を読む。strict既定、rebro_schema0は観測済み3クラス限定。"""
+    """v600/v700と観測済みの古い版の本文を読む。strict既定、rebro_schema0はv600/v700の観測済み3クラス限定。"""
     return read_records_bytes(Path(path).read_bytes(), schema_profile=schema_profile)
 
 
@@ -88,39 +143,34 @@ def read_records_bytes(data, *, schema_profile='strict'):
 
 
 def _read_records(c):
-    """観測済み本文と入れ子メンバーを読む。v600/v700拡張個数を有限読取り。非正規個数・未知クラス・未確認末尾は拒否する。"""
+    """観測済み本文と入れ子メンバーを読む。拡張個数を有限読取り。非正規個数・未知クラス・未確認末尾は拒否する。"""
     if c.take(8) != b'JwwData.':
         raise RecordError('Invalid JWW signature')
     version, = c.unpack('<I')
-    if version not in (600,700):
-        raise RecordError('Only observed v600/v700 layouts are supported')
+    if version not in JWW_VERSIONS:
+        raise RecordError(f'Unsupported JWW version {version}: only observed v230/v300/v351/v420/v600/v700 layouts are supported')
+    if version not in (600, 700) and c.schema_profile != 'strict':
+        raise RecordError('rebro_schema0 applies only to v600/v700')
     memo = c.string(preserve_header_bytes=True)
     # Header spans follow the official Jw_cad data format description
     # (https://www.jwcad.net/jwdatafmt.txt, Jw_cad 7.02; see VERIFICATION.md).
-    # All 15 v600 originals used in development and our v700 samples independently agree on them.
-    # 2532: drawing size .. grid reference point (write group 4, 16 groups x
-    # (20 + 16 layers x 8), dummies, dimension settings, printer/scale fields).
-    c.take(2532)
-    # 256 layer names + 16 layer group names.
-    layer_names = [c.string(preserve_header_bytes=True) for _ in range(272)]
-    # 1140: shadow conditions .. solid custom color (sky map 16, 8 mark jumps x 28,
-    # text drawing state 56, pens/line types/print settings, Ver.2.23-2.30 items 100).
-    # 257*8: SXF extended colors, screen color and width (4 + 4) each.
-    c.take(1140 + 257*8)
-    color_names = []
-    for _ in range(257):
-        color_names.append(c.string(preserve_header_bytes=True))
-        c.take(16)  # print color 4, print width 4, point radius 8
-    c.take(33*16)  # SXF extended line types: pattern (4 x 4) each
-    line_type_names = []
-    for _ in range(33):
-        line_type_names.append(c.string(preserve_header_bytes=True))
-        c.take(84)  # segment count 4 + pitch 10 x 8
-    # 380: text types 1-10 x (24 + color 4), write text 32, text alignment/offsets 68.
-    c.take(380)
+    # All 15 v600 originals used in development, our v700 samples and the old-version
+    # drawings of #8 independently agree on them.
+    names = dict(layer_names=[], color_names=[], line_type_names=[])
+    for step in header_layout(version):
+        if step[0] == 'skip':
+            c.take(step[1])
+            continue
+        _, key, count, after = step
+        for _ in range(count):
+            names[key].append(c.string(preserve_header_bytes=True))
+            c.take(after)
+    layer_names, color_names, line_type_names = names['layer_names'], names['color_names'], names['line_type_names']
     header_end = c.pos
     # Only the JWW path accepts the observed pairs; JWS shares the sequence reader.
     c.accepted_schema_pairs = OBSERVED_CLASS_SCHEMA_PAIRS
+    c.same_schema_versions = SAME_CLASS_SCHEMA_VERSIONS
+    c.old_extended_counts = 0
     entities, definitions, spans = read_entity_sequences(c, version)
     schemas = {d['schema'] for d in c.class_declarations}
     class_schema = version
@@ -128,6 +178,11 @@ def _read_records(c):
         if len(schemas) != 1:
             raise RecordError(f'Unsupported class schema mix (mixed class schemas are unobserved): {sorted(schemas)}')
         class_schema, = schemas
+    if version not in (600, 700):
+        if not c.class_declarations:
+            raise RecordError(f'Old version {version} without class declarations is unobserved')
+        if c.old_extended_counts and (version, class_schema) not in OLD_EXTENDED_COUNT_PAIRS:
+            raise RecordError(f'Extended sequence count unobserved for ({version}, {class_schema})')
     if c.schema_profile == 'rebro_schema0':
         if definitions or any(r['type'] not in ('LINE','CIRCLE','ARC','TEXT') for r in entities):
             raise RecordError('Unobserved structure for rebro_schema0')
@@ -155,7 +210,7 @@ def read_entity_sequences(c, version):
     classes, spans, next_index = {}, [], 1
 
     def base():
-        if version == 230:
+        if version < 351:  # the pen width field exists from 351
             keys=tuple(k for k in BASE_KEYS if k!='pen_width')
             return dict(zip(keys,c.unpack('<IBHHHH')),pen_width=0)
         return dict(zip(BASE_KEYS, c.unpack('<IBHHHHH')))
@@ -172,11 +227,7 @@ def read_entity_sequences(c, version):
 
     def payload(name):
         start = c.pos
-        observed_old_classes = {
-            230: {'CDataSen', 'CDataEnko', 'CDataMoji'},
-            351: {'CDataSen', 'CDataEnko', 'CDataMoji', 'CDataSolid', 'CDataList'},
-            420: {'CDataSen', 'CDataEnko'},
-        }
+        observed_old_classes = getattr(c, 'jws_observed_old_classes', {})
         if version in observed_old_classes and name not in observed_old_classes[version]:
             raise RecordError(f'Unobserved old JWS class/schema: {name}/{version}')
         if name not in {'CDataSen','CDataTen','CDataMoji','CDataEnko','CDataBlock','CDataList','CDataSunpou','CDataSolid'}:
@@ -187,7 +238,12 @@ def read_entity_sequences(c, version):
         elif name == 'CDataTen':
             x, y, temp = c.unpack('<ddI')
             r = dict(type='POINT', base=b, x=x, y=y, is_temporary=bool(temp), code=0, angle=0.0, scale=0.0)
-            if b['pen_style'] == 100:
+            if version < 252:
+                # No code fields before 252. The description says the style is always 1;
+                # real v230 drawings also use 0 (#8). Other values are unobserved.
+                if b['pen_style'] not in (0, 1):
+                    raise RecordError('Unsupported point style before v252')
+            elif b['pen_style'] == 100:
                 r.update(zip(('code','angle','scale'), c.unpack('<Idd')))
             elif b['pen_style'] != 1:
                 raise RecordError('Unsupported point style')
@@ -207,10 +263,14 @@ def read_entity_sequences(c, version):
             r['entities'] = sequence(c.context+'.entities')
         elif name == 'CDataSunpou':
             line, text = payload('CDataSen'), payload('CDataMoji')
-            mode, = c.unpack('<H')
-            r = dict(type='DIMENSION', base=b, line=line, text=text, sxf_mode=mode,
-                     aux_lines=[payload('CDataSen') for _ in range(2)],
-                     aux_points=[payload('CDataTen') for _ in range(4)])
+            if version < 420:
+                # No SXF part before 420; same shape as ezjww returns.
+                r = dict(type='DIMENSION', base=b, line=line, text=text, sxf_mode=None, aux_lines=[], aux_points=[])
+            else:
+                mode, = c.unpack('<H')
+                r = dict(type='DIMENSION', base=b, line=line, text=text, sxf_mode=mode,
+                         aux_lines=[payload('CDataSen') for _ in range(2)],
+                         aux_points=[payload('CDataTen') for _ in range(4)])
         elif name == 'CDataSolid':
             values = c.unpack('<8d')
             if b['pen_style'] >= 101:
@@ -233,10 +293,13 @@ def read_entity_sequences(c, version):
         n, = c.unpack('<H')
         if n == 65535:
             if version not in (600,700):
-                raise RecordError('Extended sequence count unobserved for this old schema')
+                # Old JWW: checked against the class schema after reading (OLD_EXTENDED_COUNT_PAIRS).
+                if not hasattr(c, 'old_extended_counts'):
+                    raise RecordError('Extended sequence count unobserved for this old schema')
+                c.old_extended_counts += 1
             n, = c.unpack('<I')
             if n < 65535 or n == 0xffffffff:
-                raise RecordError('Unsupported noncanonical/64-bit sequence count')
+                raise RecordError(NONCANONICAL_COUNT_MESSAGE)
         if n > (len(c.data)-c.pos)//2:
             raise RecordError('Sequence count exceeds remaining record-tag capacity')
         records = []
@@ -251,6 +314,9 @@ def read_entity_sequences(c, version):
                 if observer is not None:observer(name_bytes,schema,declaration_offset,next_index)
                 name = name_bytes.decode('ascii')
                 profile = getattr(c, 'schema_profile', 'strict')
+                same_schema_versions = getattr(c, 'same_schema_versions', None)
+                if schema == version and same_schema_versions is not None and version not in same_schema_versions:
+                    raise RecordError(f'Unsupported class schema: {schema}, class={name} (unobserved for v{version})')
                 if schema != version:
                     accepted = (profile == 'rebro_schema0' and version in (600,700)
                                 and schema == 0 and name in ('CDataSen','CDataEnko','CDataMoji'))
@@ -318,6 +384,10 @@ def read_document(path, *, schema_profile='strict'):
                 check(x, y)
         elif a != b:
             raise RecordError('Native/raw numeric or attribute mismatch')
+    # Guard: ezjww returning no elements while jwwkit reads some cannot be cross-checked.
+    if raw['entities'] and not native['entities']:
+        raise RecordError(f'ezjww returned no elements but jwwkit read {len(raw["entities"])}; '
+                          'the drawing cannot be cross-checked')
     check(raw['entities'], native['entities'])
     # ezjww 0.2.13 returns no block definitions (and no diagnostic) when a drawing
     # has more than 10000. Keep rejecting, but say why; never fill in or skip the check.

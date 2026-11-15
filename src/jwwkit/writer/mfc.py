@@ -5,16 +5,17 @@ from .strings import cstring
 
 
 def records_bytes(records, registry=None, *, version=700, encoding="utf-16le"):
-    """確認済みJWW600/700・JWS230/351/420/600/700のMFC要素列を保存する。"""
-    if version not in (230,351,420,600,700):
+    """確認済みJWW230/300/351/420/600/700・JWS230/351/420/600/700のMFC要素列を保存する。"""
+    if version not in (230,300,351,420,600,700):
         raise ValueError("Unsupported archive schema")
     count=len(records)
-    if count >= 65535 and version not in (600,700):
+    registry = registry if registry is not None else dict(classes={}, next_index=1)
+    # Old versions: extended counts only where observed (registry flag set for (230, 700)).
+    if count >= 65535 and version not in (600,700) and not registry.get('old_extended_counts'):
         raise ValueError('Extended sequence counts unobserved for this old schema')
     if count >= 0xffffffff:
         raise ValueError('64-bit sequence counts are not supported')
     data = bytearray(struct.pack('<H', count) if count < 65535 else struct.pack('<HI',65535,count))
-    registry = registry if registry is not None else dict(classes={}, next_index=1)
     classes = registry['classes']
     for record in records:
         kind = record['type']
@@ -61,9 +62,9 @@ def field_string(record, key, encoding):
 def payload_bytes(record, registry=None, *, version=700, encoding="utf-16le"):
     """既知の値メンバーを書き出す。未知構造は対応しない。"""
     kind = record['type']
-    if version == 230:
+    if version < 351:  # the pen width field exists from 351
         if record['base']['pen_width'] != 0:
-            raise ValueError('JWS230 has no stored pen_width field')
+            raise ValueError(f'Version {version} has no stored pen_width field')
         data=bytearray(struct.pack('<IBHHHH',*(record['base'][k] for k in BASE_KEYS if k!='pen_width')))
     else:
         data = bytearray(struct.pack('<IBHHHHH', *(record['base'][k] for k in BASE_KEYS)))
@@ -79,7 +80,10 @@ def payload_bytes(record, registry=None, *, version=700, encoding="utf-16le"):
             'tilt_angle', 'flatness')), int(record['is_full_circle']))
     elif kind == 'POINT':
         data += struct.pack('<ddI', record['x'], record['y'], int(record['is_temporary']))
-        if record['base']['pen_style'] == 100:
+        if version < 252:  # no code fields before 252
+            if record['base']['pen_style'] not in (0, 1):
+                raise ValueError('Unsupported point style before v252')
+        elif record['base']['pen_style'] == 100:
             data += struct.pack('<Idd', record['code'], record['angle'], record['scale'])
     elif kind == 'TEXT':
         data += struct.pack('<dddd', *(record[k] for k in ('start_x','start_y','end_x','end_y')))
@@ -91,6 +95,10 @@ def payload_bytes(record, registry=None, *, version=700, encoding="utf-16le"):
         data += records_bytes(record['entities'], registry, version=version, encoding=encoding)
     elif kind == 'DIMENSION':
         data += payload_bytes(record['line'], version=version, encoding=encoding) + payload_bytes(record['text'], version=version, encoding=encoding)
+        if version < 420:  # no SXF part before 420
+            if record['sxf_mode'] is not None or record['aux_lines'] or record['aux_points']:
+                raise ValueError(f'Version {version} dimensions have no SXF part')
+            return bytes(data)
         data += struct.pack('<H',record['sxf_mode'])
         for child in record['aux_lines'] + record['aux_points']:
             data += payload_bytes(child, version=version, encoding=encoding)

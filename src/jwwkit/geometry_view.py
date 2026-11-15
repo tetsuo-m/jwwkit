@@ -44,7 +44,8 @@ class _Context:
             m=(scale,0.,0.,scale,0.,0.);similar=True;pos=0;stack=[]
             while pos<len(path):
                 field=path[pos]
-                if r['type']=='DIMENSION'and r['sxf_mode']!=0:raise ValueError('Unverified dimension child placement')
+                # sxf_mode None: no SXF part (before v420); line/text are placed as in mode 0.
+                if r['type']=='DIMENSION'and r['sxf_mode'] not in (0,None):raise ValueError('Unverified dimension child placement')
                 if r['type']=='DIMENSION'and field in ('line','text'):
                     r=r[field];pos+=1
                 elif r['type']=='DIMENSION'and field in ('aux_lines','aux_points'):

@@ -1,4 +1,4 @@
-"""既存v600/v700図面の生ヘッダーを保持する保存処理。
+"""既存v600/v700図面の生ヘッダーを保持する保存処理（古い版は無編集の別名保存だけ）。
 
 未対応のレコードを保存しない。無編集時も本文の再直列化を検証する。
 ヘッダー設定は確認済みの16グループ縮尺とレイヤ／グループ名称を編集できる。
@@ -10,13 +10,18 @@ import math
 from pathlib import Path
 
 from jwwkit.writer.mfc import records_bytes
-from jwwkit.reader.archive import RecordError, read_records_bytes
+from jwwkit.reader.archive import OLD_EXTENDED_COUNT_PAIRS, RecordError, is_read_only_version, read_records_bytes
+
+OLD_VERSION_HINT = ('. Old JWW versions are read-only (unedited save-as only); to edit, re-save the drawing in '
+                    'Jw_cad in the Ver.7.00 (v7) format and open that file instead.')
 
 
 def serialize_body(entities, definitions, version, *, encoding=None, raw_trailer=None, class_declarations=None,
-                   class_schema=None):
+                   class_schema=None, old_extended_counts=False):
     """既知の本文を共通MFCレジストリで直列化する。class_schemaは新しく書く宣言の版（既定はファイルの版）。"""
     registry = {"classes": {}, "next_index": 1}
+    if old_extended_counts:
+        registry['old_extended_counts'] = True
     if class_schema is not None:
         registry['class_schema'] = class_schema
     if class_declarations is not None:
@@ -38,9 +43,14 @@ NEW_CLASS_DECLARATION_MESSAGE = (
 
 
 def keeps_class_declarations(parsed):
-    """無編集の書き戻しで原宣言をそのまま使う図面か（rebro_schema0、観測済みのクラスの版の組）。"""
-    return (parsed.get('schema_profile') == 'rebro_schema0'
+    """無編集の書き戻しで原宣言をそのまま使う図面か（rebro_schema0、観測済みのクラスの版の組、古い版）。"""
+    return (parsed.get('schema_profile') == 'rebro_schema0' or is_read_only_version(parsed['version'])
             or parsed.get('class_schema', parsed['version']) != parsed['version'])
+
+
+def old_extended_counts(parsed):
+    """古い版で拡張個数を書いてよいか（観測した組だけ）。"""
+    return (parsed['version'], parsed.get('class_schema', parsed['version'])) in OLD_EXTENDED_COUNT_PAIRS
 
 
 def capture_source(path, *, schema_profile='strict'):
@@ -55,7 +65,8 @@ def capture_source(path, *, schema_profile='strict'):
     for encoding in encodings:
         try:
             body = serialize_body(parsed["entities"], parsed["block_defs"], parsed["version"], encoding=encoding, raw_trailer=parsed["raw_trailer"],
-                class_declarations=parsed['class_declarations'] if keeps_class_declarations(parsed) else None)
+                class_declarations=parsed['class_declarations'] if keeps_class_declarations(parsed) else None,
+                old_extended_counts=old_extended_counts(parsed))
         except (UnicodeError, ValueError) as exc:
             serialization_errors.append(f'{encoding}: {exc}')
             continue
@@ -143,7 +154,8 @@ def _document_bytes(document):
             blocking.append(diagnostic)
     if blocking:
         raise ValueError(f"未確認の構造があるため保存できません: {document.diagnostics}")
-    if document._source_records.get('schema_profile') == 'rebro_schema0':
+    if (document._source_records.get('schema_profile') == 'rebro_schema0'
+            or is_read_only_version(document._source_records['version'])):
         return _readonly_bytes(document)
     if keeps_class_declarations(document._source_records) and document.includes_metadata:
         # (600, 700) opened with include_metadata=True: unedited save-as only (as in #11).
@@ -253,12 +265,17 @@ def _document_bytes(document):
 def _readonly_bytes(document):
     """Reparse, compare the full public model, then serialize original declarations.
 
-    Used for rebro_schema0, and for (600, 700) documents opened with
-    include_metadata=True; both must save unedited and byte-identically.
+    Used for rebro_schema0, old file versions (#17), and for (600, 700) documents
+    opened with include_metadata=True; all must save unedited and byte-identically.
     """
     from jwwkit.model.common_entities import CadBlockDefinition, model_entity
     profile = document._source_records.get('schema_profile', 'strict')
-    label = profile if profile == 'rebro_schema0' else 'Jw_cad v6 file with class schema 700 opened with include_metadata=True'
+    if profile == 'rebro_schema0':
+        label = profile
+    elif is_read_only_version(document._source_records['version']):
+        label = f'JWW v{document._source_records["version"]} (old version)'
+    else:
+        label = 'Jw_cad v6 file with class schema 700 opened with include_metadata=True'
     original = read_records_bytes(document._source_bytes, schema_profile=profile)
     if not keeps_class_declarations(original):
         raise ValueError(f'{label} source snapshot was changed')
@@ -275,7 +292,8 @@ def _readonly_bytes(document):
             or tuple(e.source_index for e in document.entities) != tuple(e.source_index for e in expected)
             or document.block_definitions != expected_blocks or document._name_edits or document._group_scale_edits
             or document._state_edits or document._new_block_records):
-        raise ValueError(f'{label} is read-only; edited documents cannot be saved')
+        raise ValueError(f'{label} is read-only; edited documents cannot be saved'
+                         + (OLD_VERSION_HINT if is_read_only_version(original['version']) else ''))
     # The source records (including CString bytes and declaration metadata) must also stay intact.
     for key in ('entities','block_defs','class_declarations','raw_trailer','version','header_end'):
         if document._source_records[key] != original[key]:
@@ -292,7 +310,7 @@ def _readonly_bytes(document):
         definitions.append(record)
     body = serialize_body(current, definitions, original['version'],
         encoding=document._source_records['body_encoding'], raw_trailer=original['raw_trailer'],
-        class_declarations=original['class_declarations'])
+        class_declarations=original['class_declarations'], old_extended_counts=old_extended_counts(original))
     result = document._source_bytes[:original['header_end']] + body
     if result != document._source_bytes:
         raise ValueError(f'Read-only {label} serialization must be byte-identical')

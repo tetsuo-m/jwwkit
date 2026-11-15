@@ -152,7 +152,9 @@ def _rows(doc, scope, units, transform, *, _entities=None, _scale=None, _stack=(
             if 1<=preset<=10:attrs['text_preset_dependency']=doc.get_text_preset(preset)
         color=base['pen_color']
         if color not in colors:
-            if 0<=color<len(doc.header['palette']['pen_colors']):colors[color]=doc.header['palette']['pen_colors'][color]
+            # ezjww returns no palette for v230 drawings; colors are then unresolved, not guessed.
+            pen_colors=(doc.header.get('palette') or {}).get('pen_colors') or []
+            if 0<=color<len(pen_colors):colors[color]=pen_colors[color]
             elif color in sx_colors:colors[color]=sx_colors[color]
             else:colors[color]={'unresolved_color_definition':color}
         attrs['color_dependency']=({'explicit_RGB':g['color']} if kind in ('SOLID','CIRCLE_SOLID') and color==10 else copy.deepcopy(colors[color]))

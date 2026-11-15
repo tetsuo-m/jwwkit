@@ -19,6 +19,39 @@ from jwwkit import guide_paths, template_path
 from jwwkit._commands._integrity import check_installed_files
 
 
+def old_version_header(header, version):
+    """Rebuild a v600/v700 header (signature to header end) in an old file version's layout.
+
+    Uses the reader's span table (#17): spans missing in the old version are dropped and the
+    8 mark jumps x 28 bytes become 4 x 24 (their first 24 bytes). Synthetic data only.
+    """
+    from jwwkit.reader.archive import Cursor, header_layout
+    c = Cursor(bytes(header)); c.take(8); source, = c.unpack('<I'); c.string(preserve_header_bytes=True)
+    memo_end = c.pos
+    spans = []
+    for step in header_layout(source):
+        start = c.pos
+        if step[0] == 'skip':
+            c.take(step[1])
+        else:
+            for _ in range(step[2]):
+                c.string(preserve_header_bytes=True); c.take(step[3])
+        spans.append((step, bytes(header[start:c.pos])))
+    if c.pos != len(header):
+        raise ValueError('Header does not end at the table boundary')
+    by_size = {}
+    for (kind, *rest), data in spans:
+        by_size.setdefault((kind, rest[0]), []).append(data)
+    out = bytearray(header[:memo_end]); struct.pack_into('<I', out, 8, version)
+    for step in header_layout(version):
+        if step == ('skip', 4 * 24):  # old mark jumps
+            jumps = by_size[('skip', 8 * 28)][0]
+            out += b''.join(jumps[i * 28:i * 28 + 24] for i in range(4))
+        else:
+            out += by_size[(step[0], step[1])].pop(0)
+    return bytes(out)
+
+
 def _run_tool(command, args, cwd):
     return subprocess.run(
         [sys.executable, "-I", "-B", "-X", "utf8", "-m", "jwwkit", command, *args],
@@ -378,6 +411,38 @@ def check(*, compare_command, inspect_jwf_command, summarize_command):
             except RecordError as exc:assert message in str(exc)
             else:raise AssertionError('Unobserved v600/schema700 variant was accepted')
         results.append('v600_schema700_roundtrip_and_existing_class_edit')
+        # Old file versions (#17): read-only. Headers rebuilt from the template by the span table.
+        from jwwkit.line_document import Dimension, Point
+        for version,schema in ((230,230),(351,351),(230,700),(420,700)):
+            records=[Line((0,0),(10,0)).record(),Text((0,0),(5,0),'synthetic').record(),Point((1,1)).record()]
+            dimension=Dimension(Line((0,20),(10,20)),Text((4,21),(6,21),'10')).record()
+            if version<420:dimension.update(sxf_mode=None,aux_lines=[],aux_points=[])
+            records.append(dimension)
+            fixture=old_version_header(template[:end],version)+serialize_body(records,[],version,encoding='cp932',
+                class_schema=schema if schema!=version else None)
+            source_old=folder/f'old_v{version}_schema{schema}.jww';source_old.write_bytes(fixture)
+            old=CadDocument.open(source_old)
+            parsed=old._source_records
+            assert (parsed['version'],parsed['class_schema'])==(version,schema) and not old.diagnostics
+            assert old.entity_counts=={'LINE':1,'TEXT':1,'POINT':1,'DIMENSION':1}
+            assert parsed['header_end']==len(old_version_header(template[:end],version))
+            assert old.summary()['by_type']
+            target_old=folder/f'old_v{version}_schema{schema}_copy.jww';old.save(target_old)
+            assert target_old.read_bytes()==source_old.read_bytes()
+            try:old.add_line((0,0),(1,0))
+            except ValueError as exc:assert 'Ver.7.00' in str(exc)
+            else:raise AssertionError('Old-version editing was accepted')
+            changed=CadDocument.open(source_old);changed.version=700
+            try:changed.save(folder/f'old_v{version}_converted.jww')
+            except ValueError as exc:assert 'read-only' in str(exc) and 'Ver.7.00' in str(exc)
+            else:raise AssertionError('Old-version conversion was accepted')
+            assert not (folder/f'old_v{version}_converted.jww').exists()
+        for version in (220,252):
+            bad=bytearray(fixture);struct.pack_into('<I',bad,8,version)
+            try:read_records_bytes(bytes(bad))
+            except RecordError as exc:assert 'Unsupported JWW version' in str(exc)
+            else:raise AssertionError('Unobserved JWW version was accepted')
+        results.append('old_versions_read_and_unedited_save_only')
         results.append('jwf_documentation_read_diff_no_settings_application')
         verified=folder/'verified.jwf'
         widths=' '.join(str(cad.get_text_preset(i)['size_x']) for i in range(1,11))
