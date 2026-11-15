@@ -122,6 +122,10 @@ def _observed_preset3(source,record,source_group):
         and text['base']['pen_color']==preset['color'])
 
 
+SCHEMA700_IMPORT_MESSAGE=('Group import is not supported for Jw_cad v6-format files whose classes use schema 700 '
+    '(header resource equivalence is unverified). To import, re-save the drawing(s) in Jw_cad in the Ver.7.00 (v7) format.')
+
+
 def prepare(destination,path,source_group,target_group,*,sync_scale=False,
             sync_group_name=True,sync_layer_names=True,block_renames=None,settings_policy='strict'):
     """Return an isolated candidate plus a receipt; never mutate destination/source."""
@@ -131,7 +135,10 @@ def prepare(destination,path,source_group,target_group,*,sync_scale=False,
         if type(value) is not bool:raise TypeError('Sync selections must be bool')
     path=Path(path).resolve();before=hashlib.sha256(path.read_bytes()).hexdigest()
     if path==Path(destination.source).resolve():raise ValueError('Use intra-document copy API for the same file')
+    if destination._source_records.get('class_schema',destination.version)!=destination.version:
+        raise ValueError(SCHEMA700_IMPORT_MESSAGE)
     source=CadDocument.open(path)
+    if source._source_records.get('class_schema',source.version)!=source.version:raise ValueError(SCHEMA700_IMPORT_MESSAGE)
     if source.includes_metadata or destination.includes_metadata:raise ValueError('Metadata-inclusive model unsupported')
     if source.version!=destination.version:raise ValueError('Cross-version header dependency equivalence unverified')
     review=settings_review(source,destination,settings_policy)

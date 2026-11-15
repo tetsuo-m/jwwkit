@@ -13,9 +13,12 @@ from jwwkit.writer.mfc import records_bytes
 from jwwkit.reader.archive import RecordError, read_records_bytes
 
 
-def serialize_body(entities, definitions, version, *, encoding=None, raw_trailer=None, class_declarations=None):
-    """既知の本文を共通MFCレジストリで直列化する。"""
+def serialize_body(entities, definitions, version, *, encoding=None, raw_trailer=None, class_declarations=None,
+                   class_schema=None):
+    """既知の本文を共通MFCレジストリで直列化する。class_schemaは新しく書く宣言の版（既定はファイルの版）。"""
     registry = {"classes": {}, "next_index": 1}
+    if class_schema is not None:
+        registry['class_schema'] = class_schema
     if class_declarations is not None:
         registry.update(class_declarations=class_declarations, declaration_position=0)
     encoding = encoding or ("cp932" if version == 600 else "utf-16le")
@@ -28,8 +31,14 @@ def serialize_body(entities, definitions, version, *, encoding=None, raw_trailer
     return body
 
 
+NEW_CLASS_DECLARATION_MESSAGE = (
+    'This edit needs a new class declaration (a kind of element the drawing does not have yet) in a Jw_cad '
+    'v6-format file whose classes use schema 700; that is unverified in Jw_cad and is rejected. '
+    'To make this edit, re-save the drawing in Jw_cad in the Ver.7.00 (v7) format and open that file instead.')
+
+
 def keeps_class_declarations(parsed):
-    """原宣言をそのまま書き戻す読取り専用の図面か（rebro_schema0、観測済みのクラスの版の組）。"""
+    """無編集の書き戻しで原宣言をそのまま使う図面か（rebro_schema0、観測済みのクラスの版の組）。"""
     return (parsed.get('schema_profile') == 'rebro_schema0'
             or parsed.get('class_schema', parsed['version']) != parsed['version'])
 
@@ -134,7 +143,10 @@ def _document_bytes(document):
             blocking.append(diagnostic)
     if blocking:
         raise ValueError(f"未確認の構造があるため保存できません: {document.diagnostics}")
-    if keeps_class_declarations(document._source_records):
+    if document._source_records.get('schema_profile') == 'rebro_schema0':
+        return _readonly_bytes(document)
+    if keeps_class_declarations(document._source_records) and document.includes_metadata:
+        # (600, 700) opened with include_metadata=True: unedited save-as only (as in #11).
         return _readonly_bytes(document)
     if document.includes_metadata:
         raise ValueError("Metadata-inclusive editing is not supported")
@@ -200,7 +212,10 @@ def _document_bytes(document):
     for definition in definitions:
         validate_records(definition['entities'], originals.get(definition['number'], {'entities': []})['entities'],
                          f'block_defs[{definition["number"]}].entities', set(numbers))
-    body = serialize_body(entities, definitions, document.version, encoding=original["body_encoding"], raw_trailer=original["raw_trailer"])
+    # (600, 700): Jw_cad 10.03.6 v6 output. Write every declaration with the source class schema.
+    class_schema = original.get('class_schema', document.version)
+    body = serialize_body(entities, definitions, document.version, encoding=original["body_encoding"], raw_trailer=original["raw_trailer"],
+                          class_schema=class_schema if class_schema != document.version else None)
     from jwwkit.writer.header import patch_scales
     header = document._source_bytes[:original['header_end']]
     if document._state_edits:
@@ -222,6 +237,13 @@ def _document_bytes(document):
     data = header + body
     # 作成前に再読取で確かめる。メモリ読取を使用し中間ファイルを作らない。
     checked = read_records_bytes(data)
+    if class_schema != document.version:
+        # Only classes the source already declared may be written (no new declarations).
+        declared = {d['name'] for d in original['class_declarations']}
+        if any(d['name'] not in declared for d in checked['class_declarations']):
+            raise ValueError(NEW_CLASS_DECLARATION_MESSAGE)
+        if checked['class_declarations'] and checked['class_schema'] != class_schema:
+            raise ValueError('保存前検証でクラスの版が保たれません')
     if (checked['entities'] != entities or checked['block_defs'] != definitions
             or checked["raw_trailer"] != original["raw_trailer"]):
         raise ValueError("保存前検証で本文が一致しません")
@@ -231,12 +253,12 @@ def _document_bytes(document):
 def _readonly_bytes(document):
     """Reparse, compare the full public model, then serialize original declarations.
 
-    Used for rebro_schema0 and for observed (version, class schema) pairs such as
-    (600, 700); both are read-only and must save byte-identically.
+    Used for rebro_schema0, and for (600, 700) documents opened with
+    include_metadata=True; both must save unedited and byte-identically.
     """
     from jwwkit.model.common_entities import CadBlockDefinition, model_entity
     profile = document._source_records.get('schema_profile', 'strict')
-    label = profile if profile == 'rebro_schema0' else 'Jw_cad v6 file with class schema 700'
+    label = profile if profile == 'rebro_schema0' else 'Jw_cad v6 file with class schema 700 opened with include_metadata=True'
     original = read_records_bytes(document._source_bytes, schema_profile=profile)
     if not keeps_class_declarations(original):
         raise ValueError(f'{label} source snapshot was changed')
