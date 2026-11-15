@@ -87,6 +87,9 @@ class CorpusCheckTests(unittest.TestCase):
         self.assertEqual(jws_ok["declared_version"], 700)
         self.assertEqual(jww_ok["declared_version"], jww_ok["version"])
         self.assertTrue(jws_ok["save"]["identical"])
+        self.assertEqual((jws_ok["class_schema"], jws_ok["extended_counts"]), (None, dict(present=False, sequences=0)))
+        self.assertNotIn("images", jws_ok)
+        self.assertNotIn("read_only", jws_ok)
         broken = by_kind[("jww", "rejected")][0]
         self.assertEqual(broken["error"]["stage"], "open")
         self.assertIsNone(broken["declared_version"])
@@ -206,6 +209,62 @@ class CorpusCheckTests(unittest.TestCase):
         self.assertNotIn(SECRET, scrubbed)
         folder_only = corpus_check.scrub_paths(f"{SECRET} unreadable", [Path("C:/x") / SECRET / "a.jww"])
         self.assertNotIn(SECRET, folder_only)
+
+    def test_records_images_schema_read_only_and_memory(self):
+        fixtures = ROOT / "tests" / "fixtures"
+        source = self.temp / "見本"
+        source.mkdir()
+        shutil.copyfile(fixtures / "jwcad_images" / "a5.jww", source / f"{SECRET}_画像.jww")
+        shutil.copyfile(fixtures / "jwcad_saved" / "jwcad10036_save_v351.jww", source / f"{SECRET}_古い版.jww")
+        shutil.copyfile(fixtures / "jwcad_saved" / "jwcad10036_save_v600.jww", source / f"{SECRET}_v6.jww")
+        output = self.temp / "出力2"
+        args = corpus_check.parse_args(["--source", str(source), "--output", str(output), "--sample", "0"])
+        records = {r["version"]: r for r in corpus_check.run(args, log=lambda *_: None)["records"].values()}
+        image = records[700]
+        self.assertEqual(image["images"]["count"], 2)
+        self.assertEqual(image["images"]["by_format"], {"BMP": 1, "JPEG": 1})
+        self.assertEqual((image["images"]["unverified"], image["images"]["noted"]), (0, 0))
+        self.assertEqual(image["images"]["shapes"], {"BMP (40, 24, 0, False)": 1, "JPEG ('SOF0', 8, 3)": 1})
+        self.assertEqual((image["class_schema"], image["read_only"]), (700, False))
+        self.assertEqual(image["extended_counts"], dict(present=False, sequences=0))
+        self.assertEqual((records[351]["read_only"], records[351]["class_schema"]), (True, 700))
+        self.assertEqual((records[600]["class_schema"], records[600]["read_only"]), (700, False))
+        self.assertTrue(all(isinstance(r["peak_memory_mb"], float) for r in records.values()))
+        text = json.dumps(list(records.values()), ensure_ascii=False)
+        self.assertNotIn(SECRET, text)
+        self.assertNotIn("jwwkit_sample", text)  # image names are not recorded
+        summary = (output / "summary.md").read_text(encoding="utf-8")
+        self.assertIn("| JWW | 600 | 700 | 1 | 0 |", summary)
+        self.assertIn("| JWW | 351 | 700 | 1 | 1 |", summary)
+        self.assertIn("読取り専用で開いた図面: 1 件", summary)
+        self.assertIn("画像のある図面: 1 件、画像: 2 枚", summary)
+        self.assertIn("| BMP (40, 24, 0, False) | 1 |", summary)
+        self.assertIn("拡張の書き方（65535 以上）がある図面（0 件）", summary)
+        self.assertIn("## メモリの最大", summary)
+        self.assertNotIn("jwwkit_sample", summary)
+
+    def test_structure_failure_keeps_the_reading_result(self):
+        original = corpus_check._structure
+
+        def broken(document, kind):
+            raise KeyError("unexpected record shape")
+        corpus_check._structure = broken
+        self.addCleanup(setattr, corpus_check, "_structure", original)
+        source = ROOT / "tests" / "fixtures" / "jwcad_images" / "a1.jww"
+        result = corpus_check.inspect_one(source, self.temp / "a1_work.jww")
+        self.assertEqual(result["status"], "ok")
+        self.assertIn("open", result["stages_completed"])
+        self.assertEqual(result["structure_error"], "KeyError: 'unexpected record shape'")
+        self.assertNotIn("class_schema", result)
+
+    def test_extended_counts_are_counted_per_sequence(self):
+        class Fake:
+            version = 700
+            _source_records = dict(entities=[None] * 65535, class_schema=700, schema_profile="strict", images=[],
+                                   block_defs=[dict(entities=[None] * 3), dict(entities=[None] * 70000)])
+        self.assertEqual(corpus_check._structure(Fake(), "jww")["extended_counts"], dict(present=True, sequences=2))
+        Fake._source_records["entities"] = [None] * 65534
+        self.assertEqual(corpus_check._structure(Fake(), "jww")["extended_counts"], dict(present=True, sequences=1))
 
     def test_tool_error_is_recorded_and_run_continues(self):
         original = corpus_check.check_item

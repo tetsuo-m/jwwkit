@@ -34,7 +34,7 @@ import traceback
 from pathlib import Path
 
 # 記録の項目を変えたら上げる。版の違う出力フォルダは --resume で続けない
-TOOL_VERSION = 2
+TOOL_VERSION = 3
 EXTENSIONS = {".jww", ".jws"}
 MAPPING_NAME = "対応表.json"
 SUMMARY_NAME = "summary.md"
@@ -184,6 +184,67 @@ def _counts_jws(document) -> dict:
                 block_definitions=definitions)
 
 
+EXTENDED_COUNT = 65535
+
+
+def _structure(document, kind: str) -> dict:
+    """形と数だけ（名前や文字は残さない）：クラスの版、読取り専用か、個数の拡張の書き方、同梱の画像。
+
+    jwwkit は 65535 未満の個数を拡張の書き方で書いた図面を拒否する（#6）ので、読めた図面では
+    「列の個数が 65535 以上」と「拡張の書き方」が同じになる。列は、本文の要素、ブロック定義、
+    それぞれの定義の中の要素。
+    """
+    records = document._source_records if kind == "jww" else document._records
+    lengths = [len(records["entities"]), len(records["block_defs"])]
+    lengths += [len(d["entities"]) for d in records["block_defs"]]
+    extended = sum(1 for n in lengths if n >= EXTENDED_COUNT)
+    # JWS の読取りの結果にはクラスの版が残らないので None。
+    result = dict(class_schema=records.get("class_schema"),
+                  extended_counts=dict(present=bool(extended), sequences=extended))
+    if kind == "jww":
+        from jwwkit.reader.archive import is_read_only_version
+        result["read_only"] = (is_read_only_version(document.version)
+                               or records.get("schema_profile", "strict") != "strict")
+        images = records.get("images") or []
+        result["images"] = dict(
+            count=len(images),
+            by_format=dict(sorted(collections.Counter(i["format"] for i in images).items())),
+            unverified=sum(1 for i in images if not i["verified"]),
+            noted=sum(1 for i in images if i.get("notes")),
+            shapes=dict(sorted(collections.Counter(f"{i['format']} {tuple(i['shape'])}" for i in images).items())))
+    return result
+
+
+def peak_memory_mb() -> float | None:
+    """このプロセスのメモリの最大（MB）。取れなければ None。"""
+    try:
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+
+            class Counters(ctypes.Structure):
+                _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+                            ("PeakWorkingSetSize", ctypes.c_size_t), ("WorkingSetSize", ctypes.c_size_t),
+                            ("QuotaPeakPagedPoolUsage", ctypes.c_size_t), ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                            ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                            ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                            ("PagefileUsage", ctypes.c_size_t), ("PeakPagefileUsage", ctypes.c_size_t)]
+            counters = Counters()
+            counters.cb = ctypes.sizeof(Counters)
+            psapi = ctypes.WinDLL("psapi")
+            kernel = ctypes.WinDLL("kernel32")
+            kernel.GetCurrentProcess.restype = wintypes.HANDLE
+            psapi.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(Counters), wintypes.DWORD]
+            if not psapi.GetProcessMemoryInfo(kernel.GetCurrentProcess(), ctypes.byref(counters), counters.cb):
+                return None
+            return round(counters.PeakWorkingSetSize / 1e6, 1)
+        import resource
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        return round(peak / (1e6 if sys.platform == "darwin" else 1e3), 1)
+    except Exception:  # noqa: BLE001 - 測れないだけで、調べる結果には関係しない
+        return None
+
+
 def _first_difference(a: bytes, b: bytes) -> int | None:
     limit = min(len(a), len(b))
     step = 4096
@@ -255,6 +316,11 @@ def inspect_one(source: Path, work_file: Path, stage_file: Path | None = None) -
         result["timings"]["open"] = round(time.perf_counter() - started, 4)
         result["version"] = document.version
         result["counts"] = counts
+        try:
+            result.update(_structure(document, result["kind"]))
+        except Exception as exc:  # noqa: BLE001 - 道具の側の問題。読めたかどうかの結果は変えない
+            result["structure_error"] = f"{type(exc).__name__}: {scrub_paths(str(exc), [source, work_file])}"
+
         result["stages_completed"].append("open")
 
         current = "save"
@@ -316,6 +382,7 @@ def worker_main(argv: list[str]) -> int:
     started = time.perf_counter()
     result = inspect_one(source, work_file, stage_file)
     result["timings"]["total_in_worker"] = round(time.perf_counter() - started, 4)
+    result["peak_memory_mb"] = peak_memory_mb()
     write_json_atomic(result_file, result)
     return 0
 
@@ -539,6 +606,41 @@ def build_summary(mapping: dict, records: dict[str, dict], unchanged_check: dict
                      f"{sum(1 for r in rows if r['status'] == 'ok' and r['save']['identical'])} |")
     lines.append("")
 
+    structured = [r for r in opened if "class_schema" in r]
+    pairs = collections.Counter((r["kind"], r.get("version"), r.get("class_schema")) for r in structured)
+    lines.extend(["## ファイルの版とクラスの版の組（読めたもの）", "",
+                  "| 種類 | ファイルの版 | クラスの版 | 件数 | 読取り専用 |", "|---|---:|---:|---:|---:|"])
+    for (kind, version, schema), count in sorted(pairs.items(), key=lambda kv: tuple(map(str, kv[0]))):
+        read_only = sum(1 for r in structured if (r["kind"], r.get("version"), r.get("class_schema"))
+                        == (kind, version, schema) and r.get("read_only"))
+        lines.append(f"| {kind.upper()} | {version} | {schema} | {count} | {read_only} |")
+    lines.extend(["", f"- 読取り専用で開いた図面: {sum(1 for r in structured if r.get('read_only'))} 件",
+                  "- JWS は、読取りの結果にクラスの版が残らないので None としています。",
+                  f"- 道具の側で形を数えられなかった図面: "
+                  f"{_names([r['name'] for r in opened if 'structure_error' in r]) or '0 件'}", ""])
+
+    extended = [r for r in structured if r["extended_counts"]["present"]]
+    lines.extend([f"## 要素の個数の拡張の書き方（65535 以上）がある図面（{len(extended)} 件）", ""])
+    by_version = collections.Counter((r["kind"], r.get("version")) for r in extended)
+    lines.append("、".join(f"{k.upper()} v{v} {n}件" for (k, v), n in sorted(by_version.items(), key=str)) or "なし")
+    lines.append("")
+
+    with_images = [r for r in structured if r.get("images", {}).get("count")]
+    images = [r["images"] for r in with_images]
+    formats, shapes = collections.Counter(), collections.Counter()
+    for i in images:
+        formats.update(i["by_format"])
+        shapes.update(i["shapes"])
+    lines.extend(["## 同梱の画像（読めたもの。形と数だけ）", "",
+                  f"- 画像のある図面: {len(with_images)} 件、画像: {sum(i['count'] for i in images)} 枚",
+                  "- 形式ごと: " + ("、".join(f"{k} {v}枚" for k, v in sorted(formats.items())) or "なし"),
+                  f"- Jw_cad の出力として確かめていない画像（verified でない）: {sum(i['unverified'] for i in images)} 枚",
+                  f"- 余りなどの印のある画像（notes あり）: {sum(i['noted'] for i in images)} 枚", ""])
+    if shapes:
+        lines.extend(["| 形 | 枚数 |", "|---|---:|"])
+        lines.extend(f"| {k} | {v} |" for k, v in sorted(shapes.items(), key=lambda kv: (-kv[1], kv[0])))
+        lines.append("")
+
     def category_table(title: str, status: str) -> None:
         rows = [r for r in done if r["status"] == status]
         lines.extend([f"## {title}（{len(rows)} 件）", ""])
@@ -600,6 +702,17 @@ def build_summary(mapping: dict, records: dict[str, dict], unchanged_check: dict
         slowest = sorted(((r["attempts"][-1]["elapsed_seconds"], r["name"]) for r in timed), reverse=True)[:5]
         lines.extend([f"- 中央値: {statistics.median(durations):.2f} 秒、最大: {max(durations):.2f} 秒",
                       "- 長くかかった図面: " + "、".join(f"{n}（{s:.1f} 秒）" for s, n in slowest)])
+    lines.append("")
+
+    memory = [(r["peak_memory_mb"], r["name"]) for r in done if r.get("peak_memory_mb") is not None]
+    lines.extend(["## メモリの最大（1件あたりの子プロセス）", ""])
+    if memory:
+        values = [m for m, _ in memory]
+        largest = sorted(memory, reverse=True)[:5]
+        lines.extend([f"- 中央値: {statistics.median(values):.1f} MB、最大: {max(values):.1f} MB",
+                      "- 大きかった図面: " + "、".join(f"{n}（{m:.1f} MB）" for m, n in largest)])
+    else:
+        lines.append("記録なし")
     lines.append("")
 
     types = collections.Counter()
