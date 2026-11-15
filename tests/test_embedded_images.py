@@ -31,6 +31,8 @@ EXPECTED = {
     's_jpg_progressive': [('JPEG', ('SOF2', 8, 3))], 's_jpg_gray': [('JPEG', ('SOF0', 8, 1))],
     's_jpg_cmyk': [('JPEG', ('SOF0', 8, 4))], 's_png_a': [('PNG', (6, 8))], 's_gif_a': [('GIF', ('GIF89a', 1))],
     's_tif_a': [('TIFF', ('II', 5, 4))],
+    's_png_palette': [('PNG', (3, 8))], 's_png_rgb': [('PNG', (2, 8))], 's_gif87a': [('GIF', ('GIF87a', 1))],
+    's_tif_none': [('TIFF', ('II', 1, 3))],
 }
 
 
@@ -225,7 +227,7 @@ class ImageContainerTests(TempDirTestCase):
         self.assertEqual(len(read_records_bytes(many)['images']), 256)
 
     def test_unverified_shapes_are_read_and_flagged(self):
-        path = self.write('rgb_png.jww', drawing([('synthetic_image.png.gz', gz(png(2, 8)))]))
+        path = self.write('rgb_png.jww', drawing([('synthetic_image.png.gz', gz(png(0, 8)))]))
         document = CadDocument.open(path)
         self.assertEqual([(i['format'], i['verified']) for i in document.embedded_images], [('PNG', False)])
         self.assertEqual([i['verified'] for i in document.summary()['embedded_images']], [False])

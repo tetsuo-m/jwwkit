@@ -451,8 +451,8 @@ def check(*, compare_command, inspect_jwf_command, summarize_command):
             return b'BM'+struct.pack('<IHHI',14+40+4*colors+len(pixels),0,0,14+40+4*colors)+info+bytes(4*colors)+pixels
         def small_png():
             chunk=lambda k,d:struct.pack('>I',len(d))+k+d+struct.pack('>I',zlib.crc32(k+d))
-            return (bytes([137,80,78,71,13,10,26,10])+chunk(b'IHDR',struct.pack('>IIBBBBB',1,1,8,2,0,0,0))
-                    +chunk(b'IDAT',zlib.compress(bytes(4)))+chunk(b'IEND',b''))
+            return (bytes([137,80,78,71,13,10,26,10])+chunk(b'IHDR',struct.pack('>IIBBBBB',1,1,8,0,0,0,0))
+                    +chunk(b'IDAT',zlib.compress(bytes(2)))+chunk(b'IEND',b''))
         def small_rle8():
             data=bytes([4,0,0,0,4,0,0,1]);info=struct.pack('<IiiHHIIiiII',40,4,2,1,8,1,len(data),0,0,256,0)
             return b'BM'+struct.pack('<IHHI',14+40+1024+len(data),0,0,14+40+1024)+info+bytes(1024)+data

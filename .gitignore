@@ -17,6 +17,9 @@ dist/
 !/src/jwwkit/resources/empty_template.jww
 # Fictional drawings saved by the owner in Jw_cad 10.03.6 (contents reviewed in Issue #11).
 !/tests/fixtures/jwcad_saved/jwcad10036_save_v[0-9][0-9][0-9].jww
+# Fictional drawings with embedded images saved by the owner in Jw_cad 10.03.6 (contents reviewed in Issue #19).
+!/tests/fixtures/jwcad_images/a[1-9].jww
+!/tests/fixtures/jwcad_images/s_*.jww
 *.[jJ][wW][sS]
 *.[jJ][wW][cC]
 *.[jJ][wW][kK]
