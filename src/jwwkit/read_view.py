@@ -12,6 +12,7 @@ import uuid
 
 from jwwkit.cad_model import CadDocument
 from jwwkit.writer.preserved import entity_record
+from jwwkit.reader.archive import JWW_VERSIONS
 
 __all__ = ['create_read_view', 'resolve_file_reference']
 
@@ -257,7 +258,7 @@ def create_read_view(source, *, include_metadata=None, schema_profile=None, max_
         _integer(group, 16, 'layer group'); _integer(layer, 16, 'layer')
         layers.append((group, layer))
     source_sha = hashlib.sha256(data).hexdigest(); digest = hashlib.sha256()
-    if type(doc.version) is not int or doc.version not in (600, 700): raise ValueError('Unverified model version')
+    if type(doc.version) is not int or doc.version not in JWW_VERSIONS: raise ValueError('Unverified model version')
     for value in [b'read-view-model-1', source_sha.encode('ascii'), _pack(doc.version), header, metadata, diagnostics,
                   _pack(doc.includes_metadata), _pack(len(definitions)), *definitions, _pack(len(records))]:
         digest.update(len(value).to_bytes(8, 'little')); digest.update(value)

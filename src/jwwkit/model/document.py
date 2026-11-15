@@ -14,7 +14,7 @@ import math
 from pathlib import Path
 from typing import Any, Mapping
 
-from jwwkit.reader.archive import read_document
+from jwwkit.reader.archive import is_read_only_version, read_document
 from jwwkit.model.common_entities import CadEntity, CadBlockDefinition, model_entity
 
 
@@ -47,7 +47,7 @@ class CadDocument:
 
     @classmethod
     def open(cls, path: str | Path, *, include_metadata: bool = False, schema_profile: str = 'strict') -> "CadDocument":
-        """strict既定で原ヘッダー・本文を保持する。rebro_schema0は読取り/無編集別名保存のみ。v600でクラスの版700（今のJw_cad）は、既にあるクラスの編集だけ保存できる。"""
+        """strict既定で原ヘッダー・本文を保持する。rebro_schema0と古い版（v230/v300/v351/v420）は読取り/無編集別名保存のみ。v600でクラスの版700（今のJw_cad）は、既にあるクラスの編集だけ保存できる。"""
         source = Path(path)
         from jwwkit.writer.preserved import capture_source, keeps_class_declarations
         source_bytes, source_records = capture_source(source, schema_profile=schema_profile)
@@ -75,13 +75,16 @@ class CadDocument:
                        if schema_profile == 'rebro_schema0' or keeps_class_declarations(source_records) else None)
 
     def save(self, path: str | Path) -> None:
-        """既知v600/v700図面を別名保存する。ヘッダー編集は縮尺・名称・確認済み表示状態APIに対応。"""
+        """既知v600/v700図面を別名保存する（古い版は無編集の別名保存だけ）。ヘッダー編集は縮尺・名称・確認済み表示状態APIに対応。"""
         from jwwkit.writer.preserved import save_document
         save_document(self, path)
 
     def _require_editable(self):
         if self._source_records and self._source_records.get('schema_profile') == 'rebro_schema0':
             raise ValueError('rebro_schema0 is read-only; editing is not yet supported')
+        if self._source_records and is_read_only_version(self._source_records['version']):
+            from jwwkit.writer.preserved import OLD_VERSION_HINT
+            raise ValueError(f'JWW v{self._source_records["version"]} (old version) cannot be edited' + OLD_VERSION_HINT)
 
     def get_sxf_colors(self, *, include_unnamed=False):
         """SXF色の名前・番号・表示/印刷RGB・生幅・点半径を独立コピーで読む。"""

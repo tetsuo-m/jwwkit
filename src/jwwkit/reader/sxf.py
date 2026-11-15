@@ -1,18 +1,25 @@
-"""Read-only SXF tables from the observed JWW600/700 preserved header.
+"""Read-only SXF tables from the observed JWW420/600/700 preserved header.
+
+Before v420 the header has no SXF tables; the result is empty (no SXF definitions).
 
 Screen/print ColorRefs, raw widths and marker radii remain distinct. This
 reader grants no editing permission and does not create missing definitions.
 """
 import math
-from .archive import Cursor, RecordError
+from .archive import Cursor, JWW_VERSIONS, RecordError
 
 def _rgb(value):
     return [value&255,(value>>8)&255,(value>>16)&255]
 
 def read_sxf_tables(data, header_end):
     c=Cursor(data)
-    if c.take(8)!=b'JwwData.' or c.unpack('<I')[0] not in (600,700):
-        raise RecordError('SXF tables require observed JWW600/700 header')
+    if c.take(8)!=b'JwwData.':
+        raise RecordError('SXF tables require an observed JWW header')
+    version=c.unpack('<I')[0]
+    if version not in JWW_VERSIONS:
+        raise RecordError('SXF tables require an observed JWW header')
+    if version<420:
+        return [],[]  # SXF extended colors/line types exist from v420
     c.string(preserve_header_bytes=True);c.take(2532)
     for _ in range(272):c.string(preserve_header_bytes=True)
     c.take(1140)

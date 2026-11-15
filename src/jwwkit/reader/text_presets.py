@@ -1,12 +1,13 @@
-"""v600/v700ヘッダー末尾の文字種1〜10を読む。設定変更は未対応。"""
+"""JWWヘッダー末尾の文字種1〜10を読む（v230〜v700。末尾380バイトの並びは全版で同じ）。設定変更は未対応。"""
 import math
 import struct
 
 
 def read_text_presets(raw, header_end, version):
     """既知版の確認済みヘッダー終端を使う。文字種位置をバイト探索で推測しない。"""
-    if version not in (600, 700):
-        raise ValueError('文字種設定の読取りはv600/v700だけに対応します')
+    from jwwkit.reader.archive import JWW_VERSIONS
+    if version not in JWW_VERSIONS:
+        raise ValueError('文字種設定の読取りはv230/v300/v351/v420/v600/v700だけに対応します')
     # ezjww公式実装の配置を参照し、空試料のGUI10値と生バイトを独立照合。
     start = header_end - 380
     if start < 12 or header_end > len(raw):

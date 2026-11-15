@@ -104,10 +104,11 @@ class Engine:
                     anchor=point(matrix,r['ref_x'],r['ref_y'])
                     out['representative_points']=exact([dict(point=anchor,point_kind='block_insertion',on_geometry=None)],'stored_block_anchor')
                 else:
-                    if r['sxf_mode']!=0:raise ValueError('Only verified mode0 dimension geometry is supported')
+                    # sxf_mode None: no SXF part (before v420); drawn as line and text like mode0.
+                    if r['sxf_mode'] not in (0,None):raise ValueError('Only verified mode0 dimension geometry is supported')
                     # mode0 auxiliaries retain their storage but are not drawn.
                     parts=[self.build(r[key],matrix,similarity,stack,depth+1,path+(key,)) for key in ('line','text')]
-                    out['ignored_storage_parts']=['aux_lines','aux_points']
+                    out['ignored_storage_parts']=['aux_lines','aux_points'] if r['sxf_mode']==0 else []
                     out['representative_points']=exact([dict(point=point(matrix,r['line']['start_x'],r['line']['start_y']),point_kind='dimension_line_start',on_geometry=True)],'active_dimension_line')
                 out['parts']=parts
                 if not parts:raise ValueError('Empty composite has no geometry')

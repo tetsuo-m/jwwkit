@@ -289,12 +289,15 @@ class JwcadSavedV600Tests(TempDirTestCase):
         again = CadDocument.open(edited)
         self.assertEqual(sum(1 for e in again.entities if e.entity_type == 'LINE'), lines + 1)
 
-    def test_old_format_fixtures_stay_rejected(self):
+    def test_old_format_fixtures_are_read_only(self):
+        # Rewritten in #17: the old formats are now read (read-only); see test_old_versions.py.
         for version in (230, 300, 351, 420):
             with self.subTest(version=version):
-                with self.assertRaises(RecordError) as caught:
-                    CadDocument.open(fixture(version))
-                self.assertIn('Only observed v600/v700', str(caught.exception))
+                document = CadDocument.open(fixture(version))
+                self.assertEqual((document.version, document._source_records['class_schema']), (version, 700))
+                with self.assertRaises(ValueError) as caught:
+                    document.add_line((0, 0), (1, 0))
+                self.assertIn('Ver.7.00', str(caught.exception))
 
     def test_v700_body_without_image_count_equals_v600_body(self):
         # Synthetic-construction check: v6 = v7 with version 600 and no image-count trailer.

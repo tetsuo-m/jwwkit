@@ -8,7 +8,8 @@ def enrich(doc,row,scale,transform,point,children,stack):
     from jwwkit.drawing_comparison import _finite,_json
     g=row['geometry_paper_mm'];kind=row['type'];base=row['attributes'];angle=transform[0]
     if kind=='DIMENSION':
-        if g['sxf_mode']!=0:raise ValueError('Dimension mode other than observed mode0 is not semantically verified')
+        # sxf_mode None: no SXF part (before v420); line and text are active as in mode0.
+        if g['sxf_mode'] not in (0,None):raise ValueError('Dimension mode other than observed mode0 is not semantically verified')
         records=[g['line'],g['text'],*g['aux_lines'],*g['aux_points']]
         paths=['line','text',*[f'aux_lines[{i}]' for i in range(len(g['aux_lines']))],*[f'aux_points[{i}]' for i in range(len(g['aux_points']))]]
         row['children']=children(records,scale)
