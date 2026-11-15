@@ -1,8 +1,9 @@
-"""Issue #11: Jw_cad v6-format files whose class declarations use schema 700.
+"""Issues #11 and #14: Jw_cad v6-format files whose class declarations use schema 700.
 
 Jw_cad 10.03.6 writes every class declaration with schema 700 even when saving in
 the v6 format. jwwkit accepts exactly (file version 600, class schema 700), with
-every declaration at 700, for reading and unedited save-as only.
+every declaration at 700. Edits are saved when they only use classes the drawing
+already declares (#14); new class declarations and group import are rejected.
 """
 import collections
 import inspect
@@ -22,6 +23,7 @@ from jwwkit.reader.archive import (Cursor, RecordError, read_document, read_enti
 from jwwkit.reader.jws import JwsDocument
 from jwwkit.writer.preserved import serialize_body
 from jwwkit._normalization_inspection import inspect_bytes
+from jwwkit.safe_edit import execute_plan, write_plan
 
 FIXTURES = Path(__file__).resolve().parent / 'fixtures' / 'jwcad_saved'
 EXPECTED_TYPES = {'LINE': 14, 'ARC': 2, 'POINT': 9, 'TEXT': 9, 'BLOCK': 1, 'CIRCLE_SOLID': 1, 'DIMENSION': 3}
@@ -70,6 +72,46 @@ def synthetic(file_version=600, schemas=700, *, trailer=None, basic=False):
     return bytes(data)
 
 
+def entity_index(document, kind):
+    return next(i for i, e in enumerate(document.entities) if e.entity_type == kind)
+
+
+EDIT_OPERATIONS = {
+    'delete_entity': lambda d: d.delete_entity(entity_index(d, 'LINE')),
+    'delete_entities': lambda d: d.delete_entities([entity_index(d, 'LINE'), entity_index(d, 'ARC')]),
+    'move_entity': lambda d: d.move_entity(entity_index(d, 'LINE'), (5, 0)),
+    'move_entities': lambda d: d.move_entities([entity_index(d, 'LINE'), entity_index(d, 'POINT')], (0, 5)),
+    'transform_entities': lambda d: d.transform_entities([entity_index(d, 'LINE')], translation=(1, 1), rotation=0.1),
+    'copy_entities': lambda d: d.copy_entities([entity_index(d, 'LINE'), entity_index(d, 'ARC')], (10, 0)),
+    'align_two_points': lambda d: d.align_two_points([entity_index(d, 'LINE')], [[0, 0], [100, 0]], [[10, 0], [110, 0]],
+                                                     distance_tolerance=1, angle_tolerance=0.01),
+    'rotate_entities': lambda d: d.rotate_entities([entity_index(d, 'LINE')], 0.2),
+    'reflect_entities': lambda d: d.reflect_entities([entity_index(d, 'LINE')], axis_angle=0.5),
+    'scale_entities': lambda d: d.scale_entities([entity_index(d, 'LINE')], 2),
+    'set_entity_attributes': lambda d: d.set_entity_attributes(entity_index(d, 'LINE'), color=3),
+    'set_text': lambda d: d.set_text(entity_index(d, 'TEXT'), 'changed'),
+    'recalculate_text_endpoint': lambda d: d.recalculate_text_endpoint(entity_index(d, 'TEXT')),
+    'set_dimension_text': lambda d: d.set_dimension_text(entity_index(d, 'DIMENSION'), '999'),
+    'set_block_layer_priority': lambda d: d.set_block_layer_priority(entity_index(d, 'BLOCK'), True),
+    'add_line': lambda d: d.add_line((0, 0), (10, 0)),
+    'add_text': lambda d: d.add_text((0, 0), content='added'),
+    'add_circle': lambda d: d.add_circle((0, 0), 5),
+    'add_arc': lambda d: d.add_arc((0, 0), 5, 0, 1),
+    'add_point': lambda d: d.add_point((1, 1)),
+    'add_solid': lambda d: d.add_solid(((20, 0), (30, 10), (30, 0), (20, 10))),
+    'add_circle_solid': lambda d: d.add_circle_solid((40, 0), 5),
+    'add_block_definition+place_block': lambda d: d.place_block(
+        d.add_block_definition('added block', [Line((0, 0), (10, 0))], compound_kind=4).number, (20, 30)),
+    'replace_entities_with_block': lambda d: d.replace_entities_with_block(
+        [entity_index(d, 'LINE')], 'replaced', base_point=(0, 0), layer_priority=True),
+    'set_group_scale': lambda d: d.set_group_scale(5, 50),
+    'set_group_state': lambda d: d.set_group_state(5, 'hidden'),
+    'set_layer_state': lambda d: d.set_layer_state(5, 3, 'display_only'),
+    'set_layer_name': lambda d: d.set_layer_name(5, 3, 'added layer'),
+    'set_group_name': lambda d: d.set_group_name(5, 'added group'),
+}
+
+
 def editing_methods():
     """The CadDocument methods that start with self._require_editable()."""
     names = []
@@ -81,19 +123,6 @@ def editing_methods():
         if 'self._require_editable()' in source:
             names.append(name)
     return names
-
-
-def dummy_arguments(function):
-    args, kwargs = [], {}
-    for parameter in list(inspect.signature(function).parameters.values())[1:]:
-        if parameter.default is not inspect.Parameter.empty or parameter.kind in (
-                parameter.VAR_POSITIONAL, parameter.VAR_KEYWORD):
-            continue
-        if parameter.kind == parameter.KEYWORD_ONLY:
-            kwargs[parameter.name] = None
-        else:
-            args.append(None)
-    return args, kwargs
 
 
 class TempDirTestCase(unittest.TestCase):
@@ -136,55 +165,114 @@ class JwcadSavedV600Tests(TempDirTestCase):
         self.assertEqual((dimension['sxf_mode'], len(dimension['aux_lines']), len(dimension['aux_points'])), (0, 2, 4))
 
     def test_unedited_save_is_byte_identical_and_keeps_schema_700(self):
-        for include_metadata in (False, True):
-            document = CadDocument.open(fixture(600), include_metadata=include_metadata)
-            target = self.folder / f'copy_{include_metadata}.jww'
-            document.save(target)
-            self.assertEqual(target.read_bytes(), fixture(600).read_bytes())
-            again = read_records_bytes(target.read_bytes())
-            self.assertEqual({d['schema'] for d in again['class_declarations']}, {700})
-            self.assertEqual(again['raw_trailer'], b'')
-            self.assertEqual(CadDocument.open(target).entities, document.entities if not include_metadata
-                             else CadDocument.open(fixture(600)).entities)
-
-    def test_all_editing_apis_are_rejected_before_changes(self):
-        methods = editing_methods()
-        self.assertEqual(len(methods), 31)
         document = CadDocument.open(fixture(600))
-        before = (document.entities, document.block_definitions, document.header)
-        for name in methods:
-            args, kwargs = dummy_arguments(getattr(CadDocument, name))
-            with self.subTest(method=name):
-                with self.assertRaises(ValueError) as caught:
-                    getattr(document, name)(*args, **kwargs)
-                self.assertIn('schema 700', str(caught.exception))
-                self.assertIn('Ver.7.00 (v7) format', str(caught.exception))
-        self.assertEqual((document.entities, document.block_definitions, document.header), before)
-        target = self.folder / 'after_rejections.jww'
+        target = self.folder / 'copy.jww'
         document.save(target)
         self.assertEqual(target.read_bytes(), fixture(600).read_bytes())
+        again = read_records_bytes(target.read_bytes())
+        self.assertEqual({d['schema'] for d in again['class_declarations']}, {700})
+        self.assertEqual(again['raw_trailer'], b'')
+        self.assertEqual(CadDocument.open(target).entities, document.entities)
+        # Opened with include_metadata=True: unedited save-as stays byte-identical (as in #11);
+        # an edited metadata-inclusive model is not saved.
+        document = CadDocument.open(fixture(600), include_metadata=True)
+        target = self.folder / 'copy_metadata.jww'
+        document.save(target)
+        self.assertEqual(target.read_bytes(), fixture(600).read_bytes())
+        document.add_line((0, 0), (1, 0))
+        with self.assertRaises(ValueError) as caught:
+            document.save(self.folder / 'metadata_edited.jww')
+        self.assertIn('read-only', str(caught.exception))
+        self.assertFalse((self.folder / 'metadata_edited.jww').exists())
 
-    def test_direct_model_changes_cannot_be_saved(self):
+    def test_existing_class_edits_save_as_schema_700_and_match_v700(self):
+        # Issue #14: edits that only use classes the drawing already declares are saved,
+        # keep class schema 700 and the v600 trailer, and give the same body as on v700.
+        for name, operation in EDIT_OPERATIONS.items():
+            with self.subTest(edit=name):
+                outputs = {}
+                for version in (600, 700):
+                    document = CadDocument.open(fixture(version))
+                    operation(document)
+                    target = self.folder / f'{name}_{version}.jww'
+                    document.save(target)
+                    outputs[version] = target.read_bytes()
+                parsed = read_records_bytes(outputs[600])
+                self.assertEqual(parsed['version'], 600)
+                self.assertEqual({d['schema'] for d in parsed['class_declarations']}, {700})
+                self.assertEqual(parsed['raw_trailer'], b'')
+                end600, end700 = parsed['header_end'], read_records_bytes(outputs[700])['header_end']
+                self.assertEqual(outputs[700][-4:], bytes(4))
+                self.assertEqual(outputs[600][end600:], outputs[700][end700:-4])
+                again = CadDocument.open(self.folder / f'{name}_600.jww')
+                self.assertEqual(again._source_records['class_schema'], 700)
+
+    def test_editing_api_coverage(self):
+        # 31 editing APIs: import_group stays rejected, every other one is exercised above.
+        covered = {part for name in EDIT_OPERATIONS for part in name.split('+')}
+        self.assertEqual(len(editing_methods()), 31)
+        self.assertEqual(set(editing_methods()) - covered, {'import_group'})
+
+    def test_untouched_elements_keep_their_records(self):
+        source = CadDocument.open(fixture(600))
+        document = CadDocument.open(fixture(600))
+        line = entity_index(document, 'LINE')
+        moved = document.entities[line].source_index
+        document.move_entity(line, (5, 0))
+        document.add_line((0, -50), (10, -50))
+        target = self.folder / 'moved.jww'
+        document.save(target)
+        saved = read_records_bytes(target.read_bytes())['entities']
+        original = source._source_records['entities']
+        self.assertEqual(len(saved), len(original) + 1)
+        for index, record in enumerate(original):
+            if index != moved:
+                self.assertEqual(saved[index], record)
+        self.assertNotEqual(saved[moved], original[moved])
+        # Additions stay at the end, after the settings texts (as for v600/v700 today).
+        self.assertEqual(saved[-1]['type'], 'LINE')
+
+    def test_safe_edit_plan_reload_and_report(self):
+        document = CadDocument.open(fixture(600))
+        line = entity_index(document, 'LINE')
+        actions = [dict(op='move_entities', indices=[line], kwargs=dict(delta=[10, 0]))]
+        receipt = write_plan(document, [line], actions, self.folder / 'planned.jww', self.folder / 'plan.json')
+        report = execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        self.assertEqual((report['modified_count'], report['added_count'], report['deleted_count']), (1, 0, 0))
+        self.assertTrue(report['saved_all_fields_match'])
+        saved = read_records_bytes((self.folder / 'planned.jww').read_bytes())
+        self.assertEqual({d['schema'] for d in saved['class_declarations']}, {700})
+
+    def test_import_group_is_rejected_before_changes(self):
+        other = self.write('other600.jww', fixture(600).read_bytes())
+        for destination_version in (600, 700):
+            document = CadDocument.open(fixture(destination_version))
+            before = (document.entities, document.block_definitions, document.header)
+            with self.subTest(destination=destination_version):
+                with self.assertRaises(ValueError) as caught:
+                    document.import_group(other, 0, 1)
+                self.assertIn('Ver.7.00 (v7) format', str(caught.exception))
+                self.assertEqual((document.entities, document.block_definitions, document.header), before)
+
+    def test_direct_model_changes_follow_the_normal_save_checks(self):
         import dataclasses
-        changes = [
-            lambda d: setattr(d, 'entities', d.entities[:-1]),
-            lambda d: setattr(d, 'block_definitions', ()),
-            lambda d: setattr(d, 'header', dict(d.header, version=700)),
-            lambda d: setattr(d, 'version', 700),
-            lambda d: d._name_edits.update({0: 'x'}),
-            lambda d: setattr(d, 'entities', (dataclasses.replace(
-                d.entities[0], geometry=dict(d.entities[0].geometry, start_x=-0.0
-                                             if d.entities[0].geometry.get('start_x') == 0 else 0.0)),)
-                + d.entities[1:]),
-        ]
-        for index, change in enumerate(changes):
+        document = CadDocument.open(fixture(600))
+        line = entity_index(document, 'LINE')
+        entity = document.entities[line]
+        geometry = dict(entity.geometry, start_x=entity.geometry['start_x'] + 1.0)
+        entities = list(document.entities)
+        entities[line] = dataclasses.replace(entity, geometry=geometry)
+        document.entities = tuple(entities)
+        target = self.folder / 'direct.jww'
+        document.save(target)
+        self.assertEqual({d['schema'] for d in read_records_bytes(target.read_bytes())['class_declarations']}, {700})
+        for index, change in enumerate((lambda d: setattr(d, 'header', dict(d.header, version=700)),
+                                        lambda d: setattr(d, 'version', 700))):
             document = CadDocument.open(fixture(600))
             change(document)
             with self.subTest(change=index):
-                with self.assertRaises(ValueError) as caught:
+                with self.assertRaises(ValueError):
                     document.save(self.folder / f'changed_{index}.jww')
-                self.assertTrue('read-only' in str(caught.exception) or 'byte-identical' in str(caught.exception),
-                                str(caught.exception))
                 self.assertFalse((self.folder / f'changed_{index}.jww').exists())
 
     def test_v7_resave_of_the_same_drawing_is_editable(self):
@@ -245,8 +333,10 @@ class SyntheticSchemaPairTests(TempDirTestCase):
         target = self.folder / 'synthetic_copy.jww'
         document.save(target)
         self.assertEqual(target.read_bytes(), data)
-        with self.assertRaises(ValueError):
-            document.add_line((0, 0), (1, 1))
+        document.add_line((0, 0), (1, 1))  # LINE is already declared
+        edited = self.folder / 'synthetic_edited.jww'
+        document.save(edited)
+        self.assertEqual({d['schema'] for d in read_records_bytes(edited.read_bytes())['class_declarations']}, {700})
 
     def test_same_drawing_with_schema_600_stays_editable(self):
         document = CadDocument.open(self.write('plain600.jww', synthetic(600, 600)))
@@ -273,6 +363,29 @@ class SyntheticSchemaPairTests(TempDirTestCase):
                 with self.assertRaises(RecordError):
                     read_records_bytes(data)
 
+    def test_new_class_declarations_are_rejected_on_save(self):
+        edits = {
+            'add_solid': lambda d: d.add_solid(((20, 0), (30, 10), (30, 0), (20, 10))),
+            'add_point': lambda d: d.add_point((1, 1)),
+            'add_circle': lambda d: d.add_circle((0, 0), 5),
+            'block': lambda d: d.place_block(
+                d.add_block_definition('B', [Line((0, 0), (10, 0))], compound_kind=4).number, (5, 5)),
+        }
+        for name, edit in edits.items():
+            with self.subTest(edit=name):
+                document = CadDocument.open(self.write(f'basic600_{name}.jww', synthetic(600, 700, basic=True)))
+                edit(document)
+                target = self.folder / f'basic600_{name}_out.jww'
+                with self.assertRaises(ValueError) as caught:
+                    document.save(target)
+                self.assertIn('new class declaration', str(caught.exception))
+                self.assertIn('Ver.7.00 (v7) format', str(caught.exception))
+                self.assertFalse(target.exists())
+                # The guidance holds: the same edit on a v7-format drawing can be saved.
+                v700 = CadDocument.open(self.write(f'basic700_{name}.jww', synthetic(700, 700, basic=True)))
+                edit(v700)
+                v700.save(self.folder / f'basic700_{name}_out.jww')
+
     def test_read_document_rejects_mixed_schemas(self):
         for schemas in ([700, 600, 700, 700, 700, 700, 700, 700], [600, 700, 700, 700, 700, 700, 700, 700]):
             path = self.write(f'mixed_{schemas[0]}.jww', synthetic(600, schemas))
@@ -286,7 +399,7 @@ class SyntheticSchemaPairTests(TempDirTestCase):
         path = self.write('legacy700.jww', synthetic(600, 700, basic=True))
         with self.assertRaises(ValueError) as caught:
             LegacyDocument.open(path)
-        self.assertIn('read-only', str(caught.exception))
+        self.assertIn('use CadDocument.open', str(caught.exception))
 
     def test_rebro_profile_does_not_accept_schema_700(self):
         path = self.write('rebro.jww', synthetic(600, 700))
@@ -309,6 +422,48 @@ class SyntheticSchemaPairTests(TempDirTestCase):
         with self.assertRaises(RecordError) as caught:
             JwsDocument.from_bytes(header + bytes(patched))
         self.assertIn('Unsupported class schema: 700', str(caught.exception))
+
+    def test_jws_placement_follows_the_declaration_rule(self):
+        header = (b'JwsData.' + b'.' * 192 + struct.pack('<I', 600) + struct.pack('<dd', 0, 0)
+                  + struct.pack('<16d', *([1.0] * 16)) + bytes(72) + struct.pack('<4d', 0, 0, 1, 1))
+        figure = JwsDocument.from_bytes(header + serialize_body([Line((0, 0), (1, 1)).record()], [], 600,
+                                                                encoding='cp932'))
+        # The full synthetic drawing declares CDataBlock, CDataList and CDataSen: placement is saved.
+        document = CadDocument.open(self.write('jws_full.jww', synthetic(600, 700)))
+        figure.place_as_block(document, 'jws figure', (5, 5))
+        target = self.folder / 'jws_full_out.jww'
+        document.save(target)
+        self.assertEqual({d['schema'] for d in read_records_bytes(target.read_bytes())['class_declarations']}, {700})
+        # A drawing without block classes would need new declarations: rejected on save.
+        document = CadDocument.open(self.write('jws_basic.jww', synthetic(600, 700, basic=True)))
+        figure.place_as_block(document, 'jws figure', (5, 5))
+        with self.assertRaises(ValueError) as caught:
+            document.save(self.folder / 'jws_basic_out.jww')
+        self.assertIn('new class declaration', str(caught.exception))
+
+    def test_new_class_only_inside_a_new_definition_is_rejected(self):
+        data = synthetic(600, 700)
+        document = CadDocument.open(self.write('nested.jww', data))
+        for index in sorted((i for i, e in enumerate(document.entities) if e.entity_type == 'POINT'), reverse=True):
+            document.delete_entity(index)
+        document.save(self.folder / 'no_points.jww')  # removing every point is fine
+        without_points = CadDocument.open(self.folder / 'no_points.jww')
+        self.assertNotIn('CDataTen', {d['name'] for d in without_points._source_records['class_declarations']})
+        definition = without_points.add_block_definition('with point', [Point((0, 0))], compound_kind=4)
+        without_points.place_block(definition.number, (1, 1))
+        with self.assertRaises(ValueError) as caught:
+            without_points.save(self.folder / 'nested_out.jww')
+        self.assertIn('new class declaration', str(caught.exception))
+
+    def test_direct_change_needing_a_new_class_is_rejected(self):
+        import dataclasses
+        document = CadDocument.open(self.write('direct_basic.jww', synthetic(600, 700, basic=True)))
+        donor = CadDocument.open(self.write('donor.jww', synthetic(600, 600)))
+        point = next(e for e in donor.entities if e.entity_type == 'POINT')
+        document.entities = document.entities + (dataclasses.replace(point, source_index=None),)
+        with self.assertRaises(ValueError) as caught:
+            document.save(self.folder / 'direct_basic_out.jww')
+        self.assertIn('new class declaration', str(caught.exception))
 
 
 if __name__ == '__main__':

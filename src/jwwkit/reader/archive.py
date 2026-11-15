@@ -20,7 +20,8 @@ EZJWW_BLOCK_DEFINITION_LIMIT = 10000
 # (file version, class schema) pairs accepted besides schema == version.
 # (600, 700): Jw_cad 10.03.6 saving in the v6 format writes every class
 # declaration with schema 700; the record layout still follows version 600.
-# Accepted only when all declarations use it, read-only (see preserved.py).
+# Accepted only when all declarations use it; edits may not add new class
+# declarations (see preserved.py).
 OBSERVED_CLASS_SCHEMA_PAIRS = frozenset({(600, 700)})
 
 

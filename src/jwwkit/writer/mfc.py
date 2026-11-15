@@ -24,7 +24,7 @@ def records_bytes(records, registry=None, *, version=700, encoding="utf-16le"):
                 'DIMENSION': b'CDataSunpou', 'SOLID': b'CDataSolid',
                 'CIRCLE_SOLID': b'CDataSolid'}[kind]
         if name not in classes:
-            schema = version
+            schema = registry.get('class_schema', version)
             if 'class_declarations' in registry:
                 declarations = registry['class_declarations']
                 position = registry['declaration_position']
