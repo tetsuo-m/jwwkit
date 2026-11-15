@@ -32,7 +32,10 @@
 - v700の図面で、同梱されていない画像の名前を指す画像の文字（`^@BM%temp%…`）が新しくできる保存は、拒否するようになりました（Issue #19）。これまでは、画像が1枚の図面で、`set_text` などでそういう文字を作っても保存できていました。原本にすでにある、同梱されていない画像を指す文字は、そのまま保存できますが、複写して増やすと拒否します。
 - 集計（`jwwkit summarize`、`CadDocument.summary`）に `embedded_images` の欄が増えました（画像のない図面では空の一覧）。集計の欄にも `trailing_bytes` と `notes` があり、印付きで受け入れた画像と、確かめていない形の画像を区別できます。集計の欄の一覧を固定して照合している使い方は、見直してください。
 - 画像の大きさの上限を、1枚50MBから128MBに広げ、図面ごとの合計512MBと、枚数256枚の上限を足しました（Issue #19）。
-- 拒否の文が変わったものがあります（下の「直したこと」）。拒否の文の中身で分岐している使い方は、見直してください。
+- 拒否の文が変わったものがあります。拒否の文の中身で分岐している使い方は、見直してください。
+  - 引き続き拒否する版（v220など）：これまでの `Only observed v600/v700 layouts are supported` が、`Unsupported JWW version …: only observed v230/v300/v351/v420/v600/v700 layouts are supported` になりました。古い版で、受け入れないクラスの版の組み合わせは `Unsupported class schema: … (unobserved for v…)` です（Issue #17）。
+  - 画像：これまでの `Multiple embedded images are unverified`・`Unsupported embedded image format`・`Unsupported BMP layout` などはなくなり、壊れた画像は `Invalid embedded image:`、確かめていない形は `Embedded image unverified:` で始まる文になりました（Issue #19）。
+  - ブロック定義の上限と、要素の個数の書き方の文（下の「直したこと」）。
 - 大きな図面（数十MB）を開くには、数GBのメモリと数分の時間がかかります。0.2.0から変わっていません。測った数字は `VERIFICATION.md` にあります。
 
 ### 直したこと
