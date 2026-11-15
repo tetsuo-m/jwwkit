@@ -561,6 +561,13 @@ class CadDocument:
     def entity_counts(self) -> dict[str, int]:
         return dict(Counter(entity.entity_type for entity in self.entities))
 
+    @property
+    def embedded_images(self) -> tuple[dict[str, Any], ...]:
+        """同梱の画像の形（名前・形式・幅・高さ・大きさ・SHA256）。verifiedはJw_cadの出力として確かめた形か。"""
+        keys = ('identifier', 'format', 'width', 'height', 'bits', 'raw_size', 'compressed_size', 'sha256', 'verified')
+        return tuple({key: image[key] for key in keys}
+                     for image in (self._source_records or {}).get('images', ()))
+
     def import_group(self, path, source_group, target_group, *, sync_scale=False,
                      sync_group_name=True, sync_layer_names=True, block_renames=None,
                      settings_policy='strict'):

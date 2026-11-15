@@ -443,6 +443,45 @@ def check(*, compare_command, inspect_jwf_command, summarize_command):
             except RecordError as exc:assert 'Unsupported JWW version' in str(exc)
             else:raise AssertionError('Unobserved JWW version was accepted')
         results.append('old_versions_read_and_unedited_save_only')
+        # Embedded images (#19): several images in BMP and PNG, kept byte for byte; containers checked strictly.
+        import gzip,zlib
+        def small_bmp(bits):
+            colors=(1<<bits) if bits<=8 else 0;stride=((4*bits+31)//32)*4;pixels=bytes(stride*2)
+            info=struct.pack('<IiiHHIIiiII',40,4,2,1,bits,0,len(pixels),0,0,0,0)
+            return b'BM'+struct.pack('<IHHI',14+40+4*colors+len(pixels),0,0,14+40+4*colors)+info+bytes(4*colors)+pixels
+        def small_png():
+            chunk=lambda k,d:struct.pack('>I',len(d))+k+d+struct.pack('>I',zlib.crc32(k+d))
+            return (bytes([137,80,78,71,13,10,26,10])+chunk(b'IHDR',struct.pack('>IIBBBBB',1,1,8,2,0,0,0))
+                    +chunk(b'IDAT',zlib.compress(bytes(4)))+chunk(b'IEND',b''))
+        def small_rle8():
+            data=bytes([4,0,0,0,4,0,0,1]);info=struct.pack('<IiiHHIIiiII',40,4,2,1,8,1,len(data),0,0,256,0)
+            return b'BM'+struct.pack('<IHHI',14+40+1024+len(data),0,0,14+40+1024)+info+bytes(1024)+data
+        image_files=[('check_a.bmp',small_bmp(24)),('check_b.bmp',small_bmp(8)),('check_c.png',small_png()),
+                     ('check_d.bmp',small_rle8())]
+        tail=struct.pack('<I',len(image_files))
+        for name,raw in image_files:
+            blob=gzip.compress(raw,mtime=0);tail+=bytes([len(name)+3])+(name+'.gz').encode('ascii')+struct.pack('<I',len(blob))+blob
+        refs=[Text((0,10*i),(5,10*i),f'^@BM%temp%{name},10,5,0,0,1,0,255,255,255').record() for i,(name,_) in enumerate(image_files)]
+        image_drawing=template[:end]+serialize_body([Line((0,0),(10,0)).record(),*refs],[],700,raw_trailer=tail)
+        image_source=folder/'images.jww';image_source.write_bytes(image_drawing)
+        images=CadDocument.open(image_source)
+        assert [(i['format'],i['verified']) for i in images.embedded_images]==[('BMP',True),('BMP',True),('PNG',False),('BMP',True)]
+        assert [i['verified'] for i in images.summary()['embedded_images']]==[True,True,False,True]
+        images.save(folder/'images_copy.jww');assert (folder/'images_copy.jww').read_bytes()==image_drawing
+        images.add_line((0,0),(1,1));images.save(folder/'images_edit.jww')
+        assert read_records_bytes((folder/'images_edit.jww').read_bytes())['raw_trailer']==tail
+        dangling=CadDocument.open(image_source)
+        dangling.set_text(next(i for i,e in enumerate(dangling.entities) if e.entity_type=='TEXT'),'^@BM%temp%missing.bmp,10,5')
+        try:dangling.save(folder/'images_dangling.jww')
+        except ValueError as exc:assert 'not embedded' in str(exc)
+        else:raise AssertionError('A text pointing to a missing image was saved')
+        for bad,message in ((image_drawing.replace(bytes([0x1f,0x8b,8]),bytes([0x1f,0x8b,7]),1),'Invalid embedded image'),
+                            (image_drawing[:-1],'Truncated record'),
+                            (image_drawing.replace(b'check_c.png.gz',b'check_c.bmp.gz'),'does not match the PNG')):
+            try:read_records_bytes(bad)
+            except RecordError as exc:assert message in str(exc),exc
+            else:raise AssertionError('A broken image section was accepted')
+        results.append('embedded_images_several_formats_kept_and_checked')
         results.append('jwf_documentation_read_diff_no_settings_application')
         verified=folder/'verified.jwf'
         widths=' '.join(str(cad.get_text_preset(i)['size_x']) for i in range(1,11))
