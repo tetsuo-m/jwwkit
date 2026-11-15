@@ -94,22 +94,28 @@ def _read_records(c):
     if version not in (600,700):
         raise RecordError('Only observed v600/v700 layouts are supported')
     memo = c.string(preserve_header_bytes=True)
-    # v600/v700 numeric header fields before the 256+16 layer names.
+    # Header spans follow the official Jw_cad data format description
+    # (https://www.jwcad.net/jwdatafmt.txt, Jw_cad 7.02; see VERIFICATION.md).
+    # All 15 v600 originals used in development and our v700 samples independently agree on them.
+    # 2532: drawing size .. grid reference point (write group 4, 16 groups x
+    # (20 + 16 layers x 8), dummies, dimension settings, printer/scale fields).
     c.take(2532)
+    # 256 layer names + 16 layer group names.
     layer_names = [c.string(preserve_header_bytes=True) for _ in range(272)]
-    # Shadow/zoom/pen/pattern/drawing fields, then SXF display colors.
-    # Reference: LibreCAD jwwdoc.cpp ReadHeader; all 15 bundled v600
-    # originals and our v700 samples independently agree on these spans.
+    # 1140: shadow conditions .. solid custom color (sky map 16, 8 mark jumps x 28,
+    # text drawing state 56, pens/line types/print settings, Ver.2.23-2.30 items 100).
+    # 257*8: SXF extended colors, screen color and width (4 + 4) each.
     c.take(1140 + 257*8)
     color_names = []
     for _ in range(257):
         color_names.append(c.string(preserve_header_bytes=True))
-        c.take(16)
-    c.take(33*16)
+        c.take(16)  # print color 4, print width 4, point radius 8
+    c.take(33*16)  # SXF extended line types: pattern (4 x 4) each
     line_type_names = []
     for _ in range(33):
         line_type_names.append(c.string(preserve_header_bytes=True))
-        c.take(84)
+        c.take(84)  # segment count 4 + pitch 10 x 8
+    # 380: text types 1-10 x (24 + color 4), write text 32, text alignment/offsets 68.
     c.take(380)
     header_end = c.pos
     # Only the JWW path accepts the observed pairs; JWS shares the sequence reader.
