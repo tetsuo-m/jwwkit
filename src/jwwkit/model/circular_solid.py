@@ -1,6 +1,7 @@
 """E092 observed style-101 chord/full-disk storage domain.
 
-Field meanings: LibreCAD jwdatafmt.txt (Jw archive serialization reference).
+Field meanings: official Jw_cad data format description, CDataSolid
+(https://www.jwcad.net/jwdatafmt.txt; see VERIFICATION.md).
 Other styles/modes remain preservation-only; no ring/outside fill inference.
 """
 import math
