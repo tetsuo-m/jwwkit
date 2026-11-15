@@ -216,7 +216,7 @@ jwwkitで編集したv6形式の図面を、Jw_cad 10.03.6で開いて保存し�
 - **拒否の文**
   - 壊れた形：`Invalid embedded image:`
   - 5 つの形式以外の中身や拡張子、圧縮しない同梱、BMP の中に JPEG・PNG を入れる圧縮（BI_JPEG・BI_PNG・BI_ALPHABITFIELDS）：`Embedded image unverified:`
-- **確かめた組み合わせかどうか：** Jw_cad の出力として見本か実物で確かめた組み合わせかを、`CadDocument.embedded_images` と集計の `embedded_images` の `verified` で示します。確かめていない組み合わせでも、形式の決まりとして正しければ受け入れます。
+- **確かめた組み合わせかどうか：** Jw_cad の出力として見本か実物で確かめた組み合わせかを、`CadDocument.embedded_images` と集計の `embedded_images` の `verified` で示します。集計にも `trailing_bytes` と `notes` があるので、印付きで受け入れた画像（`notes` あり）と、確かめていない形の画像（`notes` が空）を区別できます。確かめていない組み合わせでも、形式の決まりとして正しければ受け入れます。
 - **編集：** 編集した保存でも、画像の区間は原本のまま付けます。v700 では、同梱されていない名前を指す `^@BM%temp%` の文字が新しくできる保存を、拒否します。
 
 ## 形式の根拠

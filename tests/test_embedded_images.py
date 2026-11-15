@@ -5,6 +5,7 @@ specification. Jw_cad 10.03.6 embeds the original image files unchanged (samples
 tests/fixtures/jwcad_images). ``verified`` marks shapes seen in Jw_cad output.
 """
 import gzip
+import json
 import struct
 import unittest
 import zlib
@@ -230,7 +231,9 @@ class ImageContainerTests(TempDirTestCase):
         path = self.write('rgb_png.jww', drawing([('synthetic_image.png.gz', gz(png(0, 8)))]))
         document = CadDocument.open(path)
         self.assertEqual([(i['format'], i['verified']) for i in document.embedded_images], [('PNG', False)])
-        self.assertEqual([i['verified'] for i in document.summary()['embedded_images']], [False])
+        # Not yet seen in Jw_cad output, but nothing is noted: the summary tells the two kinds apart.
+        self.assertEqual([(i['verified'], i['trailing_bytes'], i['notes']) for i in document.summary()['embedded_images']],
+                         [(False, 0, [])])
         document.save(self.folder / 'rgb_png_copy.jww')
         self.assertEqual((self.folder / 'rgb_png_copy.jww').read_bytes(), path.read_bytes())
         plain = CadDocument.open(Path(__file__).resolve().parent / 'fixtures' / 'jwcad_saved' / 'jwcad10036_save_v600.jww')
@@ -245,7 +248,13 @@ class ImageContainerTests(TempDirTestCase):
         image, = document.embedded_images
         self.assertEqual((image['format'], image['trailing_bytes'], image['verified']), ('JPEG', len(second), False))
         self.assertTrue(any('another JPEG follows' in note for note in image['notes']))
-        self.assertEqual([i['verified'] for i in document.summary()['embedded_images']], [False])
+        summarized, = document.summary()['embedded_images']
+        self.assertEqual((summarized['verified'], summarized['trailing_bytes']), (False, len(second)))
+        self.assertEqual(summarized['notes'], list(image['notes']))
+        self.assertTrue(any('another JPEG follows' in note for note in summarized['notes']))
+        written = self.folder / 'mpf_summary.json'
+        document.write_summary(written)
+        self.assertEqual(json.loads(written.read_text(encoding='utf-8'))['embedded_images'], [summarized])
         document.save(self.folder / 'mpf_copy.jww')
         self.assertEqual((self.folder / 'mpf_copy.jww').read_bytes(), path.read_bytes())
         document.add_line((0, 0), (5, 5))

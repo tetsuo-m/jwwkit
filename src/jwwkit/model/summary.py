@@ -81,8 +81,10 @@ def summarize(document):
                 texts=texts,dimension_texts=dimensions,
                 block_reference_counts=document.block_reference_counts(),block_definitions=definitions,
                 diagnostics=copy.deepcopy(list(document.diagnostics)),
-                # Embedded images (#19); verified=False marks shapes not yet seen in Jw_cad output.
+                # Embedded images (#19); verified=False marks shapes not yet seen in Jw_cad output,
+                # or images accepted with notes (for example bytes after the end of the format).
                 embedded_images=[dict(identifier=i['identifier'],format=i['format'],width=i['width'],height=i['height'],
+                                      trailing_bytes=i['trailing_bytes'],notes=list(i['notes']),
                                       verified=i['verified']) for i in document.embedded_images])
 
 
