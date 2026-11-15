@@ -237,6 +237,44 @@ class ImageContainerTests(TempDirTestCase):
         self.assertEqual(plain.embedded_images, ())
         self.assertEqual(plain.summary()['embedded_images'], [])
 
+    def test_bytes_after_the_image_are_kept_and_noted(self):
+        # A JPEG followed by a second JPEG (the shape of a multi-picture file from a phone or camera).
+        second = raw_image('a4', 1)
+        path = self.write('mpf.jww', drawing([('synthetic_image.jpg.gz', gz(raw_image('a3') + second))]))
+        document = CadDocument.open(path)
+        image, = document.embedded_images
+        self.assertEqual((image['format'], image['trailing_bytes'], image['verified']), ('JPEG', len(second), False))
+        self.assertTrue(any('another JPEG follows' in note for note in image['notes']))
+        self.assertEqual([i['verified'] for i in document.summary()['embedded_images']], [False])
+        document.save(self.folder / 'mpf_copy.jww')
+        self.assertEqual((self.folder / 'mpf_copy.jww').read_bytes(), path.read_bytes())
+        document.add_line((0, 0), (5, 5))
+        document.save(self.folder / 'mpf_edited.jww')
+        edited = CadDocument.open(self.folder / 'mpf_edited.jww')
+        self.assertEqual(edited.embedded_images, document.embedded_images)
+        # The other formats: kept byte for byte and noted in the same way.
+        tif = raw_image('s_tif_a')
+        first, = struct.unpack_from('<I', tif, 4)
+        count, = struct.unpack_from('<H', tif, first)
+        body = tif + (b'' if len(tif) % 2 else b'\0')
+        odd_tif = body[:4] + struct.pack('<I', len(body)) + body[8:] + tif[first:first + 2 + 12 * count + 4]
+        for number, (name, raw, trailing) in enumerate((('x.png.gz', raw_image('s_png_a') + bytes(5), 5),
+                                    ('x.gif.gz', raw_image('s_gif_a') + bytes(5), 5),
+                                    ('x.bmp.gz', raw_image('a1') + bytes(5), 5),
+                                    ('x.bmp.gz', raw_image('s_bmp_rle8') + bytes(4), 4),
+                                    ('x.tif.gz', odd_tif, 0))):
+            with self.subTest(name=name, trailing=trailing):
+                path = self.write(f'noted{number}.jww', drawing([(name, gz(raw))]))
+                image, = CadDocument.open(path).embedded_images
+                self.assertEqual((image['trailing_bytes'], image['verified']), (trailing, False))
+                self.assertTrue(image['notes'])
+                CadDocument.open(path).save(self.folder / f'noted{number}_copy.jww')
+                self.assertEqual((self.folder / f'noted{number}_copy.jww').read_bytes(), path.read_bytes())
+        for sample in ('a1', 'a3', 's_png_a'):  # Jw_cad samples have nothing after the end
+            with self.subTest(sample=sample):
+                self.assertEqual([(i['trailing_bytes'], i['notes']) for i in CadDocument.open(fixture(sample)).embedded_images],
+                                 [(0, ())])
+
     def test_dangling_reference_rules(self):
         # The synthetic text points to 'synthetic_image.jpg', which is not embedded here (already dangling).
         path = self.write('dangling.jww', drawing([('other.bmp.gz', gz(bmp()))]))
@@ -275,7 +313,46 @@ class ImageContainerTests(TempDirTestCase):
 
 class ImageFormatTests(unittest.TestCase):
     def check(self, kind, raw):
-        return image_module.CHECKS[kind](raw)
+        notes = []
+        shape = image_module.CHECKS[kind](raw, notes)
+        shape['notes'] = notes
+        return shape
+
+    def noted(self, kind, raw, words, trailing=0):
+        """Accepted with a note (not rejected): bytes after the end of the format and similar."""
+        shape = self.check(kind, raw)
+        self.assertTrue(any(words in note for note in shape['notes']), shape['notes'])
+        self.assertEqual(shape.get('trailing', 0), trailing)
+        return shape
+
+    def test_bytes_after_the_end_are_accepted_with_a_note(self):
+        jpeg, png_a, gif, tif = raw_image('a3'), raw_image('s_png_a'), raw_image('s_gif_a'), raw_image('s_tif_a')
+        self.noted('JPEG', jpeg + bytes(7), '7 bytes after the JPEG end marker', 7)
+        mpf = self.noted('JPEG', jpeg + raw_image('a4', 1), 'another JPEG follows', len(raw_image('a4', 1)))
+        self.assertEqual(mpf['key'], ('SOF0', 8, 3))
+        self.noted('PNG', png_a + b'\0\0', '2 bytes after the PNG IEND chunk', 2)
+        self.noted('GIF', gif + b'\0', '1 bytes after the GIF trailer', 1)
+        good = bmp()
+        self.noted('BMP', good + bytes(6), '6 bytes after the BMP pixel data', 6)
+        self.noted('BMP', good[:2] + struct.pack('<I', 1) + good[6:], 'file size field is 1')
+        rle = raw_image('s_bmp_rle8')
+        self.noted('BMP', rle + bytes(4), '4 bytes after the BMP pixel data', 4)
+        sized = bytearray(rle)
+        struct.pack_into('<I', sized, 34, 5)
+        self.noted('BMP', bytes(sized), 'image size field is 5')
+        # TIFF: a directory at an odd offset (TIFF 6.0 asks for an even one; some writers ignore it).
+        # The directory is copied to an odd offset at the end; its values still point to the same data.
+        first, = struct.unpack_from('<I', tif, 4)
+        count, = struct.unpack_from('<H', tif, first)
+        body = tif + (b'' if len(tif) % 2 else b'\0')
+        odd = body[:4] + struct.pack('<I', len(body)) + body[8:] + tif[first:first + 2 + 12 * count + 4]
+        shape = self.noted('TIFF', odd, f'odd offset {len(body)}')
+        self.assertEqual(shape['key'], ('II', 5, 4))
+        # Still rejected: the format itself cannot be read to its end.
+        self.bad('JPEG', jpeg[:-1], 'truncated')
+        self.bad('PNG', png_a[:-1], 'truncated')
+        self.bad('GIF', gif[:-1], 'truncated')
+        self.bad('BMP', good[:-1], 'pixel data is truncated')
 
     def bad(self, kind, raw, words):
         with self.assertRaises(ValueError) as caught:
@@ -299,12 +376,12 @@ class ImageFormatTests(unittest.TestCase):
         for name in ('s_bmp_rle8', 's_bmp_rle4', 's_bmp_v5header', 's_bmp_mono'):
             self.check('BMP', raw_image(name))
         good = bmp()
-        self.bad('BMP', good[:2] + struct.pack('<I', 1) + good[6:], 'file size field')
+        self.assertEqual(self.check('BMP', good)['trailing'], 0)
         self.bad('BMP', good[:6] + b'\1\0' + good[8:], 'reserved')
         self.bad('BMP', bmp(header=40)[:14] + struct.pack('<I', 20) + good[18:], 'header size 20')
         self.bad('BMP', bmp(bits=24)[:28] + struct.pack('<H', 3) + good[30:], 'bit count 3')
         self.bad('BMP', bmp(bits=24, compression=1), 'compression 1 with 24 bits')
-        self.bad('BMP', bmp(pixels=bytes(20)), 'pixel data size')
+        self.bad('BMP', bmp(pixels=bytes(20)), 'pixel data is truncated')
         rle = raw_image('s_bmp_rle8')
         self.bad('BMP', rle[:-2] + b'\x00\x00', 'truncated')
         long_run = bytearray(rle)
@@ -320,7 +397,6 @@ class ImageFormatTests(unittest.TestCase):
         for name in ('a3', 's_jpg_progressive', 's_jpg_gray', 's_jpg_cmyk'):
             self.check('JPEG', raw_image(name))
         jpeg = raw_image('a3')
-        self.bad('JPEG', jpeg + b'\0', 'after the JPEG end marker')
         self.bad('JPEG', jpeg[:-2], 'truncated')
         sof = jpeg.index(b'\xff\xc0')
         extended = jpeg[:sof + 1] + b'\xc1' + jpeg[sof + 2:]
@@ -339,7 +415,6 @@ class ImageFormatTests(unittest.TestCase):
                 shape = self.check('PNG', png(color, depth, extra_chunks=[(b'tEXt', b'k\0v')]))
                 self.assertEqual(shape['key'], (color, depth))
         good = png()
-        self.bad('PNG', good + b'\0', 'after the PNG IEND')
         self.bad('PNG', good[:20] + bytes([good[20] ^ 1]) + good[21:], 'CRC')
         self.bad('PNG', png(extra_chunks=[(b'ABCD', b'')]), 'unknown critical')
         self.bad('PNG', png(2, 4), 'header values')
@@ -350,7 +425,6 @@ class ImageFormatTests(unittest.TestCase):
         self.assertEqual(self.check('GIF', gif)['key'], ('GIF89a', 1))
         self.assertEqual(self.check('GIF', b'GIF87a' + gif[6:])['key'], ('GIF87a', 1))
         self.bad('GIF', gif[:-1], 'truncated')
-        self.bad('GIF', gif + b'\0', 'after the GIF trailer')
 
     def test_bmp_v5_with_an_embedded_profile(self):
         base = bytearray(bmp(header=124))
@@ -359,7 +433,19 @@ class ImageFormatTests(unittest.TestCase):
         struct.pack_into('<II', base, 14 + 112, len(base) - 14, len(profile))
         data = bytes(base) + profile
         data = data[:2] + struct.pack('<I', len(data)) + data[6:]
-        self.assertEqual(self.check('BMP', data)['key'], (124, 24, 0, False))
+        exact = self.check('BMP', data)
+        self.assertEqual((exact['key'], exact['notes'], exact['trailing']), ((124, 24, 0, False), [], 0))
+
+        def with_profile(gap=0, after=b'', start=None):
+            raw = bytearray(bmp(header=124))
+            struct.pack_into('<I', raw, 14 + 56, 0x4D424544)
+            struct.pack_into('<II', raw, 14 + 112, (len(raw) + gap if start is None else start) - 14, len(profile))
+            out = bytes(raw) + bytes(gap) + profile + after
+            return out[:2] + struct.pack('<I', len(out)) + out[6:]
+        self.noted('BMP', with_profile(gap=4), '4 bytes between the BMP pixel data and the color profile')
+        self.noted('BMP', with_profile(after=bytes(3)), '3 bytes after the BMP color profile', 3)
+        pixels_start, = struct.unpack_from('<I', data, 10)
+        self.bad('BMP', with_profile(start=pixels_start + 1), 'overlaps the color profile')
         wrong = bytearray(data)
         struct.pack_into('<I', wrong, 14 + 56, 0x73524742)  # LCS_sRGB has no profile
         self.bad('BMP', bytes(wrong), 'without a profile')

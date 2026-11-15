@@ -8,7 +8,7 @@
 
 - 同梱の画像が複数の図面と、BMP（24ビット以外、RLE、上から下、情報部の大きさ違いなど）・JPEG・PNG・GIF・TIFFの画像を同梱した図面を、開いて保存できるようになりました（Issue #19）。
   - Jw_cad 10.03.6は、画像を変換しないで、元のファイルのまま同梱します。jwwkitは、画像の区間を原本のバイトのまま保ち、作り直しません。
-  - 画像の入れ物（名前、大きさの欄、gzip）は厳しく確かめ、中身はそれぞれの形式の決まりどおりに最後まで読めることを確かめます。壊れた画像は `Invalid embedded image:`、5つの形式以外と、圧縮しない同梱、BMPの中にJPEG・PNGを入れる圧縮（BI_JPEG・BI_PNG・BI_ALPHABITFIELDS）は `Embedded image unverified:` で拒否します。
+  - 画像の入れ物（名前、大きさの欄、gzip）は厳しく確かめ、中身はそれぞれの形式の決まりどおりに最後まで読めることを確かめます。壊れた画像は `Invalid embedded image:`、5つの形式以外と、圧縮しない同梱、BMPの中にJPEG・PNGを入れる圧縮（BI_JPEG・BI_PNG・BI_ALPHABITFIELDS）は `Embedded image unverified:` で拒否します。形式の終わりの後ろの余り（JPEGのEOIの後ろに続く別の画像など、スマートフォンの写真によくある形）は拒否せず、`trailing_bytes` と `notes` に記録して `verified` を偽にします。
   - 画像の大きさの上限を、1枚50MBから128MBに広げ、図面ごとの合計512MBと、枚数256枚の上限を足しました。
   - `CadDocument.embedded_images` で、同梱の画像の形と、Jw_cadの出力として確かめた形か（`verified`）を読めます。集計（`jwwkit summarize`、`CadDocument.summary`）にも `embedded_images` の欄を足しました（画像のない図面では空の一覧）。
   - **変わる点：** v700の図面で、同梱されていない画像の名前を指す画像の文字（`^@BM%temp%…`）が新しくできる保存は、拒否するようになりました。これまでは、画像が1枚の図面で、`set_text` などでそういう文字を作っても保存できていました。原本にすでにある、同梱されていない画像を指す文字は、そのまま保存できますが、複写して増やすと拒否します。

@@ -5,6 +5,12 @@ Jw_cad 10.03.6 embeds the original image file unchanged (#19), so the inner file
 its format's published specification (BMP: Microsoft bitmap structures; JPEG: ITU-T T.81; PNG: W3C
 PNG specification; GIF: GIF89a specification; TIFF: TIFF 6.0). Pixels are never decoded; only
 structure is walked. ``verified`` marks shapes seen in Jw_cad output (samples or real drawings).
+
+An image is rejected only when its format cannot be read from start to end. Bytes after the end of the
+format (JPEG EOI, PNG IEND, GIF trailer, BMP pixel data) are common in real files (for example the extra
+images of a JPEG MPF file), so they are accepted: the count goes to ``trailing_bytes`` and a short reason
+to ``notes``. So do a BMP file size field that differs from the file, a BMP run-length image size field
+that differs from the data, and a TIFF directory at an odd offset. An image with notes is not verified.
 """
 import hashlib
 import struct
@@ -83,14 +89,16 @@ def read_image_trailer(cursor):
         if EXTENSIONS[extension] != kind:
             raise invalid(f'the name extension .{extension} does not match the {kind} content')
         try:
-            shape = CHECKS[kind](raw)
+            notes = []
+            shape = CHECKS[kind](raw, notes)
         except (IndexError, KeyError, struct.error) as exc:
             raise invalid(f'{kind} structure is inconsistent') from exc
         images.append(dict(identifier=identifier, size_offset=size_offset, gzip_offset=gzip_offset,
                            compressed_size=compressed_size, format=kind, width=shape['width'],
                            height=shape['height'], bits=shape.get('bits'), raw_size=len(raw),
                            sha256=hashlib.sha256(raw).hexdigest(), shape=shape['key'],
-                           verified=shape['key'] in VERIFIED_SHAPES[kind]))
+                           trailing_bytes=shape.get('trailing', 0), notes=tuple(notes),
+                           verified=shape['key'] in VERIFIED_SHAPES[kind] and not notes))
     return images
 
 
@@ -113,13 +121,22 @@ def _need(data, end, what):
         raise invalid(f'{what} is truncated')
 
 
+def _trailing(data, end, what, notes, shape):
+    """Bytes after the end of the format: accepted, counted and noted."""
+    extra = len(data) - end
+    if extra:
+        notes.append(f'{extra} bytes after the {what}')
+    shape['trailing'] = extra
+    return shape
+
+
 # --- BMP (Microsoft bitmap file and header structures) ---
-def check_bmp(b):
+def check_bmp(b, notes):
     _need(b, 18, 'BMP header')
     file_size, reserved1, reserved2, offset = struct.unpack_from('<IHHI', b, 2)
     dib, = struct.unpack_from('<I', b, 14)
     if file_size != len(b):
-        raise invalid('BMP file size field does not match')
+        notes.append(f'BMP file size field is {file_size}, the file has {len(b)} bytes')
     if reserved1 or reserved2:
         raise invalid('BMP reserved fields are not zero')
     if dib not in (12, 40, 52, 56, 64, 108, 124):
@@ -157,27 +174,33 @@ def check_bmp(b):
     table_end = 14 + dib + masks + colors * entry
     if offset < table_end:
         raise invalid('BMP pixel offset overlaps the header or color table')
-    end = len(b)
+    end, profile_end = len(b), None
     if dib == 124:  # an embedded color profile may follow the pixels
         profile_offset, profile_size = struct.unpack_from('<II', b, 14 + 112)
         if profile_size:
             if struct.unpack_from('<I', b, 14 + 56)[0] not in (0x4D424544, 0x4C494E4B):  # 'MBED', 'LINK'
                 raise invalid('BMP profile fields are set for a color space without a profile')
             start = 14 + profile_offset
-            if start + profile_size != len(b) or start < offset:
-                raise invalid('BMP color profile data is not at the end of the file')
-            end = start
+            if start < offset:
+                raise invalid('BMP color profile data overlaps the pixel offset')
+            _need(b, start + profile_size, 'BMP color profile data')
+            end, profile_end = start, start + profile_size
     if compression in (1, 2):
         stop = _walk_rle(b, offset, end, width, rows, compression == 1)
         if image_size and stop - offset != image_size:
-            raise invalid('BMP image size field does not match the run-length data')
-        if stop != end:
-            raise invalid('data after the BMP run-length data')
+            notes.append(f'BMP image size field is {image_size}, the run-length data has {stop - offset} bytes')
     else:
         stride = ((width * bits + 31) // 32) * 4
-        if offset + stride * rows != end:
-            raise invalid('BMP pixel data size does not match')
-    return dict(width=width, height=rows, bits=bits, key=(dib, bits, compression, top_down))
+        stop = offset + stride * rows
+        if stop > end:
+            raise invalid('BMP pixel data is truncated' if profile_end is None
+                          else 'BMP pixel data overlaps the color profile')
+    shape = dict(width=width, height=rows, bits=bits, key=(dib, bits, compression, top_down))
+    if profile_end is None:
+        return _trailing(b, stop, 'BMP pixel data', notes, shape)
+    if stop != end:
+        notes.append(f'{end - stop} bytes between the BMP pixel data and the color profile')
+    return _trailing(b, profile_end, 'BMP color profile', notes, shape)
 
 
 def _walk_rle(b, pos, end, width, height, eight):
@@ -220,7 +243,7 @@ SOF_NAMES = {0xc0: 'SOF0', 0xc1: 'SOF1', 0xc2: 'SOF2', 0xc3: 'SOF3', 0xc5: 'SOF5
              0xc9: 'SOF9', 0xca: 'SOF10', 0xcb: 'SOF11', 0xcd: 'SOF13', 0xce: 'SOF14', 0xcf: 'SOF15'}
 
 
-def check_jpeg(b):
+def check_jpeg(b, notes):
     pos, frame, scans, n = 2, None, 0, len(b)
     while True:
         _need(b, pos + 2, 'JPEG marker')
@@ -234,10 +257,10 @@ def check_jpeg(b):
         if marker == 0xd9:
             if frame is None or not scans:
                 raise invalid('JPEG ends without a frame and a scan')
-            if pos != n:
-                raise invalid('data after the JPEG end marker')
-            return dict(width=frame[1], height=frame[2], bits=frame[0],
-                        key=(frame[3], frame[0], frame[4]))
+            shape = dict(width=frame[1], height=frame[2], bits=frame[0], key=(frame[3], frame[0], frame[4]))
+            if b[pos:pos + 3] == b'\xff\xd8\xff':
+                notes.append('another JPEG follows the end marker (as in a multi-picture file)')
+            return _trailing(b, pos, 'JPEG end marker', notes, shape)
         if marker in (0x01,) or 0xd0 <= marker <= 0xd7:
             continue  # TEM; RSTn outside a scan carry no data
         if marker < 0xc0 or marker == 0xd8:
@@ -279,7 +302,7 @@ def check_jpeg(b):
 PNG_DEPTHS = {0: (1, 2, 4, 8, 16), 2: (8, 16), 3: (1, 2, 4, 8), 4: (8, 16), 6: (8, 16)}
 
 
-def check_png(b):
+def check_png(b, notes):
     pos, chunks, header, seen_idat, idat_done, palette = 8, 0, None, False, False, False
     while True:
         _need(b, pos + 12, 'PNG chunk')
@@ -318,9 +341,8 @@ def check_png(b):
                 raise invalid('PNG IEND is misplaced')
             if header[3] == 3 and not palette:
                 raise invalid('PNG palette image without a palette')
-            if pos + 12 != len(b):
-                raise invalid('data after the PNG IEND chunk')
-            return dict(width=header[0], height=header[1], bits=header[2], key=(header[3], header[2]))
+            shape = dict(width=header[0], height=header[1], bits=header[2], key=(header[3], header[2]))
+            return _trailing(b, pos + 12, 'PNG IEND chunk', notes, shape)
         elif kind[0] < 97:  # an unknown critical chunk (upper-case first letter)
             raise invalid(f'unknown critical PNG chunk {name}')
         if seen_idat and name != 'IDAT':
@@ -330,7 +352,7 @@ def check_png(b):
 
 
 # --- GIF (GIF89a specification; GIF87a is its subset) ---
-def check_gif(b):
+def check_gif(b, notes):
     _need(b, 13, 'GIF screen descriptor')
     width, height, flags = struct.unpack_from('<HHB', b, 6)
     pos = 13 + (3 * (2 << (flags & 7)) if flags & 0x80 else 0)
@@ -341,9 +363,8 @@ def check_gif(b):
         if block == 0x3b:
             if not images:
                 raise invalid('GIF has no image')
-            if pos + 1 != len(b):
-                raise invalid('data after the GIF trailer')
-            return dict(width=width, height=height, bits=None, key=(b[:6].decode('ascii'), images))
+            shape = dict(width=width, height=height, bits=None, key=(b[:6].decode('ascii'), images))
+            return _trailing(b, pos + 1, 'GIF trailer', notes, shape)
         if block == 0x21:
             _need(b, pos + 2, 'GIF extension')
             pos = _gif_sub_blocks(b, pos + 2)
@@ -374,7 +395,7 @@ def _gif_sub_blocks(b, pos):
 TIFF_TYPE_SIZES = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2, 9: 4, 10: 8, 11: 4, 12: 8}
 
 
-def check_tiff(b):
+def check_tiff(b, notes):
     order = '<' if b[:2] == b'II' else '>'
     _need(b, 8, 'TIFF header')
     offset, = struct.unpack_from(order + 'I', b, 4)
@@ -383,8 +404,10 @@ def check_tiff(b):
         if offset in seen or len(seen) >= 1024:
             raise invalid('TIFF image directories loop')
         seen.add(offset)
-        if offset < 8 or offset % 2:
+        if offset < 8:
             raise invalid('TIFF directory offset is not valid')
+        if offset % 2:
+            notes.append(f'TIFF directory at the odd offset {offset}')
         _need(b, offset + 2, 'TIFF directory')
         count, = struct.unpack_from(order + 'H', b, offset)
         _need(b, offset + 2 + 12 * count + 4, 'TIFF directory')

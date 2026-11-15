@@ -563,8 +563,8 @@ class CadDocument:
 
     @property
     def embedded_images(self) -> tuple[dict[str, Any], ...]:
-        """同梱の画像の形（名前・形式・幅・高さ・大きさ・SHA256）。verifiedはJw_cadの出力として確かめた形か。"""
-        keys = ('identifier', 'format', 'width', 'height', 'bits', 'raw_size', 'compressed_size', 'sha256', 'verified')
+        """同梱の画像の形（名前・形式・幅・高さ・大きさ・SHA256）。verifiedはJw_cadの出力として確かめた形か。trailing_bytesとnotesは、形式の終わりの後ろの余りなど、受け入れた注意。"""
+        keys = ('identifier', 'format', 'width', 'height', 'bits', 'raw_size', 'compressed_size', 'sha256', 'trailing_bytes', 'notes', 'verified')
         return tuple({key: image[key] for key in keys}
                      for image in (self._source_records or {}).get('images', ()))
 
