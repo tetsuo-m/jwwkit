@@ -14,7 +14,7 @@ import math
 from pathlib import Path
 from typing import Any, Mapping
 
-from jwwkit.reader.archive import is_read_only_version, read_document
+from jwwkit.reader.archive import _read_document_with, is_read_only_version, read_document, read_records_bytes
 from jwwkit.model.common_entities import CadEntity, CadBlockDefinition, model_entity, _owned_entity
 
 
@@ -50,10 +50,15 @@ class CadDocument:
         """strict既定で原ヘッダー・本文を保持する。rebro_schema0と古い版（v230/v300/v351/v420）は読取り/無編集別名保存のみ。v600でクラスの版700（今のJw_cad）は、既にあるクラスの編集だけ保存できる。"""
         source = Path(path)
         from jwwkit.writer.preserved import _capture_source, keeps_class_declarations
-        # The source snapshot (source_records) and the model come from two separate reads, so they
-        # share no containers; neither needs a deep copy (#25).
+        # The source snapshot (source_records) and the model come from two separate reads of the
+        # same bytes, so they share no containers and neither needs a deep copy (#25). The checks
+        # (re-serialisation, ezjww cross-check) run on the first read, which becomes the snapshot;
+        # the model is read from the same in-memory bytes only after ezjww's result is gone.
         source_bytes, source_records = _capture_source(source, schema_profile=schema_profile)
-        parsed = read_document(source, schema_profile=schema_profile)
+        parsed = _read_document_with(source, source_records)
+        model_records = read_records_bytes(source_bytes, schema_profile=schema_profile)
+        parsed['entities'], parsed['block_defs'] = model_records['entities'], model_records['block_defs']
+        del model_records
         if source.read_bytes() != source_bytes:
             raise ValueError('読込み中に原ファイルが変更されました。再度開いてください')
         metadata_indices = {item['entity_index'] for item in parsed['metadata_settings']}
