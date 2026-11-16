@@ -367,7 +367,20 @@ def read_document(path, *, schema_profile='strict'):
         if has_text(native['entities']) or any(has_text(d['entities']) for d in native['block_defs']):
             native['diagnostics'].append(f'Exact text/embedded attributes unverified: {exc}')
         return native
+    return _cross_check(native, raw)
 
+
+def _read_document_with(path, raw):
+    """read_document for records the caller has already read from the file's bytes (#25).
+
+    CadDocument.open passes the read it made for the re-serialisation check, so the cross-check
+    runs on exactly the records it keeps as the source snapshot. ezjww still reads the file.
+    """
+    return _cross_check(read_native_document(path), raw)
+
+
+def _cross_check(native, raw):
+    """Check jwwkit's records against ezjww's result; return ezjww's result with jwwkit's records."""
     def check(a, b):
         if isinstance(a, dict):
             for k, v in a.items():

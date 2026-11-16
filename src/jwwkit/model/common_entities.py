@@ -20,6 +20,24 @@ def model_entity(raw, *, source_index=None):
         {k:v for k,v in raw.items() if k not in ('type','base')},copy.deepcopy(raw),source_index)
 
 
+_IMMUTABLE = (int, float, str, bool, bytes, type(None))
+
+
+def _own(value):
+    return value if type(value) in _IMMUTABLE else copy.deepcopy(value)
+
+
+def _owned_entity(raw, *, source_index=None):
+    """model_entity for a record that the caller owns and nobody else references (#25).
+
+    Used only by CadDocument.open for freshly read records. The record itself becomes the
+    entity's raw record; attributes and geometry get their own copies of every container, so
+    raw, attributes and geometry never share a mutable object (the same as model_entity).
+    """
+    return CadEntity(raw['type'], {k: _own(v) for k, v in raw.get('base', {}).items()},
+        {k: _own(v) for k, v in raw.items() if k not in ('type', 'base')}, raw, source_index)
+
+
 @dataclass(frozen=True)
 class CadBlockDefinition:
     number: int
