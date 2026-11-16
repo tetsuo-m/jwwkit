@@ -85,6 +85,16 @@ def old_extended_counts(parsed):
 
 def capture_source(path, *, schema_profile='strict'):
     """開く時点の原データを捕捉し、本文再直列化の全バイト一致を確認する。"""
+    raw, parsed = _capture_source(path, schema_profile=schema_profile)
+    return raw, copy.deepcopy(parsed)
+
+
+def _capture_source(path, *, schema_profile='strict'):
+    """capture_source without the final deep copy: the caller owns the returned records (#25).
+
+    The records are a fresh read that nothing else references; CadDocument.open keeps them as
+    the source snapshot and never hands them to the public model.
+    """
     source = Path(path)
     raw = source.read_bytes()
     parsed = read_records_bytes(raw, schema_profile=schema_profile)
@@ -112,7 +122,7 @@ def capture_source(path, *, schema_profile='strict'):
             collect_strings(parsed['entities'] + parsed['block_defs'])
             observed = {('utf-16le' if value.startswith(b'\xff\xfe\xff') else 'cp932') for value in string_bytes}
             parsed["body_encoding"] = next(iter(observed)) if len(observed) == 1 else encoding
-            return raw, copy.deepcopy(parsed)
+            return raw, parsed
     # 同じ版でも旧CP932本文と現行UTF-16本文がある。全バイト一致で判定し、
     # 混在など一致しない表現は推測で正規化せず拒否する。
     if body != original:
@@ -126,7 +136,7 @@ def capture_source(path, *, schema_profile='strict'):
             f"source_bytes={len(original)}, serialized_bytes={len(body)}, "
             f"details={serialization_errors}"
         )
-    return raw, copy.deepcopy(parsed)
+    return raw, parsed
 
 
 def entity_record(entity):

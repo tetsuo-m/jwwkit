@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from jwwkit.reader.archive import is_read_only_version, read_document
-from jwwkit.model.common_entities import CadEntity, CadBlockDefinition, model_entity
+from jwwkit.model.common_entities import CadEntity, CadBlockDefinition, model_entity, _owned_entity
 
 
 
@@ -49,8 +49,10 @@ class CadDocument:
     def open(cls, path: str | Path, *, include_metadata: bool = False, schema_profile: str = 'strict') -> "CadDocument":
         """strict既定で原ヘッダー・本文を保持する。rebro_schema0と古い版（v230/v300/v351/v420）は読取り/無編集別名保存のみ。v600でクラスの版700（今のJw_cad）は、既にあるクラスの編集だけ保存できる。"""
         source = Path(path)
-        from jwwkit.writer.preserved import capture_source, keeps_class_declarations
-        source_bytes, source_records = capture_source(source, schema_profile=schema_profile)
+        from jwwkit.writer.preserved import _capture_source, keeps_class_declarations
+        # The source snapshot (source_records) and the model come from two separate reads, so they
+        # share no containers; neither needs a deep copy (#25).
+        source_bytes, source_records = _capture_source(source, schema_profile=schema_profile)
         parsed = read_document(source, schema_profile=schema_profile)
         if source.read_bytes() != source_bytes:
             raise ValueError('読込み中に原ファイルが変更されました。再度開いてください')
@@ -59,9 +61,9 @@ class CadDocument:
         for index, raw in enumerate(parsed['entities']):
             if not include_metadata and index in metadata_indices:
                 continue
-            entities.append(model_entity(raw, source_index=index))
+            entities.append(_owned_entity(raw, source_index=index))
         blocks = tuple(CadBlockDefinition(d['number'],d['name'],dict(d['base']),
-                       tuple(model_entity(e) for e in d['entities'])) for d in parsed['block_defs'])
+                       tuple(_owned_entity(e) for e in d['entities'])) for d in parsed['block_defs'])
         return cls(source=source, version=parsed['header']['version'],
                    header=parsed['header'], entities=tuple(entities),
                    metadata_settings=tuple(parsed['metadata_settings']),
