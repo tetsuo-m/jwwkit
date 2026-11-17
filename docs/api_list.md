@@ -488,7 +488,7 @@ read_document(path, *, schema_profile='strict')
 
 対応範囲・拒否条件：strict既定、schema0等のクラススキーマ違反は拒否（観測済みの組のv600・クラスの版700と、古い版の観測済みの組は受け付け、混在は拒否）。ezjwwが要素を0個で返しjwwkitが読めた場合は、照合できないので理由を示して拒否。明示schema_profile="rebro_schema0"は観測済み3クラス限定、失敗時のフォールバックなし。それ以外のstrict本文読込み失敗では限定フォールバックと診断を返す場合があり、診断は安全な編集保存を保証しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L355)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L361)。
 
 ### `jwf_setting_catalog`
 
