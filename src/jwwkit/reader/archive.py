@@ -416,6 +416,7 @@ def _cross_check(native, raw):
             f'definitions, but ezjww returns none above {EZJWW_BLOCK_DEFINITION_LIMIT}, '
             'so they cannot be cross-checked')
     check(raw['block_defs'], native['block_defs'])
+    del check  # check calls itself: drop the closure cycle (#29)
     native['entities'] = raw['entities']
     native['block_defs'] = raw['block_defs']
     return native

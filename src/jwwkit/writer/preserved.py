@@ -69,6 +69,7 @@ def dangling_image_references(parsed):
                     found[name] += 1
     walk(parsed['entities'])
     walk(parsed['block_defs'])
+    del walk  # walk calls itself: drop the closure cycle (#29)
     return found
 
 
@@ -120,6 +121,7 @@ def _capture_source(path, *, schema_profile='strict'):
                     elif record['type'] == 'DIMENSION':
                         collect_strings([record['text']])
             collect_strings(parsed['entities'] + parsed['block_defs'])
+            del collect_strings  # it calls itself: drop the closure cycle (#29)
             observed = {('utf-16le' if value.startswith(b'\xff\xfe\xff') else 'cp932') for value in string_bytes}
             parsed["body_encoding"] = next(iter(observed)) if len(observed) == 1 else encoding
             return raw, parsed
@@ -176,20 +178,23 @@ def _entity_record_for_save(entity):
     return result
 
 
+def _finite(value, location):
+    """Reject a non-finite float anywhere in a record (module level: no closure cycle, #29)."""
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError(f'非有限の値: element={location}')
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _finite(item, f'{location}.{key}')
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            _finite(item, f'{location}[{index}]')
+
+
 def validate_records(records, originals, label, defined_numbers):
     """保存対象の非有限値・未解決参照と未検証の円ソリッド表現を拒否する。"""
-    def finite(value, location):
-        if isinstance(value, float) and not math.isfinite(value):
-            raise ValueError(f'非有限の値: element={location}')
-        if isinstance(value, dict):
-            for key, item in value.items():
-                finite(item, f'{location}.{key}')
-        elif isinstance(value, list):
-            for index, item in enumerate(value):
-                finite(item, f'{location}[{index}]')
     for index, record in enumerate(records):
         location = f'{label}[{index}]'
-        finite(record, location)
+        _finite(record, location)
         if record['type'] == 'CIRCLE_SOLID':
             if not any(record == item for item in originals if item['type'] == 'CIRCLE_SOLID'):
                 from jwwkit.model.circular_solid import validate_circular_solid
