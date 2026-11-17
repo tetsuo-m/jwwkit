@@ -304,6 +304,7 @@ class CorpusCheckTests(unittest.TestCase):
                                                                     full["records"][name]["status"]))
         summary = (self.temp / "大" / "summary.md").read_text(encoding="utf-8")
         self.assertIn(f"大きさで絞った対象: {limit + 1:,} バイト以上", summary)
+        self.assertNotIn("抜き出し", summary)  # every drawing in the range is checked
         self.assertNotIn("大きさで絞った", (self.temp / "全部" / "summary.md").read_text(encoding="utf-8"))
         self.assertEqual(tree_snapshot(self.source), self.before)
 
@@ -327,6 +328,30 @@ class CorpusCheckTests(unittest.TestCase):
             self.run_tool("--max-bytes", str(limit + 1), resume=True, output=small_output)
         with self.assertRaises(corpus_check.UsageError):
             self.run_tool("--min-bytes", "0", resume=True, output=small_output)
+
+    def test_resume_of_an_output_folder_made_before_the_size_options(self):
+        self.run_tool()
+        mapping_path = self.output / "対応表.json"
+        mapping = json.loads(mapping_path.read_text(encoding="utf-8"))
+        for key in ("min_bytes", "max_bytes"):
+            del mapping["settings"][key]
+        mapping_path.write_text(json.dumps(mapping, ensure_ascii=False), encoding="utf-8")
+        removed = self.output / "results" / "図面001.json"
+        removed.unlink()
+        result = self.run_tool(resume=True)  # no size option: the folder keeps "no range"
+        self.assertEqual(result["processed"], 1)
+        self.assertTrue(removed.exists())
+        with self.assertRaises(corpus_check.UsageError):
+            self.run_tool("--max-bytes", "1000000", resume=True)
+
+    def test_size_range_with_no_drawing_warns(self):
+        lines = []
+        args = corpus_check.parse_args(["--source", str(self.source), "--output", str(self.output),
+                                        "--min-bytes", str(10 ** 12)])
+        result = corpus_check.run(args, log=lines.append)
+        self.assertEqual(result["records"], {})
+        self.assertTrue(any("1 件もありません" in line for line in lines))
+        self.assertEqual(tree_snapshot(self.source), self.before)
 
     def test_size_filter_refuses_impossible_ranges(self):
         with self.assertRaises(corpus_check.UsageError):

@@ -576,7 +576,9 @@ def build_summary(mapping: dict, records: dict[str, dict], unchanged_check: dict
              f"- 見つけた図面: {found} 件（.jww {sum(len(i['paths']) for i in mapping['items'] if i['kind'] == 'jww')}、"
              f".jws {sum(len(i['paths']) for i in mapping['items'] if i['kind'] == 'jws')}）",
              f"- 中身が異なる図面: {len(mapping['items'])} 件",
-             f"- 今回の対象: {len(items)} 件" + ("（抜き出し）" if len(items) != len(mapping["items"]) else ""),
+             # 「抜き出し」は --sample で減らしたときだけ（大きさで絞っただけなら、その範囲の全件）
+             f"- 今回の対象: {len(items)} 件" + ("（抜き出し）" if len(items) != len(within_size(
+                 mapping["items"], mapping["settings"].get("min_bytes"), mapping["settings"].get("max_bytes"))) else ""),
              *([f"- 大きさで絞った対象: {size_range(mapping['settings'])}"]
                if size_range(mapping['settings']) else []),
              f"- 調べ終わった: {len(done)} 件",
@@ -828,6 +830,8 @@ def run(args: argparse.Namespace, log=print) -> dict:
         write_json_atomic(output / MAPPING_NAME, mapping)
         log(f"見つけた図面 {sum(len(i['paths']) for i in items)} 件、中身が異なるもの {len(items)} 件、"
             f"今回の対象 {len(mapping['selected'])} 件")
+        if not mapping["selected"] and items and size_range(settings):
+            log(f"注意: 大きさの指定（{size_range(settings)}）に入る図面が 1 件もありません。指定を確かめてください")
     if mapping["environment"]["jwwkit"] != jwwkit_info():
         raise UsageError("前回と jwwkit の版または場所が違うため再開できません")
     info = mapping["environment"]["jwwkit"]
