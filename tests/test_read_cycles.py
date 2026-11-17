@@ -41,8 +41,9 @@ def is_read_object(item):
 def read_objects_left_after_rejection(function):
     """Reader objects still waiting for the collector after a rejected read.
 
-    The exception's traceback and frames can form cycles of their own, and their number varies
-    between Python versions, so only objects the reader made are counted.
+    Only objects the reader made are counted. Today the rejection path leaves no traceback cycle,
+    so the count is 0; if one appears, it would hold the reader's frames and objects, and this
+    check fails so that it is noticed.
     """
     gc.collect()
     enabled = gc.isenabled()
