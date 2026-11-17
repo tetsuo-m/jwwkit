@@ -10,6 +10,7 @@ import dataclasses
 import math
 import shutil
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -141,6 +142,24 @@ class SaveIsolationTests(unittest.TestCase):
                 checked.add(name)
         # Every kind of edit reached a save on at least one sample.
         self.assertEqual(checked, set(EDITS))
+
+    def test_attributes_that_are_not_a_plain_dict_are_copied_into_the_record(self):
+        # Only an exact dict is shared with the save; any other mapping goes through dict(...).
+        for path in [Path(p) for p in self.samples()]:
+            document = CadDocument.open(path)
+            if is_read_only_version(document.version) or document._readonly_state is not None or not document.entities:
+                continue
+            with self.subTest(path=path.name), tempfile.TemporaryDirectory() as folder:
+                proxies = tuple(dataclasses.replace(e, attributes=types.MappingProxyType(dict(e.attributes)))
+                                for e in document.entities)
+                document.entities = proxies
+                before = document_shape(document)
+                target = Path(folder) / 'proxy.jww'
+                document.save(target)
+                self.assertEqual(target.read_bytes(), path.read_bytes())
+                self.assertEqual(document_shape(document), before)
+                self.assertTrue(all(a is b for a, b in zip((e.attributes for e in document.entities),
+                                                          (e.attributes for e in proxies))))
 
     def assert_rejected_then_saved(self, document, spoil, restore, expected):
         before = document_shape(document)
