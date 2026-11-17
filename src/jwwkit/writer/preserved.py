@@ -267,18 +267,20 @@ def _document_bytes(document):
     entities.extend(appended)
     definitions = []
     originals = {item["number"]: item for item in original["block_defs"]}
+    # Shallow copies (#27): only top-level keys are written below (is_referenced, and number, name,
+    # base and entities through update); the nested base and entities are replaced, not changed.
     for definition in document.block_definitions:
         if definition.number in originals:
-            record = copy.deepcopy(originals[definition.number])
+            record = copy.copy(originals[definition.number])
         elif definition.number in document._new_block_records:
-            record = copy.deepcopy(document._new_block_records[definition.number])
+            record = copy.copy(document._new_block_records[definition.number])
             record['is_referenced'] = any(e['type'] == 'BLOCK' and e['def_number'] == definition.number for e in entities)
             if any(e.entity_type == 'BLOCK' for e in definition.entities):
                 raise ValueError('新規定義の入れ子参照は未対応です')
         else:
             raise ValueError(f"追加APIで管理されていないブロック定義: number={definition.number}")
         record.update(number=definition.number, name=definition.name,
-                      base=copy.deepcopy(dict(definition.attributes)),
+                      base=dict(definition.attributes),
                       entities=[_entity_record_for_save(entity) for entity in definition.entities])
         definitions.append(record)
     numbers = [record['number'] for record in definitions]
