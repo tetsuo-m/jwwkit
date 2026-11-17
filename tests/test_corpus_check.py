@@ -286,6 +286,55 @@ class CorpusCheckTests(unittest.TestCase):
         self.assertIn("道具自身の問題（1 件）", summary)
         self.assertNotIn(SECRET, json.dumps(list(result["records"].values()), ensure_ascii=False))
 
+    def test_size_filter_splits_the_run_into_two_output_folders(self):
+        # Issue #27: small drawings with --jobs 4 and large ones with --jobs 1, in separate folders.
+        full = self.run_tool(output=self.temp / "全部")
+        sizes = {name: record["size"] for name, record in full["records"].items()}
+        limit = sorted(sizes.values())[1]  # at least one drawing on each side
+        small = self.run_tool("--max-bytes", str(limit), output=self.temp / "小")
+        large = self.run_tool("--min-bytes", str(limit + 1), output=self.temp / "大")
+        self.assertTrue(small["records"] and large["records"])
+        self.assertTrue(all(sizes[n] <= limit for n in small["records"]))
+        self.assertTrue(all(sizes[n] > limit for n in large["records"]))
+        # Together they are the full run: same masked names, same results, nothing twice.
+        self.assertFalse(set(small["records"]) & set(large["records"]))
+        self.assertEqual(set(small["records"]) | set(large["records"]), set(full["records"]))
+        for name, record in {**small["records"], **large["records"]}.items():
+            self.assertEqual((record["sha256"], record["status"]), (full["records"][name]["sha256"],
+                                                                    full["records"][name]["status"]))
+        summary = (self.temp / "大" / "summary.md").read_text(encoding="utf-8")
+        self.assertIn(f"大きさで絞った対象: {limit + 1:,} バイト以上", summary)
+        self.assertNotIn("大きさで絞った", (self.temp / "全部" / "summary.md").read_text(encoding="utf-8"))
+        self.assertEqual(tree_snapshot(self.source), self.before)
+
+    def test_resume_with_size_filter_keeps_the_two_runs_apart(self):
+        full = self.run_tool(output=self.temp / "全部")
+        limit = sorted(r["size"] for r in full["records"].values())[1]
+        small_output, large_output = self.temp / "小", self.temp / "大"
+        small = self.run_tool("--max-bytes", str(limit), output=small_output)
+        self.run_tool("--min-bytes", str(limit + 1), output=large_output)
+        large_files = tree_snapshot(large_output / "results")
+        removed = small_output / "results" / f"{sorted(small['records'])[0]}.json"
+        removed.unlink()
+        # Resuming without the size option keeps the previous one; only the removed drawing is redone.
+        again = self.run_tool(resume=True, output=small_output)
+        self.assertEqual(again["processed"], 1)
+        self.assertEqual(set(again["records"]), set(small["records"]))
+        self.assertEqual(sorted(p.stem for p in (small_output / "results").glob("*.json")), sorted(small["records"]))
+        self.assertEqual(tree_snapshot(large_output / "results"), large_files)
+        # A different size option on resume is refused.
+        with self.assertRaises(corpus_check.UsageError):
+            self.run_tool("--max-bytes", str(limit + 1), resume=True, output=small_output)
+        with self.assertRaises(corpus_check.UsageError):
+            self.run_tool("--min-bytes", "0", resume=True, output=small_output)
+
+    def test_size_filter_refuses_impossible_ranges(self):
+        with self.assertRaises(corpus_check.UsageError):
+            self.run_tool("--min-bytes", "10", "--max-bytes", "9")
+        with self.assertRaises(corpus_check.UsageError):
+            self.run_tool("--max-bytes", "-1")
+        self.assertFalse(self.output.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

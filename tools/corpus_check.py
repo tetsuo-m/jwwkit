@@ -5,7 +5,7 @@
 使い方:
     python -B tools/corpus_check.py --source <図面フォルダ> [--source <別のフォルダ>]
         --output <出力フォルダ> [--timeout 120] [--retry-timeout 600] [--jobs 1]
-        [--sample 20] [--resume]
+        [--sample 20] [--min-bytes N] [--max-bytes N] [--resume]
 
 - 図面の原本は読むだけ。書くのは出力フォルダの中だけ。
 - 出力フォルダがリポジトリや図面フォルダの中なら拒否する。
@@ -14,6 +14,8 @@
 - 1件ごとに別のプロセスで調べ、時間の上限を過ぎたら打ち切って次へ進む。
   時間切れのものだけ、長い上限でやり直す。
 - --resume で、中断した出力フォルダの続きから再開する（終わった図面は飛ばす）。
+- --min-bytes / --max-bytes で、大きさ（バイト、両端を含む）で対象を絞る。大きな図面だけを
+  --jobs 1 で流すときなどに、別の出力フォルダで使う（図面の伏せた名前は、絞っても同じ）。
 """
 from __future__ import annotations
 
@@ -433,6 +435,12 @@ def scan_sources(sources: list[Path], output: Path, log=lambda *_: None) -> tupl
     return items, scan_errors
 
 
+def within_size(items: list[dict], min_bytes: int | None, max_bytes: int | None) -> list[dict]:
+    """大きさ（バイト、両端を含む）で絞る。指定がなければ全部。"""
+    return [item for item in items
+            if (min_bytes is None or item["size"] >= min_bytes) and (max_bytes is None or item["size"] <= max_bytes)]
+
+
 def choose_sample(items: list[dict], count: int) -> list[str]:
     """全体から等間隔に選ぶ（同じフォルダに偏らないように）。"""
     if count <= 0 or count >= len(items):
@@ -544,6 +552,15 @@ def _opened(r: dict) -> bool:
             or (r["status"] == "timeout" and r.get("timeout_stage") in ("save", "reload", "hash_after")))
 
 
+def size_range(settings: dict) -> str:
+    """大きさの指定を文にする（指定がなければ空）。"""
+    low, high = settings.get("min_bytes"), settings.get("max_bytes")
+    if low is None and high is None:
+        return ""
+    return "、".join(part for part in ((f"{low:,} バイト以上" if low is not None else ""),
+                                      (f"{high:,} バイト以下" if high is not None else "")) if part)
+
+
 def build_summary(mapping: dict, records: dict[str, dict], unchanged_check: dict | None,
                   interrupted: bool = False) -> str:
     items = [i for i in mapping["items"] if i["name"] in mapping["selected"]]
@@ -560,6 +577,8 @@ def build_summary(mapping: dict, records: dict[str, dict], unchanged_check: dict
              f".jws {sum(len(i['paths']) for i in mapping['items'] if i['kind'] == 'jws')}）",
              f"- 中身が異なる図面: {len(mapping['items'])} 件",
              f"- 今回の対象: {len(items)} 件" + ("（抜き出し）" if len(items) != len(mapping["items"]) else ""),
+             *([f"- 大きさで絞った対象: {size_range(mapping['settings'])}"]
+               if size_range(mapping['settings']) else []),
              f"- 調べ終わった: {len(done)} 件",
              f"- 探すときに読めなかったファイル・フォルダ: {len(mapping.get('scan_errors', []))} 件", ""]
 
@@ -771,6 +790,11 @@ def prepare_output(sources: list[Path], output: Path, resume: bool) -> None:
 def run(args: argparse.Namespace, log=print) -> dict:
     sources = [Path(s).resolve() for s in args.source]
     output = Path(args.output).resolve()
+    for key in ("min_bytes", "max_bytes"):
+        if getattr(args, key) is not None and getattr(args, key) < 0:
+            raise UsageError(f"--{key.replace('_', '-')} は 0 以上を指定してください")
+    if args.min_bytes is not None and args.max_bytes is not None and args.min_bytes > args.max_bytes:
+        raise UsageError("--min-bytes が --max-bytes より大きいです")
     prepare_output(sources, output, args.resume)
     results_dir = output / RESULTS_DIR
     if args.resume:
@@ -781,9 +805,10 @@ def run(args: argparse.Namespace, log=print) -> dict:
             raise UsageError("--resume の図面フォルダが前回と違います")
         settings = mapping["settings"]
         for key, value in (("timeout", args.timeout), ("retry_timeout", args.retry_timeout),
-                           ("sample", args.sample)):
-            if value is not None and value != settings[key]:
-                raise UsageError(f"--resume では前回の設定（{key}={settings[key]}）を使います。"
+                           ("sample", args.sample), ("min_bytes", args.min_bytes), ("max_bytes", args.max_bytes)):
+            # 大きさの指定のない前の出力フォルダは、指定なし（全部）として扱う
+            if value is not None and value != settings.get(key):
+                raise UsageError(f"--resume では前回の設定（{key}={settings.get(key)}）を使います。"
                                  "設定を変えるときは新しい出力フォルダで始めてください")
         log(f"再開します: 対象 {len(mapping['selected'])} 件")
     else:
@@ -792,11 +817,14 @@ def run(args: argparse.Namespace, log=print) -> dict:
         items, scan_errors = scan_sources(sources, output, log)
         settings = dict(timeout=120.0 if args.timeout is None else args.timeout,
                         retry_timeout=600.0 if args.retry_timeout is None else args.retry_timeout,
-                        sample=0 if args.sample is None else args.sample)
+                        sample=0 if args.sample is None else args.sample,
+                        min_bytes=args.min_bytes, max_bytes=args.max_bytes)
         mapping = dict(tool_version=TOOL_VERSION, created=datetime.datetime.now().isoformat(timespec="seconds"),
                        sources=[str(s) for s in sources], settings=settings,
                        environment=dict(jwwkit=jwwkit_info(), python=sys.version.split()[0]),
-                       items=items, selected=choose_sample(items, settings["sample"]), scan_errors=scan_errors)
+                       items=items, selected=choose_sample(within_size(items, args.min_bytes, args.max_bytes),
+                                                           settings["sample"]),
+                       scan_errors=scan_errors)
         write_json_atomic(output / MAPPING_NAME, mapping)
         log(f"見つけた図面 {sum(len(i['paths']) for i in items)} 件、中身が異なるもの {len(items)} 件、"
             f"今回の対象 {len(mapping['selected'])} 件")
@@ -898,6 +926,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--jobs", type=int, default=1,
                         help="同時に調べる件数（既定1。増やすと1件あたりの時間が長く出ることがある）")
     parser.add_argument("--sample", type=int, default=None, help="全体から等間隔に選ぶ件数（既定0で全件）")
+    parser.add_argument("--min-bytes", type=int, default=None,
+                        help="この大きさ（バイト）以上の図面だけを調べる（既定は指定なし）")
+    parser.add_argument("--max-bytes", type=int, default=None,
+                        help="この大きさ（バイト）以下の図面だけを調べる（既定は指定なし）")
     parser.add_argument("--resume", action="store_true", help="中断した出力フォルダの続きから再開する")
     return parser.parse_args(argv)
 
