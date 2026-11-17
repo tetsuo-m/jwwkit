@@ -145,6 +145,7 @@ class SaveIsolationTests(unittest.TestCase):
 
     def test_attributes_that_are_not_a_plain_dict_are_copied_into_the_record(self):
         # Only an exact dict is shared with the save; any other mapping goes through dict(...).
+        saved = 0
         for path in [Path(p) for p in self.samples()]:
             document = CadDocument.open(path)
             if is_read_only_version(document.version) or document._readonly_state is not None or not document.entities:
@@ -160,6 +161,8 @@ class SaveIsolationTests(unittest.TestCase):
                 self.assertEqual(document_shape(document), before)
                 self.assertTrue(all(a is b for a, b in zip((e.attributes for e in document.entities),
                                                           (e.attributes for e in proxies))))
+                saved += 1
+        self.assertGreater(saved, 0)
 
     def assert_rejected_then_saved(self, document, spoil, restore, expected):
         before = document_shape(document)
