@@ -154,6 +154,28 @@ def entity_record(entity):
     return result
 
 
+def _entity_record_for_save(entity):
+    """entity_record without deep copies, for records that only live inside one save (#27).
+
+    The save only reads these records (checks, serialization, read-back comparison) and returns
+    bytes, so the record may share the entity's nested values: a new top-level record, the
+    entity's own source_strings, and its attributes dict as base when that is exactly a dict
+    (any other mapping is copied into a dict, as entity_record does).
+    """
+    if "type" in entity.geometry or "base" in entity.geometry:
+        raise ValueError("Geometry may not override entity type or attributes")
+    result = dict(entity.geometry)
+    source_strings = getattr(entity.raw, 'source_strings', None)
+    if source_strings is not None:
+        from jwwkit.reader.archive import Record
+        result = Record(result)
+        result.source_strings = source_strings
+    result["type"] = entity.entity_type
+    attributes = entity.attributes
+    result["base"] = attributes if type(attributes) is dict else dict(attributes)
+    return result
+
+
 def validate_records(records, originals, label, defined_numbers):
     """保存対象の非有限値・未解決参照と未検証の円ソリッド表現を拒否する。"""
     def finite(value, location):
@@ -221,8 +243,10 @@ def _document_bytes(document):
     metadata = set(document._source_metadata_indices)
     replacements = {}
     appended = []
+    # The records built below share nested values with the document (#27): from here on they are
+    # only read, never written into, and none of them is kept after this function returns.
     for entity in document.entities:
-        record = entity_record(entity)
+        record = _entity_record_for_save(entity)
         source_index = entity.source_index
         if source_index is None:
             document._validate_addition(record)
@@ -255,7 +279,7 @@ def _document_bytes(document):
             raise ValueError(f"追加APIで管理されていないブロック定義: number={definition.number}")
         record.update(number=definition.number, name=definition.name,
                       base=copy.deepcopy(dict(definition.attributes)),
-                      entities=[entity_record(entity) for entity in definition.entities])
+                      entities=[_entity_record_for_save(entity) for entity in definition.entities])
         definitions.append(record)
     numbers = [record['number'] for record in definitions]
     if len(numbers) != len(set(numbers)):
