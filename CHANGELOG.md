@@ -6,6 +6,22 @@
 
 ## [未公開]
 
+### 変わったこと
+
+- 他のCAD（Rebroとみられる）が出力したv700の図面で、点とソリッドの宣言もschema 0になっているものを、`schema_profile="rebro_schema0"` の読取りと、クラス宣言欄の正規化で扱えるようにしました（#36）。
+  - 受け付けるのは、実務図面で観測した形だけです。点は線種1・仮点でない・記号の欄なし、ソリッドは線種1、円のソリッドは線種101で、どちらもRGB指定なし。
+  - 根拠は、公開の説明や見本ではなく、実務図面37件でのjwwkitとezjwwの読みの一致と、損失のない書き直しです。
+  - 寸法・ブロック・点の線種31と49・画像は、今までどおり拒否します。v600は今までどおり線・円弧・文字の3クラスだけです。
+
+### 変わる点・注意
+
+- schema 0の宣言で拒否したときの文の中の、クラスの一覧が変わりました。前は `permits only observed v600/v700 CDataSen/CDataEnko/CDataMoji (read-only)`、今は `permits only observed v600 CDataSen/CDataEnko/CDataMoji and v700 CDataSen/CDataEnko/CDataMoji/CDataTen/CDataSolid (read-only)` です。
+- 正規化の点検・計画の、対象外の宣言の理由の名前が変わりました。前は `outside_observed_three_class_schema0_scope`、今は `outside_observed_schema0_scope` です。この名前を読むプログラムは、直してください。
+
+### 開発用（配布物には入りません）
+
+- `tools/corpus_check.py`：拒否した図面の記録に、クラスの宣言がすべてschema 0か（バイトから調べる）と、正規化の点検の判定を足しました。集計にも件数を出します。`--select` で、SHA256の一覧の図面だけを調べられます。記録の版は4です（版3の出力フォルダは `--resume` で続けられません）。
+
 ## [0.3.1] - 2026-11-19
 
 図面を開く時間が約3割、保存の時間が約2〜3割短くなり、大きな図面を開いて保存するときのメモリが減りました。
