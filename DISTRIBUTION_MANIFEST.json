@@ -33,13 +33,13 @@
     },
     {
       "path": "AGENTS.md",
-      "size": 9362,
-      "sha256": "e84cf97888fccc2392b6d2396a078a2450228fc24c8e91c4a7650e6eb4d0fc9a"
+      "size": 9610,
+      "sha256": "e8972f50cd25c486ae565b7d98dfc5c973f11b1295178167e03b1fa347e51fb9"
     },
     {
       "path": "CHANGELOG.md",
-      "size": 15583,
-      "sha256": "fc8688c581a7831d4551272a53c9b2d268018eceddcc4d56d1525fce2de1ce42"
+      "size": 17646,
+      "sha256": "72af8e87d18c3ae4b3d7a83cc99ad259b519760c5459d6a4b3dd1e4e35b2a2ea"
     },
     {
       "path": "CLAUDE.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 112979,
-      "sha256": "219673686c737f64c1ce534b95cc30da67fa7f479520b3d217fa34c3163357ed"
+      "size": 113785,
+      "sha256": "e8c797e3134e1e7af11ac20baf18a03b0e6dfe7c9c1bee1e33b63832c81ef277"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/schema_normalization.md",
-      "size": 7574,
-      "sha256": "ff454ea9ad43ec2fb0addb684e87be5d97f85c1533338851230808b376056e19"
+      "size": 8081,
+      "sha256": "37bd82649a815c949fc24d481202722fe3a24ebc1fc02265282657b99efb2b84"
     },
     {
       "path": "docs/search_queries.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 70365,
-      "sha256": "83b491213f776cda18666d34a7895d1f3566183d714ed73354bc9679a6c4c655"
+      "size": 70829,
+      "sha256": "9f3f6bbc34bf8ecc34869e2113b3ba7ebc1d82686d3c3dee1d0c91be5b1b4141"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -273,8 +273,8 @@
     },
     {
       "path": "src/jwwkit/_normalization_inspection.py",
-      "size": 5646,
-      "sha256": "43a2b4a8e5a03de96302a64f4966637a2cd1049b7c9ddbdbf8df9535ee9cc583"
+      "size": 5650,
+      "sha256": "df41f118cc3645916760b4389e57f91df11c1dad7ed2318140b06cf623d05490"
     },
     {
       "path": "src/jwwkit/_replacement_contract.py",
@@ -338,13 +338,13 @@
     },
     {
       "path": "src/jwwkit/guides/AGENTS.md",
-      "size": 9362,
-      "sha256": "e84cf97888fccc2392b6d2396a078a2450228fc24c8e91c4a7650e6eb4d0fc9a"
+      "size": 9610,
+      "sha256": "e8972f50cd25c486ae565b7d98dfc5c973f11b1295178167e03b1fa347e51fb9"
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 112979,
-      "sha256": "219673686c737f64c1ce534b95cc30da67fa7f479520b3d217fa34c3163357ed"
+      "size": 113785,
+      "sha256": "e8c797e3134e1e7af11ac20baf18a03b0e6dfe7c9c1bee1e33b63832c81ef277"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -393,8 +393,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/schema_normalization.md",
-      "size": 7574,
-      "sha256": "ff454ea9ad43ec2fb0addb684e87be5d97f85c1533338851230808b376056e19"
+      "size": 8081,
+      "sha256": "37bd82649a815c949fc24d481202722fe3a24ebc1fc02265282657b99efb2b84"
     },
     {
       "path": "src/jwwkit/guides/docs/search_queries.md",
@@ -418,8 +418,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 70365,
-      "sha256": "83b491213f776cda18666d34a7895d1f3566183d714ed73354bc9679a6c4c655"
+      "size": 70829,
+      "sha256": "9f3f6bbc34bf8ecc34869e2113b3ba7ebc1d82686d3c3dee1d0c91be5b1b4141"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -613,8 +613,8 @@
     },
     {
       "path": "src/jwwkit/reader/archive.py",
-      "size": 22671,
-      "sha256": "285d772d0029d1e81def90ed51814d2c0e9ea6fa769a9b63c656844cfb476851"
+      "size": 23965,
+      "sha256": "cbd3aedfc5c89508940b59719a42560157cde1232be1f8eaaf39eae5431252fe"
     },
     {
       "path": "src/jwwkit/reader/images.py",
@@ -968,8 +968,8 @@
     },
     {
       "path": "tests/test_corpus_check.py",
-      "size": 20023,
-      "sha256": "cc07d7ae03a5e077003ec15f38d34f4556805f1854a91afc283e94c1238a3f6d"
+      "size": 26748,
+      "sha256": "7cf588367e0de7e94a092877c5052f61039b9605c1fbd55945afe8bb05ef8f31"
     },
     {
       "path": "tests/test_embedded_images.py",
@@ -1025,6 +1025,11 @@
       "path": "tests/test_reading_to_editing_guide.py",
       "size": 3259,
       "sha256": "fb74e13790504a7073e49ff44251a1ffcfe521c6a297853507c8a5383a9924a3"
+    },
+    {
+      "path": "tests/test_rebro_schema0_point_solid.py",
+      "size": 13208,
+      "sha256": "711d16a412ca6a87357567f45aa12e1eaa78a77ac36f8bdb356f20dc69966b18"
     },
     {
       "path": "tests/test_replacement_workflow.py",
@@ -1093,8 +1098,8 @@
     },
     {
       "path": "tools/corpus_check.py",
-      "size": 50191,
-      "sha256": "8746efebea447cfe5cfc7f083a1f101defdbf18c0531a18738c9540a66d25a13"
+      "size": 56651,
+      "sha256": "f9603898631d8cacf0e3fffce35f0ca342216d553ce388251fa87101f821b78d"
     },
     {
       "path": "tools/inspect_jwf.py",
@@ -1118,8 +1123,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 49093,
-      "sha256": "1d1f6e167f0f90a9c9df64acc0649e3f334f9ebc5f732d4913e5d27d11fc922c"
+      "size": 52162,
+      "sha256": "b63e8854d5693750f020fe479935b69441190d96e3e5a28828fc140a0d6819fa"
     }
   ]
 }
