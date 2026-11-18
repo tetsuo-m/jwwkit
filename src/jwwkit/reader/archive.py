@@ -349,7 +349,13 @@ def read_entity_sequences(c, version):
             records.append(payload(name))
         return records
 
-    entities, definitions = sequence('entities'), sequence('block_defs')
+    try:
+        entities, definitions = sequence('entities'), sequence('block_defs')
+    finally:
+        # payload and sequence call each other (and payload itself), so their closures form a
+        # reference cycle that holds the cursor and every span; clear it so that the records are
+        # freed as soon as the caller drops them, without waiting for the cyclic collector (#29).
+        del payload, sequence
     return entities, definitions, spans
 
 def read_document(path, *, schema_profile='strict'):
@@ -410,6 +416,7 @@ def _cross_check(native, raw):
             f'definitions, but ezjww returns none above {EZJWW_BLOCK_DEFINITION_LIMIT}, '
             'so they cannot be cross-checked')
     check(raw['block_defs'], native['block_defs'])
+    del check  # check calls itself: drop the closure cycle (#29)
     native['entities'] = raw['entities']
     native['block_defs'] = raw['block_defs']
     return native
