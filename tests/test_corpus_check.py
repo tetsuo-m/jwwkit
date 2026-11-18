@@ -453,11 +453,13 @@ class CorpusCheckTests(unittest.TestCase):
         full = self.run_tool(output=self.temp / "出力全件")
         jws_name = [r["name"] for r in full["records"].values() if r["kind"] == "jws"]
         self.assertEqual(list(result["records"]), jws_name)
-        # Resuming with another list, or without the list, is refused
+        # Resuming with another list is refused (without --select, the previous list is used, like the other settings)
         other = self.temp / "別の一覧.txt"
         other.write_text("0" * 64 + "\n", encoding="utf-8")
         with self.assertRaises(corpus_check.UsageError):
             self.run_tool("--select", str(other), resume=True)
+        resumed = self.run_tool(resume=True)
+        self.assertEqual(list(resumed["records"]), jws_name)
 
     def test_select_refuses_bad_or_unknown_lists(self):
         for content in ("", "# only a comment\n", "not-a-hash\n", "0" * 64 + "\n"):
