@@ -18,6 +18,7 @@
 
 - schema 0の宣言で拒否したときの文の中の、クラスの一覧が変わりました。前は `permits only observed v600/v700 CDataSen/CDataEnko/CDataMoji (read-only)`、今は `permits only observed v600 CDataSen/CDataEnko/CDataMoji and v700 CDataSen/CDataEnko/CDataMoji/CDataTen/CDataSolid (read-only)` です。
 - 正規化の点検・計画の、対象外の宣言の理由の名前が変わりました。前は `outside_observed_three_class_schema0_scope`、今は `outside_observed_schema0_scope` です。この名前を読むプログラムは、直してください。
+- 正規化の計画は、作った版と同じ版のjwwkitで実行してください。前の版（0.3.1まで）で作った計画をこの版で実行すると（逆も同じ）、計画に記録した拒否の文が違うため「入力が変わった」（`Input SHA/classification/declarations changed; replan and obtain approval`）として止まり、出力はしません。作り直して、承認し直してください。
 
 ### 開発用（配布物には入りません）
 
