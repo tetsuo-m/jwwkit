@@ -5,7 +5,7 @@
 使い方:
     python -B tools/corpus_check.py --source <図面フォルダ> [--source <別のフォルダ>]
         --output <出力フォルダ> [--timeout 120] [--retry-timeout 600] [--jobs 1]
-        [--sample 20] [--min-bytes N] [--max-bytes N] [--resume]
+        [--sample 20] [--min-bytes N] [--max-bytes N] [--select <SHA256の一覧>] [--resume]
 
 - 図面の原本は読むだけ。書くのは出力フォルダの中だけ。
 - 出力フォルダがリポジトリや図面フォルダの中なら拒否する。
@@ -16,6 +16,9 @@
 - --resume で、中断した出力フォルダの続きから再開する（終わった図面は飛ばす）。
 - --min-bytes / --max-bytes で、大きさ（バイト、両端を含む）で対象を絞る。大きな図面だけを
   --jobs 1 で流すときなどに、別の出力フォルダで使う（図面の伏せた名前は、絞っても同じ）。
+- --select で、一覧のファイル（1行に1つの SHA256）にある図面だけを調べる（抜き出しの確かめ用）。
+- 拒否した JWW は、クラスの宣言をバイトから調べ（schema0）、正規化の点検（normalization）の判定も残す。
+  どちらも読めた／拒否の判定は変えない。
 """
 from __future__ import annotations
 
@@ -28,6 +31,7 @@ import json
 import os
 import re
 import statistics
+import struct
 import subprocess
 import sys
 import tempfile
@@ -36,7 +40,7 @@ import traceback
 from pathlib import Path
 
 # 記録の項目を変えたら上げる。版の違う出力フォルダは --resume で続けない
-TOOL_VERSION = 3
+TOOL_VERSION = 4
 EXTENSIONS = {".jww", ".jws"}
 MAPPING_NAME = "対応表.json"
 SUMMARY_NAME = "summary.md"
@@ -285,6 +289,49 @@ def declared_version_of_file(path: str | Path) -> int | None:
         return None
 
 
+# MFC の CArchive の新しいクラスの印: WORD 0xFFFF、WORD schema、WORD 名前の長さ、名前（ASCII）
+_CLASS_TAG = re.compile(rb"\xff\xff(..)(..)(CData[A-Za-z0-9_]{1,60})", re.S)
+
+
+def class_declarations_from_bytes(data: bytes) -> list[dict]:
+    """クラスの宣言を、jwwkit の読取りに頼らずにバイトから探す（名前・schema・印の位置）。"""
+    found = []
+    for match in _CLASS_TAG.finditer(data):
+        schema, length = struct.unpack("<HH", match.group(1) + match.group(2))
+        name = match.group(3)
+        if length <= len(name):
+            found.append(dict(name=name[:length].decode("ascii"), schema=schema, offset=match.start()))
+    return found
+
+
+def schema0_summary(data: bytes) -> dict:
+    """宣言がすべて schema 0 か。宣言が1つもないときは「すべて 0」と数えない（None）。"""
+    declarations = class_declarations_from_bytes(data)
+    return dict(declarations=[[d["name"], d["schema"]] for d in declarations],
+                all_zero=None if not declarations else all(d["schema"] == 0 for d in declarations))
+
+
+def _rejected_jww_details(source: Path, original: bytes, result: dict, stage) -> None:
+    """拒否した JWW に、宣言の調べと正規化の点検の結果を足す。status は変えない。"""
+    stage("schema0")
+    try:
+        result["schema0"] = schema0_summary(original)
+    except Exception as exc:  # noqa: BLE001 - 道具の側の問題。拒否の結果は変えない
+        result["schema0"] = dict(error=f"{type(exc).__name__}: {scrub_paths(str(exc), [source])}")
+    stage("normalization_inspection")
+    try:
+        from jwwkit.normalization import inspect_schema_normalization
+        info = inspect_schema_normalization(source)
+        reason = info.get("reason")
+        result["normalization"] = dict(
+            status=info.get("status"),
+            reason_category=None if reason is None else error_category("reason", scrub_paths(str(reason), [source])))
+    except Exception as exc:  # noqa: BLE001 - 道具の側の問題。拒否の結果は変えない
+        message = scrub_paths(str(exc), [source])
+        result["normalization"] = dict(status="inspection_error",
+                                       reason_category=error_category(type(exc).__name__, message))
+
+
 def inspect_one(source: Path, work_file: Path, stage_file: Path | None = None) -> dict:
     """1件の図面を、読込み→無編集保存→バイト比較→読み直しの順に確かめる。
 
@@ -368,6 +415,8 @@ def inspect_one(source: Path, work_file: Path, stage_file: Path | None = None) -
                                module=type(exc).__module__,
                                frames=code_frames(exc),
                                message=message)
+        if result["status"] == "rejected" and result["kind"] == "jww" and original:
+            _rejected_jww_details(source, original, result, stage)
     stage("hash_after")
     try:
         result["sha256_after"] = sha256_file(source)
@@ -439,6 +488,32 @@ def within_size(items: list[dict], min_bytes: int | None, max_bytes: int | None)
     """大きさ（バイト、両端を含む）で絞る。指定がなければ全部。"""
     return [item for item in items
             if (min_bytes is None or item["size"] >= min_bytes) and (max_bytes is None or item["size"] <= max_bytes)]
+
+
+def read_select_list(path: str | Path) -> list[str]:
+    """--select の一覧（1行に1つの SHA256。行の先頭の語だけを使い、# で始まる行と空行は飛ばす）。"""
+    values = []
+    for line in Path(path).read_text(encoding="utf-8-sig").splitlines():
+        word = line.strip().split()[0].lower() if line.strip() else ""
+        if not word or word.startswith("#"):
+            continue
+        if not re.fullmatch(r"[0-9a-f]{64}", word):
+            raise UsageError("--select の一覧に、SHA256 でない行があります")
+        values.append(word)
+    if not values:
+        raise UsageError("--select の一覧が空です")
+    return sorted(set(values))
+
+
+def within_select(items: list[dict], select: list[str] | None) -> list[dict]:
+    """--select の一覧の図面だけにする。一覧にあって見つからない図面があれば止める。"""
+    if select is None:
+        return items
+    wanted = set(select)
+    missing = wanted - {item["sha256"] for item in items}
+    if missing:
+        raise UsageError(f"--select の一覧のうち {len(missing)} 件が、図面フォルダにありません")
+    return [item for item in items if item["sha256"] in wanted]
 
 
 def choose_sample(items: list[dict], count: int) -> list[str]:
@@ -577,8 +652,11 @@ def build_summary(mapping: dict, records: dict[str, dict], unchanged_check: dict
              f".jws {sum(len(i['paths']) for i in mapping['items'] if i['kind'] == 'jws')}）",
              f"- 中身が異なる図面: {len(mapping['items'])} 件",
              # 「抜き出し」は --sample で減らしたときだけ（大きさで絞っただけなら、その範囲の全件）
-             f"- 今回の対象: {len(items)} 件" + ("（抜き出し）" if len(items) != len(within_size(
-                 mapping["items"], mapping["settings"].get("min_bytes"), mapping["settings"].get("max_bytes"))) else ""),
+             f"- 今回の対象: {len(items)} 件" + ("（抜き出し）" if mapping["settings"].get("select") or len(items) != len(
+                 within_size(mapping["items"], mapping["settings"].get("min_bytes"),
+                             mapping["settings"].get("max_bytes"))) else ""),
+             *([f"- 一覧（--select）で選んだ図面: {len(mapping['settings']['select'])} 件"]
+               if mapping["settings"].get("select") else []),
              *([f"- 大きさで絞った対象: {size_range(mapping['settings'])}"]
                if size_range(mapping['settings']) else []),
              f"- 調べ終わった: {len(done)} 件",
@@ -679,6 +757,28 @@ def build_summary(mapping: dict, records: dict[str, dict], unchanged_check: dict
         lines.append("")
 
     category_table("拒否の理由別", "rejected")
+
+    rejected_jww = [r for r in done if r["status"] == "rejected" and r["kind"] == "jww"]
+    scanned = [r for r in rejected_jww if "all_zero" in r.get("schema0", {})]
+    zero = [r for r in scanned if r["schema0"]["all_zero"] is True]
+    lines.extend([f"## 拒否のうち、クラスの宣言がすべて schema 0 の図面（{len(zero)} 件）", "",
+                  "宣言は、jwwkit の読取りに頼らずにバイトから調べています。", "",
+                  f"- 拒否した JWW: {len(rejected_jww)} 件",
+                  f"  - 宣言がすべて 0: {len(zero)} 件",
+                  f"  - 0 でない宣言を含む: {sum(1 for r in scanned if r['schema0']['all_zero'] is False)} 件",
+                  f"  - 宣言が見つからない: {sum(1 for r in scanned if r['schema0']['all_zero'] is None)} 件",
+                  f"  - 調べていない・調べられなかった: {len(rejected_jww) - len(scanned)} 件", ""])
+    if zero:
+        groups: dict[tuple, list[str]] = collections.defaultdict(list)
+        for r in zero:
+            n = r.get("normalization", {})
+            groups[(n.get("status"), n.get("reason_category"))].append(r["name"])
+        lines.extend(["正規化の点検の判定（normalize は対象、unsupported は対象外）:", "",
+                      "| 件数 | 判定 | 理由の種類 | 図面 |", "|---:|---|---|---|"])
+        for (status, reason), names in sorted(groups.items(), key=lambda kv: (-len(kv[1]), str(kv[0]))):
+            cell = str(reason).replace("|", "\\|")
+            lines.append(f"| {len(names)} | {status} | {cell} | {_names(names, 10)} |")
+        lines.append("")
     category_table("予想外の例外", "unexpected")
     category_table("子プロセスの異常終了", "crashed")
     category_table("ファイルの読み書きの問題", "io_error")
@@ -806,8 +906,10 @@ def run(args: argparse.Namespace, log=print) -> dict:
         if [str(s) for s in sources] != mapping["sources"]:
             raise UsageError("--resume の図面フォルダが前回と違います")
         settings = mapping["settings"]
+        select = None if args.select is None else read_select_list(args.select)
         for key, value in (("timeout", args.timeout), ("retry_timeout", args.retry_timeout),
-                           ("sample", args.sample), ("min_bytes", args.min_bytes), ("max_bytes", args.max_bytes)):
+                           ("sample", args.sample), ("min_bytes", args.min_bytes), ("max_bytes", args.max_bytes),
+                           ("select", select)):
             # 大きさの指定のない前の出力フォルダは、指定なし（全部）として扱う
             if value is not None and value != settings.get(key):
                 raise UsageError(f"--resume では前回の設定（{key}={settings.get(key)}）を使います。"
@@ -820,11 +922,13 @@ def run(args: argparse.Namespace, log=print) -> dict:
         settings = dict(timeout=120.0 if args.timeout is None else args.timeout,
                         retry_timeout=600.0 if args.retry_timeout is None else args.retry_timeout,
                         sample=0 if args.sample is None else args.sample,
-                        min_bytes=args.min_bytes, max_bytes=args.max_bytes)
+                        min_bytes=args.min_bytes, max_bytes=args.max_bytes,
+                        select=None if args.select is None else read_select_list(args.select))
         mapping = dict(tool_version=TOOL_VERSION, created=datetime.datetime.now().isoformat(timespec="seconds"),
                        sources=[str(s) for s in sources], settings=settings,
                        environment=dict(jwwkit=jwwkit_info(), python=sys.version.split()[0]),
-                       items=items, selected=choose_sample(within_size(items, args.min_bytes, args.max_bytes),
+                       items=items, selected=choose_sample(within_size(within_select(items, settings["select"]),
+                                                                       args.min_bytes, args.max_bytes),
                                                            settings["sample"]),
                        scan_errors=scan_errors)
         write_json_atomic(output / MAPPING_NAME, mapping)
@@ -934,6 +1038,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
                         help="この大きさ（バイト）以上の図面だけを調べる（既定は指定なし）")
     parser.add_argument("--max-bytes", type=int, default=None,
                         help="この大きさ（バイト）以下の図面だけを調べる（既定は指定なし）")
+    parser.add_argument("--select", default=None,
+                        help="この一覧のファイル（1行に1つの SHA256）にある図面だけを調べる")
     parser.add_argument("--resume", action="store_true", help="中断した出力フォルダの続きから再開する")
     return parser.parse_args(argv)
 
