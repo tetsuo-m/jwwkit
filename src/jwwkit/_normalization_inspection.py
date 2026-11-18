@@ -1,11 +1,10 @@
 """Read-only, bounded schema inspection. No class-byte scanning or file writes."""
 from pathlib import Path
 import hashlib,struct
-from jwwkit.reader.archive import Cursor,_read_records,read_records_bytes
+from jwwkit.reader.archive import REBRO_SCHEMA0_CLASSES,Cursor,_read_records,read_records_bytes
 from jwwkit.writer.preserved import serialize_body,keeps_class_declarations
 from jwwkit.model.rigid_audit import exact
 
-CLASSES=frozenset(('CDataSen','CDataEnko','CDataMoji'))
 MAX_FILE_BYTES=268435456
 MAX_BATCH_BYTES=536870912
 MAX_FILES=256
@@ -44,13 +43,14 @@ def inspect_bytes(raw,source):
         base['strict_reason']=str(strict_error)
     parsed,observed,error,offset,context=_observe(raw)
     base['declarations']=observed
-    base['unsupported_declarations']=[dict(d,reason='outside_observed_three_class_schema0_scope')for d in observed if d['name']not in CLASSES or d['schema']!=0]
+    classes=REBRO_SCHEMA0_CLASSES.get(version,())
+    base['unsupported_declarations']=[dict(d,reason='outside_observed_schema0_scope')for d in observed if d['name']not in classes or d['schema']!=0]
     if parsed is None:
         base.update(reason=error,inspection_stopped_offset=offset,uninspected_bytes=max(0,len(raw)-offset),context=context)
         return base,None
     try:
         _roundtrip(raw,parsed,True)
-        if version not in (600,700)or not observed or any(d['name']not in CLASSES or d['schema']!=0 for d in observed):raise ValueError('Not an observed schema0 input')
+        if version not in (600,700)or not observed or any(d['name']not in classes or d['schema']!=0 for d in observed):raise ValueError('Not an observed schema0 input')
         output=bytearray(raw);changed=[]
         for d in observed:
             p=d['schema_offset']
