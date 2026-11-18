@@ -33,23 +33,23 @@
     },
     {
       "path": "AGENTS.md",
-      "size": 9360,
-      "sha256": "81c64eec88e15b83c0e971f19cde1e98c97a5121be98e69b3b0fbb105bf1893c"
+      "size": 9362,
+      "sha256": "e84cf97888fccc2392b6d2396a078a2450228fc24c8e91c4a7650e6eb4d0fc9a"
     },
     {
       "path": "CHANGELOG.md",
-      "size": 10532,
-      "sha256": "8b79cf85c46592a8a459070a838eba9736db8484d84735cfa3ca4a9290cbd503"
+      "size": 15583,
+      "sha256": "d09da6faaabee8553a90d2d26ada88d3d290a73024270a86450d37d09cc2f716"
     },
     {
       "path": "CLAUDE.md",
-      "size": 6469,
-      "sha256": "0994250c27e46ced676a20a1f2fafef83e5939b182c1fda6bb7608c31658bd8e"
+      "size": 8372,
+      "sha256": "8008649a92ef01028430bc89d8e677a690cb20fba6ab450506477cbdb61a1ec8"
     },
     {
       "path": "docs/api_list.md",
-      "size": 112978,
-      "sha256": "fcd5fc3a303b13a020b3b9c2230b15c8bed416969d55563b0092460e317ad809"
+      "size": 112979,
+      "sha256": "219673686c737f64c1ce534b95cc30da67fa7f479520b3d217fa34c3163357ed"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 70363,
-      "sha256": "bd04587a8fbd32046f63eb91307fa0f8b70bc2f846bbf575d6faa8cf7fe9667d"
+      "size": 70365,
+      "sha256": "83b491213f776cda18666d34a7895d1f3566183d714ed73354bc9679a6c4c655"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -183,13 +183,13 @@
     },
     {
       "path": "pyproject.toml",
-      "size": 1071,
-      "sha256": "cf6cbd32c5be57438a083ea4c2c406ee6a787b60763967d083ced741d345ab77"
+      "size": 1074,
+      "sha256": "54b78507429e5d72fc00feb7e31ed7823ef8442bd6b5a07217097c1b7561404a"
     },
     {
       "path": "README.md",
-      "size": 14410,
-      "sha256": "ee7ce9d62fb2e9ae057054e9ecea5b7d463569e5f3316f9627e825ac79c39b32"
+      "size": 14412,
+      "sha256": "caced498a85ffdd30a773a770996fae0f6ced4f1ee8cdd1675abd991cf5176ef"
     },
     {
       "path": "requirements.txt",
@@ -338,13 +338,13 @@
     },
     {
       "path": "src/jwwkit/guides/AGENTS.md",
-      "size": 9360,
-      "sha256": "81c64eec88e15b83c0e971f19cde1e98c97a5121be98e69b3b0fbb105bf1893c"
+      "size": 9362,
+      "sha256": "e84cf97888fccc2392b6d2396a078a2450228fc24c8e91c4a7650e6eb4d0fc9a"
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 112978,
-      "sha256": "fcd5fc3a303b13a020b3b9c2230b15c8bed416969d55563b0092460e317ad809"
+      "size": 112979,
+      "sha256": "219673686c737f64c1ce534b95cc30da67fa7f479520b3d217fa34c3163357ed"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -418,8 +418,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 70363,
-      "sha256": "bd04587a8fbd32046f63eb91307fa0f8b70bc2f846bbf575d6faa8cf7fe9667d"
+      "size": 70365,
+      "sha256": "83b491213f776cda18666d34a7895d1f3566183d714ed73354bc9679a6c4c655"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -488,8 +488,8 @@
     },
     {
       "path": "src/jwwkit/model/common_entities.py",
-      "size": 1198,
-      "sha256": "796b722e78ae5dc028abe71a8f6e5de284dbaaf529a76e6c29b628dacc2bdfd9"
+      "size": 1965,
+      "sha256": "a73b0fd2efa2eee613f687d3e0d1ab8d75e4ca4743824055b34366dfe6f264d8"
     },
     {
       "path": "src/jwwkit/model/dimension.py",
@@ -503,8 +503,8 @@
     },
     {
       "path": "src/jwwkit/model/document.py",
-      "size": 36091,
-      "sha256": "2bb48bc6d554178a44a191e2171004db56042a4bfd7e246a9a7e5da9be1f624e"
+      "size": 36756,
+      "sha256": "9d4426d8c58a81b28ba8e6fb54bab81cd4410f53e4cf7e02084c070c3764b962"
     },
     {
       "path": "src/jwwkit/model/editing.py",
@@ -613,8 +613,8 @@
     },
     {
       "path": "src/jwwkit/reader/archive.py",
-      "size": 21686,
-      "sha256": "8e588dd062f61f1fc75298b23c2652bda4de11bb39a0a81e7558af0806ae62a6"
+      "size": 22671,
+      "sha256": "285d772d0029d1e81def90ed51814d2c0e9ea6fa769a9b63c656844cfb476851"
     },
     {
       "path": "src/jwwkit/reader/images.py",
@@ -733,8 +733,8 @@
     },
     {
       "path": "src/jwwkit/writer/preserved.py",
-      "size": 21150,
-      "sha256": "098d8e36c6fb97b545f6f47d2b5054606ce9a5162b947c6c767944369ff7029b"
+      "size": 23255,
+      "sha256": "8203d53b20f2b7b4cc4d32561af7ba0946437bda8399a42b056b620874cb7454"
     },
     {
       "path": "src/jwwkit/writer/strings.py",
@@ -968,8 +968,8 @@
     },
     {
       "path": "tests/test_corpus_check.py",
-      "size": 15218,
-      "sha256": "8d7e5028b652a8e79429a6caabcb7efa66856ccd1c20280ea541e09d153968d7"
+      "size": 20023,
+      "sha256": "cc07d7ae03a5e077003ec15f38d34f4556805f1854a91afc283e94c1238a3f6d"
     },
     {
       "path": "tests/test_embedded_images.py",
@@ -992,6 +992,11 @@
       "sha256": "bb127914210b77f2828d53cee9de4a26468db41c7fe3b6372dd6c08e89dae026"
     },
     {
+      "path": "tests/test_open_isolation.py",
+      "size": 7189,
+      "sha256": "9bba11ffed1e4cd8fe145850eb4da40f2773c5e7463f4bb317c1749820045210"
+    },
+    {
       "path": "tests/test_plan_target_resolution.py",
       "size": 1801,
       "sha256": "21929c063461774a4cae8e3c78ee11c2f1264231154b2921ec613e7f0109f1a9"
@@ -1007,6 +1012,11 @@
       "sha256": "168d6ff7161f085125988d8e0f243379f2840b51dcc691d13afac0e06a628391"
     },
     {
+      "path": "tests/test_read_cycles.py",
+      "size": 4984,
+      "sha256": "42469c292e22101ff6deeeb31e3ced58b671b5dd2762746d23f3e8816ab24914"
+    },
+    {
       "path": "tests/test_read_view_guide.py",
       "size": 1306,
       "sha256": "475dca2f5eb29dbf9136923a700b8748ab33439eadeb3ca8944e0c8e05b76bbf"
@@ -1020,6 +1030,11 @@
       "path": "tests/test_replacement_workflow.py",
       "size": 15734,
       "sha256": "30ac7143e6f71916c49c0a44a3327b003417bead2b6a5384a434f63e9771fd6c"
+    },
+    {
+      "path": "tests/test_save_isolation.py",
+      "size": 12724,
+      "sha256": "d5c36f921d50caafdec3f91fe4f9e06b85d1c2182d6b6cb5192d2f990f2add1c"
     },
     {
       "path": "tests/test_search_query.py",
@@ -1078,8 +1093,8 @@
     },
     {
       "path": "tools/corpus_check.py",
-      "size": 47356,
-      "sha256": "91261ac17bb87881d0b8fb4c5f159c71440f1be0a40fc9bd9d836cb1efbc6571"
+      "size": 50191,
+      "sha256": "8746efebea447cfe5cfc7f083a1f101defdbf18c0531a18738c9540a66d25a13"
     },
     {
       "path": "tools/inspect_jwf.py",
@@ -1103,8 +1118,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 31134,
-      "sha256": "2470a552088a635d9e52b717ffcf25b7ebeca5b1851179560540b667385ac07c"
+      "size": 49093,
+      "sha256": "1d1f6e167f0f90a9c9df64acc0649e3f334f9ebc5f732d4913e5d27d11fc922c"
     }
   ]
 }
