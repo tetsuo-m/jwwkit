@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 from jwwkit.line_document import JwwDocument, Line
+from jwwkit.reader.archive import read_records, read_records_bytes
 from jwwkit.reader.jws import JWS700_RESERVED
 from jwwkit.writer.mfc import records_bytes
 
@@ -34,6 +35,21 @@ def synthetic_jws() -> bytes:
     data = header + records_bytes([Line((0, 0), (4, 0), layer=3).record(),
                                    Line((4, 0), (4, 4), layer=5, color=4).record()], registry)
     return data + records_bytes([], registry)
+
+
+def schema0_jww() -> bytes:
+    """Line, circle and text only (the three classes rebro_schema0 has always accepted), declarations set to 0."""
+    drawing = JwwDocument()
+    drawing.add_line((0, 0), (10, 0))
+    drawing.add_circle((5, 5), 2)
+    drawing.add_text((0, 10), content="synthetic")
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "drawing.jww"
+        drawing.save(path)
+        data = bytearray(path.read_bytes())
+    for declaration in read_records_bytes(bytes(data))["class_declarations"]:
+        struct.pack_into("<H", data, declaration["offset"] + 2, 0)
+    return bytes(data)
 
 
 def tree_snapshot(folder: Path) -> dict:
@@ -359,6 +375,99 @@ class CorpusCheckTests(unittest.TestCase):
         with self.assertRaises(corpus_check.UsageError):
             self.run_tool("--max-bytes", "-1")
         self.assertFalse(self.output.exists())
+
+
+    def test_declarations_from_bytes_match_the_reader_on_public_samples(self):
+        fixtures = sorted((ROOT / "tests" / "fixtures").rglob("*.jww"))
+        fixtures.append(ROOT / "src" / "jwwkit" / "resources" / "empty_template.jww")
+        self.assertGreaterEqual(len(fixtures), 30)
+        for path in fixtures:
+            with self.subTest(path=path.name):
+                expected = [(d["name"], d["schema"], d["offset"]) for d in read_records(path)["class_declarations"]]
+                found = [(d["name"], d["schema"], d["offset"])
+                         for d in corpus_check.class_declarations_from_bytes(path.read_bytes())]
+                self.assertEqual(found, expected)
+                self.assertIs(corpus_check.schema0_summary(path.read_bytes())["all_zero"], False)
+
+    def test_zero_declarations_and_files_without_declarations(self):
+        data = schema0_jww()
+        summary = corpus_check.schema0_summary(data)
+        self.assertIs(summary["all_zero"], True)
+        self.assertEqual({name for name, _ in summary["declarations"]}, {"CDataSen", "CDataEnko", "CDataMoji"})
+        self.assertEqual({schema for _, schema in summary["declarations"]}, {0})
+        # No declaration at all (not a drawing, or cut before the first one) is not "all zero"
+        self.assertEqual(corpus_check.schema0_summary(b"not a drawing" * 10), dict(declarations=[], all_zero=None))
+        first = corpus_check.class_declarations_from_bytes(data)[0]["offset"]
+        self.assertIsNone(corpus_check.schema0_summary(data[:first])["all_zero"])
+
+    def test_rejected_schema0_drawing_gets_declarations_and_normalization_verdict(self):
+        (self.source / f"{SECRET}_他のCAD.jww").write_bytes(schema0_jww())
+        result = self.run_tool()
+        rejected = {r["name"]: r for r in result["records"].values() if r["status"] == "rejected"}
+        self.assertEqual(len(rejected), 2)
+        zero = [r for r in rejected.values() if r["schema0"]["all_zero"] is True]
+        broken = [r for r in rejected.values() if r["schema0"]["all_zero"] is None]
+        self.assertEqual((len(zero), len(broken)), (1, 1))
+        self.assertEqual(zero[0]["error"]["stage"], "open")  # the reading result is unchanged
+        self.assertEqual(zero[0]["normalization"], dict(status="normalize", reason_category="reason: observed_schema0_only"))
+        self.assertEqual(broken[0]["normalization"]["status"], "unsupported")
+        ok = [r for r in result["records"].values() if r["status"] == "ok"]
+        self.assertTrue(ok and all("schema0" not in r and "normalization" not in r for r in ok))
+        text = json.dumps(list(result["records"].values()), ensure_ascii=False)
+        self.assertNotIn(SECRET, text)
+        summary = (self.output / "summary.md").read_text(encoding="utf-8")
+        self.assertIn("## 拒否のうち、クラスの宣言がすべて schema 0 の図面（1 件）", summary)
+        self.assertIn("  - 宣言がすべて 0: 1 件", summary)
+        self.assertIn("  - 宣言が見つからない: 1 件", summary)
+        self.assertIn("| 1 | normalize | reason: observed_schema0_only |", summary)
+        self.assertNotIn(SECRET, summary)
+
+    def test_extra_inspection_failure_does_not_change_the_rejection(self):
+        (self.source / f"{SECRET}_他のCAD.jww").write_bytes(schema0_jww())
+        import jwwkit.normalization as normalization
+        original = normalization.inspect_schema_normalization
+
+        def failing(source):
+            raise RuntimeError(f"inspection failed for {source}")
+        normalization.inspect_schema_normalization = failing
+        self.addCleanup(setattr, normalization, "inspect_schema_normalization", original)
+        source = next(self.source.glob("*他のCAD.jww"))
+        result = corpus_check.inspect_one(source, self.temp / "work.jww")
+        self.assertEqual(result["status"], "rejected")
+        self.assertEqual(result["normalization"]["status"], "inspection_error")
+        self.assertNotIn(SECRET, result["normalization"]["reason_category"])
+        self.assertIs(result["schema0"]["all_zero"], True)
+        self.assertTrue(result["original_unchanged"])
+
+    def test_select_checks_only_the_listed_drawings(self):
+        target = next(self.source.glob(f"{SECRET}_記号.jws"))
+        listing = self.temp / "一覧.txt"
+        listing.write_text(f"# 抜き出し\n{hashlib.sha256(target.read_bytes()).hexdigest()}  図面A\n\n",
+                           encoding="utf-8")
+        result = self.run_tool("--select", str(listing))
+        self.assertEqual([r["kind"] for r in result["records"].values()], ["jws"])
+        summary = (self.output / "summary.md").read_text(encoding="utf-8")
+        self.assertIn("今回の対象: 1 件（抜き出し）", summary)
+        self.assertIn("一覧（--select）で選んだ図面: 1 件", summary)
+        # The masked names are the same as without --select
+        full = self.run_tool(output=self.temp / "出力全件")
+        jws_name = [r["name"] for r in full["records"].values() if r["kind"] == "jws"]
+        self.assertEqual(list(result["records"]), jws_name)
+        # Resuming with another list is refused (without --select, the previous list is used, like the other settings)
+        other = self.temp / "別の一覧.txt"
+        other.write_text("0" * 64 + "\n", encoding="utf-8")
+        with self.assertRaises(corpus_check.UsageError):
+            self.run_tool("--select", str(other), resume=True)
+        resumed = self.run_tool(resume=True)
+        self.assertEqual(list(resumed["records"]), jws_name)
+
+    def test_select_refuses_bad_or_unknown_lists(self):
+        for content in ("", "# only a comment\n", "not-a-hash\n", "0" * 64 + "\n"):
+            with self.subTest(content=content):
+                listing = self.temp / "一覧.txt"
+                listing.write_text(content, encoding="utf-8")
+                with self.assertRaises(corpus_check.UsageError):
+                    self.run_tool("--select", str(listing), output=self.temp / f"出力{len(content)}")
 
 
 if __name__ == "__main__":

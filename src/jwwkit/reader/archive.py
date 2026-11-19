@@ -14,6 +14,16 @@ BASE_KEYS = ('group', 'pen_style', 'pen_color', 'pen_width', 'layer', 'layer_gro
 XY_KEYS = ('start_x', 'start_y', 'end_x', 'end_y')
 TEXT_KEYS = (*XY_KEYS, 'text_type', 'size_x', 'size_y', 'spacing', 'angle')
 SOLID_KEYS = tuple(f'point{i}_{axis}' for i in (1,4,2,3) for axis in ('x','y'))
+# rebro_schema0: classes whose schema-0 declarations are accepted, and the element kinds they may hold.
+# v700 adds points and solids (#36): observed in 37 real drawings, where jwwkit and ezjww agreed and the
+# unedited save was byte-identical. Not checked against a published description or sample.
+REBRO_SCHEMA0_CLASSES = {600: ('CDataSen', 'CDataEnko', 'CDataMoji'),
+                         700: ('CDataSen', 'CDataEnko', 'CDataMoji', 'CDataTen', 'CDataSolid')}
+REBRO_SCHEMA0_TYPES = {600: ('LINE', 'CIRCLE', 'ARC', 'TEXT'),
+                       700: ('LINE', 'CIRCLE', 'ARC', 'TEXT', 'POINT', 'SOLID', 'CIRCLE_SOLID')}
+REBRO_SCHEMA0_HINT = ('; schema=0: explicit schema_profile="rebro_schema0" permits only observed '
+                      'v600 CDataSen/CDataEnko/CDataMoji and v700 CDataSen/CDataEnko/CDataMoji/CDataTen/CDataSolid '
+                      '(read-only)')
 # Observed with ezjww 0.2.13 and 0.7.13: above this many block definitions,
 # ezjww returns an empty block_defs list. read_document rejects such drawings.
 EZJWW_BLOCK_DEFINITION_LIMIT = 10000
@@ -125,7 +135,7 @@ class Cursor:
 
 
 def read_records(path, *, schema_profile='strict'):
-    """v600/v700と観測済みの古い版の本文を読む。strict既定、rebro_schema0はv600/v700の観測済み3クラス限定。"""
+    """v600/v700と観測済みの古い版の本文を読む。strict既定、rebro_schema0はv600の3クラス・v700の5クラスの観測済みの形だけ。"""
     return read_records_bytes(Path(path).read_bytes(), schema_profile=schema_profile)
 
 
@@ -184,8 +194,15 @@ def _read_records(c):
         if c.old_extended_counts and (version, class_schema) not in OLD_EXTENDED_COUNT_PAIRS:
             raise RecordError(f'Extended sequence count unobserved for ({version}, {class_schema})')
     if c.schema_profile == 'rebro_schema0':
-        if definitions or any(r['type'] not in ('LINE','CIRCLE','ARC','TEXT') for r in entities):
+        if definitions or any(r['type'] not in REBRO_SCHEMA0_TYPES[version] for r in entities):
             raise RecordError('Unobserved structure for rebro_schema0')
+        # Points and solids (v700, #36): only the forms observed in real drawings.
+        for r in entities:
+            if r['type'] == 'POINT' and (r['base']['pen_style'] != 1 or r['is_temporary'] or r['code']):
+                raise RecordError('Unobserved point form for rebro_schema0')
+            if (r['type'] in ('SOLID', 'CIRCLE_SOLID') and (r['base']['pen_color'] == 10
+                    or r['base']['pen_style'] != (1 if r['type'] == 'SOLID' else 101))):
+                raise RecordError('Unobserved solid form for rebro_schema0')
         if not c.class_declarations or any(d['schema'] != 0 for d in c.class_declarations):
             raise RecordError('rebro_schema0 requires exclusively schema-0 declarations')
     c.context = 'trailer'
@@ -318,14 +335,12 @@ def read_entity_sequences(c, version):
                 if schema == version and same_schema_versions is not None and version not in same_schema_versions:
                     raise RecordError(f'Unsupported class schema: {schema}, class={name} (unobserved for v{version})')
                 if schema != version:
-                    accepted = (profile == 'rebro_schema0' and version in (600,700)
-                                and schema == 0 and name in ('CDataSen','CDataEnko','CDataMoji'))
+                    accepted = (profile == 'rebro_schema0' and version in REBRO_SCHEMA0_CLASSES
+                                and schema == 0 and name in REBRO_SCHEMA0_CLASSES[version])
                     accepted = accepted or (profile == 'strict'
                                 and (version, schema) in getattr(c, 'accepted_schema_pairs', ()))
                     if not accepted:
-                        hint = ('; schema=0: explicit schema_profile="rebro_schema0" permits only '
-                                'observed v600/v700 CDataSen/CDataEnko/CDataMoji (read-only)'
-                                if schema == 0 and version in (600,700) else '')
+                        hint = (REBRO_SCHEMA0_HINT if schema == 0 and version in (600,700) else '')
                         raise RecordError(f'Unsupported class schema: {schema}, class={name}{hint}')
                 if hasattr(c, 'class_declarations'):
                     c.class_declarations.append(dict(name=name, schema=schema,
