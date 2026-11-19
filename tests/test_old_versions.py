@@ -260,7 +260,8 @@ class SyntheticOldVersionTests(TempDirTestCase):
                     document.add_line((0, 0), (1, 0))
 
     def test_unaccepted_pairs_mixes_and_tails_are_rejected(self):
-        cases = [(420, 420), (420, 0), (420, 230), (420, 310), (420, 1), (300, 1), (351, 1), (230, 65535), (230, 0)]
+        # (420, 0/1/230/310), (300, 1), (351, 1), (230, 65535) are accepted since #41 (test_old_schema_pairs).
+        cases = [(420, 420), (230, 0)]
         for version, schema in cases:
             with self.subTest(version=version, schema=schema):
                 with self.assertRaises(RecordError) as caught:
