@@ -123,7 +123,7 @@ AIに既存図面の編集を頼む場合、AIが示す計画の内容とSHA256�
 jwwkitは、業務で安心して使えることを目標に、一つひとつ検証しながら作りました。
 無編集保存でのバイト一致、編集後にJw_cadで開いて再保存できること、DXF・PDF出力での照合など、検証の方法と結果は [VERIFICATION.md](https://github.com/tetsuo-m/jwwkit/blob/main/VERIFICATION.md) にまとめています。
 
-実務図面 2,939 件（中身が異なるもの）で確かめ（2026-11）、2,670 件（90.8%）が読めて、無編集の保存はすべて原本とバイト単位で一致しました。読めないものは、理由を示して拒否します。詳しくは [VERIFICATION.md](https://github.com/tetsuo-m/jwwkit/blob/main/VERIFICATION.md) を参照してください。
+実務図面でも確かめ、読めた図面は、無編集の保存がすべて原本とバイト単位で一致しました。読めないものは、理由を示して拒否します。詳しくは [VERIFICATION.md](https://github.com/tetsuo-m/jwwkit/blob/main/VERIFICATION.md) を参照してください。
 
 ## 作った人について
 
