@@ -98,8 +98,8 @@
     },
     {
       "path": "docs/ezjww_adapter_contract.md",
-      "size": 10371,
-      "sha256": "f091e3790cf5fe56b7475ef78599542413ef0c2deb45c8504cfef0e000ec4691"
+      "size": 11263,
+      "sha256": "6cbb3667d448fd11a57c9544a1ea7dbaa7b42886f0d77a79df2c1e0d7e9f9b12"
     },
     {
       "path": "docs/geometry_view.md",
@@ -263,8 +263,8 @@
     },
     {
       "path": "src/jwwkit/_ezjww_adapter.py",
-      "size": 2525,
-      "sha256": "0b3ebe9c8dddcc05eb333fb3236dd9d5ae274555a5dc31c29c37a08d3f38f344"
+      "size": 3586,
+      "sha256": "e975158208746631f85e0abc1899a06c6f86b2aabfa5ba21eaeee7093f8b8c3e"
     },
     {
       "path": "src/jwwkit/_geometry_engine.py",
@@ -993,8 +993,8 @@
     },
     {
       "path": "tests/test_ezjww_adapter.py",
-      "size": 10994,
-      "sha256": "72d6ef14b3c5f3edb4173d186cd426cd568d2cbe12440b959e42c0a2b4b257ef"
+      "size": 14940,
+      "sha256": "31fa9ae63a887fa9505c57c76a7615c99927f4d0fae7afbaa7bce15819ea5670"
     },
     {
       "path": "tests/test_geometry_guide.py",
