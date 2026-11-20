@@ -431,7 +431,7 @@ def _cross_check(native, raw):
         raise RecordError(f'ezjww returned no elements but jwwkit read {len(raw["entities"])}; '
                           'the drawing cannot be cross-checked')
     check(raw['entities'], native['entities'])
-    # ezjww 0.2.13 returns no block definitions (and no diagnostic) when a drawing
+    # ezjww (0.2.13 and 0.7.13) returns no block definitions (and no diagnostic) when a drawing
     # has more than 10000. Keep rejecting, but say why; never fill in or skip the check.
     if not native['block_defs'] and len(raw['block_defs']) > EZJWW_BLOCK_DEFINITION_LIMIT:
         raise RecordError(
