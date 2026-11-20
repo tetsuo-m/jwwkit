@@ -8,6 +8,7 @@ import platform
 from importlib.resources import files
 from pathlib import Path
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -59,7 +60,7 @@ def _run_tool(command, args, cwd):
     )
 
 
-def check(*, compare_command, inspect_jwf_command, summarize_command):
+def check(*, compare_command, inspect_jwf_command, summarize_command, check_folder_command="check-folder"):
     if sys.flags.optimize:
         raise RuntimeError("Run without -O: executable guide assertions must remain enabled")
     count = check_installed_files()
@@ -502,6 +503,21 @@ def check(*, compare_command, inspect_jwf_command, summarize_command):
         assert cli.returncode==0,cli.stderr
         assert json.loads((folder/'cli.json').read_text(encoding='utf-8'))['entity_count']==4
         assert source.read_bytes()==original
+        # check-folder (#44): three synthetic drawings, counts only, drawings unchanged, folder removed after.
+        listed=folder/'check_folder';listed.mkdir()
+        shutil.copyfile(source,listed/'editable.jww')
+        shutil.copyfile(folder/'schema0_700.jww',listed/'schema0.jww')
+        (listed/'broken.jww').write_bytes(b'NotAJwwFile')
+        listed_before={p.name:p.read_bytes() for p in listed.iterdir()}
+        proc=_run_tool(check_folder_command,[str(listed)],folder)
+        assert proc.returncode==0,proc.stderr
+        for kind,number in (('編集できる',1),('明示の読み方が要る',1),('拒否',1),('読取り専用',0),('拒否（予想外）',0)):
+            assert f'{kind}：{number} 件' in proc.stdout,proc.stdout
+        lists=[p for p in listed.iterdir() if p.name not in listed_before]
+        assert len(lists)==1 and lists[0].suffix=='.csv' and lists[0].read_bytes().startswith(b'\xef\xbb\xbf')
+        assert {p.name:p.read_bytes() for p in listed.iterdir() if p.name in listed_before}==listed_before
+        shutil.rmtree(listed)
+        results.append('check_folder_cli_counts_and_unchanged_drawings')
         # Execute newer guides without relying on an original checkout or CAD.
         new_guides={};workflow_checks=[]
         for filename in ('read_view.md','geometry_view.md','spatial_search.md','workflow_settings.md','text_equivalence.md','edit_results.md','schema_normalization.md','reading_to_editing.md'):

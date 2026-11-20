@@ -4,7 +4,7 @@ import json
 
 from jwwkit import guide_paths
 from jwwkit._commands import (
-    check_installation, compare_drawings, inspect_jwf, recognize_planar_tategu, summarize_drawing,
+    check_folder, check_installation, compare_drawings, inspect_jwf, recognize_planar_tategu, summarize_drawing,
 )
 
 
@@ -13,6 +13,7 @@ def _check(_args):
         compare_command="compare",
         inspect_jwf_command="inspect-jwf",
         summarize_command="summarize",
+        check_folder_command="check-folder",
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
@@ -32,6 +33,7 @@ def main(argv=None):
         ("compare", compare_drawings),
         ("inspect-jwf", inspect_jwf),
         ("recognize-tategu", recognize_planar_tategu),
+        ("check-folder", check_folder),
     ):
         command = commands.add_parser(name, help=module.__doc__, description=module.__doc__)
         module.add_arguments(command)

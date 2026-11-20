@@ -7,6 +7,7 @@ src/jwwkit/__init__.py
 src/jwwkit/__main__.py
 src/jwwkit/_commands/__init__.py
 src/jwwkit/_commands/_integrity.py
+src/jwwkit/_commands/check_folder.py
 src/jwwkit/_commands/check_installation.py
 src/jwwkit/_commands/compare_drawings.py
 src/jwwkit/_commands/inspect_jwf.py
