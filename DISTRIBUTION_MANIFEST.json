@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 20119,
-      "sha256": "ac40dfe73cc12264cf37ba0c55f72050c00d8b07bdb01ce6e23872b0aa3073ae"
+      "size": 20185,
+      "sha256": "eac9c2ee6bf496959fac514c219349ae0dd3cb0e0117139e2c02b02dcda22ebc"
     },
     {
       "path": "CLAUDE.md",
@@ -613,8 +613,8 @@
     },
     {
       "path": "src/jwwkit/reader/archive.py",
-      "size": 24585,
-      "sha256": "fdfec0a78169948eced6a72fa6f8e8c7c2f7a4a220dc0ee250f180911ae2bef8"
+      "size": 24589,
+      "sha256": "9d4fbf20a1182c748bddcba4505a5b69b3d933e96ad8e753ce83891468449e7f"
     },
     {
       "path": "src/jwwkit/reader/images.py",
@@ -988,8 +988,8 @@
     },
     {
       "path": "tests/test_old_schema_pairs.py",
-      "size": 9071,
-      "sha256": "144cb3eb25613484f760030d7b4220b923b29bce8564189750b6a13b83d4bc2a"
+      "size": 10658,
+      "sha256": "d5f9ea1077e3477b8c2f8d87ef2933e809176518f13f99280b42fb01f89b63f3"
     },
     {
       "path": "tests/test_old_versions.py",
@@ -1128,8 +1128,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 61324,
-      "sha256": "9604260c6a357bb7e6ff8631db252891fbcce4c0a8481c0463b15cde1f8f99da"
+      "size": 62241,
+      "sha256": "e95addf8c667dd7a6153853ac30952de668c70afbf5e073de65585f8fe231624"
     }
   ]
 }
