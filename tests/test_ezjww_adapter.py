@@ -307,5 +307,75 @@ class EzjwwAdapterTests(unittest.TestCase):
         self.assertIs(caught.exception, error)
 
 
+    def test_diagnostics_on_removed_fields_are_removed_and_others_kept(self):
+        removed = ['header.line_types', 'header.line_types.sxf[1].name', 'header.pens[0].width', 'header.pens.printer',
+                   'header.text_presets[2]', 'images[0].data', 'text_encoding',
+                   'entities[3].image.width', 'block_defs[2].entities[0].line.base',
+                   'entities[5].aux_points[1].base.layer']
+        kept = ['header.pens_extra', 'header.line_typesx.name', 'header.layer_groups[0].layers[2].name',
+                'entities[3].content', 'entities[3].text.content', 'imagesx', 'header.memo']
+        diagnostics = [dict(code='CP932_DECODE_REPLACED', details=dict(field=f)) for f in removed + kept]
+        others = ['Exact text/embedded attributes unverified: x', dict(code='TRUNCATED', details={}),
+                  dict(code='OTHER')]
+        result = {'header': {}, 'entities': [], 'block_defs': [], 'diagnostics': diagnostics + others}
+        listed = result['diagnostics']
+        with mock.patch.object(_ezjww_adapter._ezjww, 'read_document', return_value=result):
+            returned = read_native_document('x.jww')
+        self.assertIs(returned['diagnostics'], listed)
+        fields = [d['details']['field'] for d in returned['diagnostics']
+                  if isinstance(d, dict) and d.get('details', {}).get('field')]
+        self.assertEqual(fields, kept)
+        self.assertEqual(returned['diagnostics'][len(kept):], others)
+
+
+class SyntheticDecodeWarningTests(unittest.TestCase):
+    """公開の v700 の見本を書き換え、レイヤ名（残す）と SXF の線種の名前（取り除く）を、正しくない CP932 にした図面。"""
+
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        from jwwkit import CadDocument
+        source = FIXTURES / 'jwcad_saved' / 'jwcad10036_save_v700.jww'
+        if not source.exists():
+            raise unittest.SkipTest('public fixture is missing')
+        cls.folder = Path(tempfile.mkdtemp(prefix='jwwkit-adapter-'))
+        named = cls.folder / 'named.jww'
+        document = CadDocument.open(source)
+        document.set_layer_name(0, 2, 'QZXQ')
+        document.save(named)
+        data = named.read_bytes()
+        # Jw_cad 10 writes these names as Unicode CStrings (ff fe ff + length + UTF-16). Write each as an
+        # ANSI CString of the same length whose first two bytes are not a CP932 pair.
+        layer = b'\xff\xfe\xff\x04' + 'QZXQ'.encode('utf-16-le')
+        sxf = b'\xff\xfe\xff\x0a' + 'continuous'.encode('utf-16-le')
+        assert data.count(layer) == 1 and data.count(sxf) == 1
+        data = data.replace(layer, b'\x04\x81\x20ZX').replace(sxf, b'\x0a\x81\x20ntinuous')
+        cls.drawing = cls.folder / 'decode_warnings.jww'
+        cls.drawing.write_bytes(data)
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.folder, ignore_errors=True)
+
+    @staticmethod
+    def fields(diagnostics):
+        return [d['details']['field'] for d in diagnostics if isinstance(d, dict)]
+
+    def test_ezjww_reports_both_warnings(self):
+        self.assertEqual(self.fields(ezjww.read_document(str(self.drawing))['diagnostics']),
+                         ['header.layer_groups[0].layers[2].name', 'header.line_types.sxf[1].name'])
+
+    def test_adapter_and_document_keep_only_the_layer_name_warning(self):
+        from jwwkit import CadDocument
+        self.assertEqual(self.fields(read_native_document(self.drawing)['diagnostics']),
+                         ['header.layer_groups[0].layers[2].name'])
+        document = CadDocument.open(self.drawing)
+        self.assertEqual(self.fields(document.diagnostics), ['header.layer_groups[0].layers[2].name'])
+        target = self.folder / 'saved.jww'
+        document.save(target)
+        self.assertEqual(target.read_bytes(), self.drawing.read_bytes())
+
+
 if __name__ == '__main__':
     unittest.main()
