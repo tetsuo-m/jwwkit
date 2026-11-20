@@ -115,6 +115,7 @@ AIに既存図面の編集を頼む場合、AIが示す計画の内容とSHA256�
 - `jwwkit compare --left before.jww --right after.jww --output comparison.json` で図面を比較します。
 - `jwwkit inspect-jwf --source settings.jwf --output settings.json` でJWFを読み取ります。
 - `jwwkit recognize-tategu --source input.jww --tolerances tolerances.json --output candidates.json` で建具の候補を抽出します。許容値は [建具候補の抽出](https://github.com/tetsuo-m/jwwkit/blob/main/docs/tategu_recognition.md) を参照してください。
+- `jwwkit check-folder <フォルダ>` で、フォルダの図面を「編集できる」「読取り専用」「明示の読み方が要る」「拒否」に分け、一覧（CSV）をそのフォルダに1つ作ります。図面は読むだけです。使い方は [利用ガイド](https://github.com/tetsuo-m/jwwkit/blob/main/docs/usage_guide.md) の「フォルダの図面を調べる」を参照してください。
 
 出力には新しいファイル名を指定してください。Pythonから手引きの場所を得るには `jwwkit.guide_paths()`、空テンプレートの場所を得るには `jwwkit.template_path()` を使います。
 
