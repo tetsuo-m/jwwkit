@@ -224,7 +224,18 @@ class CheckFolderTests(unittest.TestCase):
         _code, counts, output, screen = self.run_check()
         self.assertNotIn(("リンク", "外の図面.jww"), self.rows(output))
         self.assertEqual(sum(counts.values()), 13)
-        self.assertIn("たどらなかったフォルダのリンク・ジャンクション：", screen)
+        self.assertIn("たどらなかったフォルダのリンク・ジャンクション：2 件", screen)
+
+    def test_reason_words(self):
+        for message, reason in (
+                ("Truncated record at 0; element=header", "ファイルが途中で切れている（空のファイルを含む）"),
+                ("Invalid embedded image: gzip stream is truncated", "同梱の画像の形が確かめていない形か、壊れている"),
+                ("Embedded image unverified: BMP pixel data is truncated", "同梱の画像の形が確かめていない形か、壊れている"),
+                ("Unsupported noncanonical/64-bit sequence count (…; ezjww returns no elements …)", "要素の個数が普通と違う書き方"),
+                ("Block definitions exceed the ezjww limit: …", "ブロック定義が1万個を超える"),
+                ("something new", "その他の拒否")):
+            with self.subTest(message=message):
+                self.assertEqual(cf.reason_of(message), reason)
 
     def test_missing_folder(self):
         out = io.StringIO()
