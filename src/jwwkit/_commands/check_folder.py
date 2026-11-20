@@ -37,6 +37,7 @@ REASONS = (
     ("codec can't decode", "文字のコードが正しくない"),
     ("Unsupported JWW version", "対象外の版"),
     ("Invalid JWW signature", "JWWの印がない（JWWでない可能性）"),
+    ("Truncated", "ファイルが途中で切れている（空のファイルを含む）"),
     ("embedded image", "同梱の画像の形が確かめていない形か、壊れている"),
     ("Unsupported class", "対象外の要素の種類"),
     ("ezjww", "標準の読み取り（ezjww）と照合できない"),
@@ -55,20 +56,25 @@ def default_output(folder, now=None):
     return Path(folder) / f"jwwkit_check_{(now or datetime.datetime.now()).strftime('%Y%m%d_%H%M')}.csv"
 
 
-def _is_link_or_junction(entry):
+_LINK_TAGS = {getattr(stat, "IO_REPARSE_TAG_SYMLINK", 0xA000000C), getattr(stat, "IO_REPARSE_TAG_MOUNT_POINT", 0xA0000003)}
+
+
+def _is_folder_link(entry):
+    """A folder that is a symbolic link or a junction (not followed). Other reparse points (cloud files and the
+    like) are ordinary folders and files here."""
     if entry.is_symlink():
         return True
     try:
-        attributes = getattr(entry.stat(follow_symlinks=False), "st_file_attributes", 0)
+        return getattr(entry.stat(follow_symlinks=False), "st_reparse_tag", 0) in _LINK_TAGS
     except OSError:
-        return True
-    return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400))
+        return False
 
 
 def find_drawings(folder, *, recursive=True, exclude=()):
-    """Regular .jww files (any case) under folder, sorted by relative place. Links and junctions are not followed.
+    """.jww files (any case) under folder, sorted by relative place. Folder links and junctions are not followed;
+    a .jww file is listed whatever it is (a link to a file is read like the file).
 
-    Returns (paths, unreadable_folders, skipped_links)."""
+    Returns (paths, unreadable_folders, skipped_folder_links)."""
     folder = Path(folder)
     excluded = {os.path.normcase(os.path.abspath(p)) for p in exclude}
     found, unreadable, links = [], 0, 0
@@ -82,12 +88,12 @@ def find_drawings(folder, *, recursive=True, exclude=()):
             continue
         for entry in entries:
             try:
-                if _is_link_or_junction(entry):
-                    links += 1
-                elif entry.is_dir(follow_symlinks=False):
-                    if recursive:
+                if entry.is_dir():
+                    if _is_folder_link(entry):
+                        links += 1
+                    elif recursive:
                         pending.append(Path(entry.path))
-                elif (entry.is_file(follow_symlinks=False) and entry.name.lower().endswith(".jww")
+                elif (entry.name.lower().endswith(".jww")
                       and os.path.normcase(os.path.abspath(entry.path)) not in excluded):
                     found.append(Path(entry.path))
             except OSError:
@@ -109,14 +115,14 @@ def file_version(path):
 
 
 def _scrub(message, path):
-    """Hide the drawing's place and name in a message, and keep it short."""
+    """Hide full places (the drawing's and any other) in a message, and keep it short. The rest of the message,
+    numbers and words included, is kept as jwwkit wrote it (the name is in its own column anyway)."""
     text = " ".join(str(message or "").split())
     path = Path(path)
-    variants = {str(path), path.as_posix(), str(path).replace("\\", "\\\\"), path.name, path.stem}
-    variants.update(parent.name for parent in path.parents if parent.name and not parent.name.isascii())
-    for variant in sorted((v for v in variants if len(v) >= 2), key=len, reverse=True):
-        text = text.replace(variant, "<図面>")
-    text = re.sub(r"[A-Za-z]:[\\/][^\s;,)]*|\\\\[^\s;,)]+", "<場所>", text)
+    for variant in sorted({str(path), path.as_posix(), str(path).replace("\\", "\\\\"),
+                           str(path.absolute())}, key=len, reverse=True):
+        text = text.replace(variant, "<場所>")
+    text = re.sub(r"[A-Za-z]:[\\/][^\s;,)'\"]*|\\\\[^\s;,)'\"]+", "<場所>", text)
     return text if len(text) <= MESSAGE_LIMIT else text[:MESSAGE_LIMIT] + "…"
 
 
@@ -152,6 +158,7 @@ def classify(path):
         return result
     if before[0] > LARGE_BYTES:
         result["notes"].append("50MBを超える図面")
+    failure = None
     try:
         document = CadDocument.open(path)
         version = document.version
@@ -161,17 +168,20 @@ def classify(path):
         else:
             result.update(kind=READ_ONLY, reason="古い版（Jw_cadでVer.7.00形式に保存し直せば編集できる）")
     except Exception as exc:  # noqa: BLE001 - every failure is written to the list, then the next drawing
-        message = _scrub(str(exc), path)
-        if _is_rejection(exc):
-            explicit = _explicit_reading(path, str(exc))
-            if explicit:
-                result.update(kind=EXPLICIT, reason=explicit, message=message)
-            else:
-                result.update(kind=REJECTED, reason=reason_of(str(exc)), message=message)
-        else:
-            result.update(kind=UNEXPECTED, reason="予想外の例外", message=_scrub(f"{type(exc).__name__}: {exc}", path))
+        # Keep only the text: the exception (and what it holds of the drawing) is let go before reading again.
+        failure = (_is_rejection(exc), type(exc).__name__, str(exc))
     finally:
         gc.collect()  # hand the drawing back before the next one (#29)
+    if failure is not None:
+        rejection, name, text = failure
+        if rejection:
+            explicit = _explicit_reading(path, text)
+            if explicit:
+                result.update(kind=EXPLICIT, reason=explicit, message=_scrub(text, path))
+            else:
+                result.update(kind=REJECTED, reason=reason_of(text), message=_scrub(text, path))
+        else:
+            result.update(kind=UNEXPECTED, reason="予想外の例外", message=_scrub(f"{name}: {text}", path))
     try:
         after = _fingerprint(path)
     except OSError:
@@ -212,10 +222,16 @@ def check_folder(folder, *, recursive=True, output=None, only_problems=False, lo
         log(f"フォルダが見つかりません：{folder}")
         return 2, {}, None
     output = Path(output) if output else default_output(folder)
+    if output.suffix.lower() == ".jww":
+        log(f"一覧の名前に .jww は使えません（図面と取り違えるため）。止めます（図面は開いていません）：{output}")
+        return 2, {}, output
     try:
         stream = open(output, "x", encoding="utf-8-sig", newline="")
     except FileExistsError:
         log(f"同じ名前の一覧がすでにあるので、止めます（図面は開いていません）：{output}")
+        return 2, {}, output
+    except OSError as exc:
+        log(f"一覧のファイルを作れないので、止めます（図面は開いていません。{type(exc).__name__}）：{output}")
         return 2, {}, output
     counts = dict.fromkeys(KINDS, 0)
     with stream:
@@ -250,12 +266,17 @@ def check_folder(folder, *, recursive=True, output=None, only_problems=False, lo
     if unreadable:
         log(f"読めなかったフォルダ・項目：{unreadable} 件")
     if links:
-        log(f"たどらなかったリンク・ジャンクション：{links} 件")
+        log(f"たどらなかったフォルダのリンク・ジャンクション：{links} 件")
     log(f"一覧：{output}")
     return 0, counts, output
 
 
 def run(args):
+    import sys
+    for stream in (sys.stdout, sys.stderr):
+        # A console that cannot show Japanese must not stop the check halfway (the list is already open).
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="backslashreplace")
     code, _counts, _output = check_folder(args.folder, recursive=not args.no_recursive, output=args.output,
                                           only_problems=args.only_problems)
     return code
