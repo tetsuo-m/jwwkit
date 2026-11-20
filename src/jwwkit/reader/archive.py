@@ -32,15 +32,23 @@ EZJWW_BLOCK_DEFINITION_LIMIT = 10000
 # declaration with schema 700; the record layout still follows version 600.
 # Accepted only when all declarations use it; edits may not add new class
 # declarations (see preserved.py).
-OBSERVED_CLASS_SCHEMA_PAIRS = frozenset({(600, 700), (230, 700), (300, 700), (351, 700), (420, 700)})
 # Old file versions (#17) are read-only. Accepted only in the observed pairs:
 # schema == version for 230/300/351 (real drawings, #8), and schema 700 for
 # 230/300/351/420 (Jw_cad 10.03.6 saving in the old formats; 420 from one sample only).
+# (420, 0/1/230/310), (300, 1), (351, 1), (230, 65535) (#41): real drawings only (#40), where
+# jwwkit and ezjww agreed and the body re-serialised losslessly. Jw_cad 10.03.6 re-saves differed
+# only by its own re-save changes, most of them also seen in controls (VERIFICATION.md 5 and 6).
+# The body is still read by the file version; only these exact schema values are accepted.
+OBSERVED_CLASS_SCHEMA_PAIRS = frozenset({
+    (600, 700), (230, 700), (300, 700), (351, 700), (420, 700),
+    (420, 0), (420, 1), (420, 230), (420, 310), (300, 1), (351, 1), (230, 65535),
+})
 JWW_VERSIONS = (230, 300, 351, 420, 600, 700)
 SAME_CLASS_SCHEMA_VERSIONS = frozenset({230, 300, 351, 600, 700})
 # Canonical extended counts (65535 marker + DWORD >= 65535) in old versions were
-# observed only in (230, 700) drawings.
-OLD_EXTENDED_COUNT_PAIRS = frozenset({(230, 700)})
+# observed only in (230, 700) and (420, 0) drawings (#41). Large (420, 230) drawings stay
+# rejected: they also write class references in a form jwwkit cannot write back (#40).
+OLD_EXTENDED_COUNT_PAIRS = frozenset({(230, 700), (420, 0)})
 # Old JWS versions have their own observed class lists; only the JWS reader applies them.
 JWS_OBSERVED_OLD_CLASSES = {
     230: frozenset({'CDataSen', 'CDataEnko', 'CDataMoji'}),
