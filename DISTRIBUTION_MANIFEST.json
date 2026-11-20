@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 75863,
-      "sha256": "33e891cdecb6500e4f400179881e3e5871980f1754d691307750432d7b65c10e"
+      "size": 76048,
+      "sha256": "ea531caef6806365b72472fa5e9fc7e6fe658fa2bb6feffcc06c09cdc7f4f1c0"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -223,8 +223,8 @@
     },
     {
       "path": "src/jwwkit/_commands/check_folder.py",
-      "size": 12618,
-      "sha256": "57d64eee8569ad90bfe2128588880e67d8f1d2e141fa39bcccce11d8ad201f18"
+      "size": 12625,
+      "sha256": "bd33fe034bc03c79680e8790264c00f8d94e6d8a2d4e08509cc16141664eed2c"
     },
     {
       "path": "src/jwwkit/_commands/check_installation.py",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 75863,
-      "sha256": "33e891cdecb6500e4f400179881e3e5871980f1754d691307750432d7b65c10e"
+      "size": 76048,
+      "sha256": "ea531caef6806365b72472fa5e9fc7e6fe658fa2bb6feffcc06c09cdc7f4f1c0"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -958,8 +958,8 @@
     },
     {
       "path": "tests/test_check_folder.py",
-      "size": 13049,
-      "sha256": "ec08b657d67d1909d22c468db36aafe555fe63d93d16a571fefc82a0351f6e65"
+      "size": 13980,
+      "sha256": "f9abe12a2c24759e12a24f17f1656d30441052f1d674b11319f15772f0710136"
     },
     {
       "path": "tests/test_circular_solid_editing.py",
