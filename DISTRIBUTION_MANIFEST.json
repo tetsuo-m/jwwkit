@@ -33,13 +33,13 @@
     },
     {
       "path": "AGENTS.md",
-      "size": 9610,
-      "sha256": "e8972f50cd25c486ae565b7d98dfc5c973f11b1295178167e03b1fa347e51fb9"
+      "size": 9959,
+      "sha256": "8b51caabf9440421dfd1a9936946aa53e037a4e61145580329096f44d29d3218"
     },
     {
       "path": "CHANGELOG.md",
-      "size": 20185,
-      "sha256": "eac9c2ee6bf496959fac514c219349ae0dd3cb0e0117139e2c02b02dcda22ebc"
+      "size": 20973,
+      "sha256": "7c946698e0f07fa7b171a36d69d383776b501b92b88e36af764add889fe519f2"
     },
     {
       "path": "CLAUDE.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 71037,
-      "sha256": "af9c60678862dd3a322099d92090cc39b4256187eedf74508020ba0ec9967b4d"
+      "size": 74862,
+      "sha256": "e93000e33d1eb581c07ddf5c177a1891b6215d493766c1128a9a73fee6c981ba"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "README.md",
-      "size": 14348,
-      "sha256": "e7de0f8068c881878305954f3050873052a15dd590a90b02ab5ea1c10aeba8f0"
+      "size": 14774,
+      "sha256": "2f29699b67aeb594bff9cb8d2422ea08f1a0d165555b721588634a64e0aed2c6"
     },
     {
       "path": "requirements.txt",
@@ -222,9 +222,14 @@
       "sha256": "1d760eeef800acfd94fe0a745985747a053e092d5817b6a1b206fa6656c3363f"
     },
     {
+      "path": "src/jwwkit/_commands/check_folder.py",
+      "size": 11350,
+      "sha256": "8323695a4773abea863a3a98bc97dcb85e7a530252dbce2020a700edace01f0d"
+    },
+    {
       "path": "src/jwwkit/_commands/check_installation.py",
-      "size": 45555,
-      "sha256": "7a5cd98d60980dc89b3d1f6a5a9a40c546bbb06f0739cef1947f03c72cf630d1"
+      "size": 46752,
+      "sha256": "9e6e95e9fabbe023c5e567c95a6000562d9bb421732517996f4212110718501c"
     },
     {
       "path": "src/jwwkit/_commands/compare_drawings.py",
@@ -318,8 +323,8 @@
     },
     {
       "path": "src/jwwkit/cli.py",
-      "size": 1400,
-      "sha256": "7ec352b0af71cdc727237776d2e6870f0cbe8815167edb127733223aa5fccd59"
+      "size": 1499,
+      "sha256": "17a7429cbf51510fc5f1f416c00a59fdd062bba3dc6f2691271fa6dced86fa7e"
     },
     {
       "path": "src/jwwkit/drawing_comparison.py",
@@ -338,8 +343,8 @@
     },
     {
       "path": "src/jwwkit/guides/AGENTS.md",
-      "size": 9610,
-      "sha256": "e8972f50cd25c486ae565b7d98dfc5c973f11b1295178167e03b1fa347e51fb9"
+      "size": 9959,
+      "sha256": "8b51caabf9440421dfd1a9936946aa53e037a4e61145580329096f44d29d3218"
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
@@ -418,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 71037,
-      "sha256": "af9c60678862dd3a322099d92090cc39b4256187eedf74508020ba0ec9967b4d"
+      "size": 74862,
+      "sha256": "e93000e33d1eb581c07ddf5c177a1891b6215d493766c1128a9a73fee6c981ba"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -952,6 +957,11 @@
       "sha256": "f3f1e7dd3f6dac8fb76e5d4086cc6458ae6fd9c7ecc827cb82a2b2e6e0541c5c"
     },
     {
+      "path": "tests/test_check_folder.py",
+      "size": 10262,
+      "sha256": "c966ba7e766c6a544f07f9e5c42a56c1082ddf504f19860c0e3ca0c22db693fd"
+    },
+    {
       "path": "tests/test_circular_solid_editing.py",
       "size": 5846,
       "sha256": "f4c18064a2e30c0b4e8a56f117e2f6a996f40714b4d4c3908c5fc4496268b746"
@@ -1118,8 +1128,8 @@
     },
     {
       "path": "tools/release_files.txt",
-      "size": 3733,
-      "sha256": "ef5f1c83c3d96edc0bbf391cb9227747b80e3b6070729414942048dfddf73de0"
+      "size": 3770,
+      "sha256": "42b37fa3cbe9c3c5b49f0abf33ceaf1a0748a9c8bacd1747516595de18b2090a"
     },
     {
       "path": "tools/summarize_drawing.py",
