@@ -83,6 +83,16 @@ class StillRejectedTests(TempDirTestCase):
                         read_records_bytes(data)
                     self.assertIn('Unsupported class schema', str(caught.exception))
 
+    def test_mixes_of_added_values_are_rejected(self):
+        # Each added value is accepted only when every declaration uses it.
+        for first, second in ((0, 230), (0, 1), (0, 310), (230, 310), (1, 310), (1, 230)):
+            for a, b in ((first, second), (second, first)):
+                with self.subTest(declarations=(a, b)):
+                    data = patch_schemas(patch_schemas(fixture(420).read_bytes(), a), b, index=0)
+                    with self.assertRaises(RecordError) as caught:
+                        read_records_bytes(data)
+                    self.assertIn('Unsupported class schema', str(caught.exception))
+
     def test_point_styles_2_and_5_are_rejected(self):
         for version in (300, 351):
             data = patch_schemas(fixture(version).read_bytes(), 1)
@@ -117,6 +127,20 @@ class StillRejectedTests(TempDirTestCase):
                     with self.assertRaises(RecordError) as caught:
                         read_records_bytes(raw)
                     self.assertIn(f'Extended sequence count unobserved for (420, {schema})', str(caught.exception))
+
+    def test_extended_counts_rejected_for_the_other_added_pairs(self):
+        # Only (420, 0) was observed with extended counts among the added pairs (#40).
+        for version, schema in ((300, 1), (351, 1), (230, 65535)):
+            with self.subTest(version=version, schema=schema):
+                data = fixture(version).read_bytes()
+                end = read_records_bytes(data)['header_end']
+                body = serialize_body(lines(65535), [], version, encoding='utf-16le', old_extended_counts=True,
+                                      class_schema=schema)
+                raw = data[:end] + body
+                self.assertEqual(struct.unpack_from('<HI', raw, end), (65535, 65535))
+                with self.assertRaises(RecordError) as caught:
+                    read_records_bytes(raw)
+                self.assertIn(f'Extended sequence count unobserved for ({version}, {schema})', str(caught.exception))
 
     def test_420_230_long_class_references_cannot_be_written_back(self):
         # Real (420, 230) drawings write every reference from the 32767th element on in the
