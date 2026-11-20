@@ -37,7 +37,7 @@ REASONS = (
     ("codec can't decode", "文字のコードが正しくない"),
     ("Unsupported JWW version", "対象外の版"),
     ("Invalid JWW signature", "JWWの印がない（JWWでない可能性）"),
-    ("Truncated", "ファイルが途中で切れている（空のファイルを含む）"),
+    ("Truncated record", "ファイルが途中で切れている（空のファイルを含む）"),
     ("embedded image", "同梱の画像の形が確かめていない形か、壊れている"),
     ("Unsupported class", "対象外の要素の種類"),
     ("ezjww", "標準の読み取り（ezjww）と照合できない"),
