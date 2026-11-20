@@ -46,6 +46,6 @@ authorization of the copyright holder.
 
 |依存|固定版|ライセンス|配布元|
 |---|---|---|---|
-|ezjww|0.2.13|MIT|[ezjww 0.2.13](https://pypi.org/project/ezjww/0.2.13/)|
+|ezjww|0.7.13|MIT|[ezjww 0.7.13](https://pypi.org/project/ezjww/0.7.13/)|
 
 依存のコードとバイナリは各配布元から取得します。

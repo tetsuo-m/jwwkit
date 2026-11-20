@@ -70,7 +70,7 @@ python -m venv .venv
 `check` の結果が `"passed": true` なら導入確認は合格です。`guide` は同梱の `AGENTS.md` と利用ガイドの場所を表示します。仮想環境を有効にした場合は `jwwkit check` と `jwwkit guide` で実行できます。
 
 - WindowsのPython 3.14と3.15でwheelからの導入を確認しました。
-- 実行時の依存ライブラリは `ezjww>=0.2.13,<0.3` です。
+- 実行時の依存ライブラリは `ezjww>=0.7.13,<0.8` です。
 
 ### 開発用のインストール
 

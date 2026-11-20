@@ -1,18 +1,34 @@
 # ezjww窓口の内部契約
 
-対象はezjww **0.2.13**。唯一の実行用窓口は `src/jwwkit/_ezjww_adapter.py` の `read_native_document(path)`。利用者向け公開APIではない。`src/jwwkit/reader/archive.py` と `src/jwwkit/writer/template_document.py` はこの窓口を使う。モデルの不要な直接importを除き、src内のezjww import/呼出しをこの1モジュールへ集約した。テストと開発監査の直接呼出しは独立した比較相手として維持する。
+対象はezjww **0.7.13**（依存の範囲は`>=0.7.13,<0.8`。Issue #46で0.2.13から上げた）。唯一の実行用窓口は `src/jwwkit/_ezjww_adapter.py` の `read_native_document(path)`。利用者向け公開APIではない。`src/jwwkit/reader/archive.py` と `src/jwwkit/writer/template_document.py` はこの窓口を使う。モデルの不要な直接importを除き、src内のezjww import/呼出しをこの1モジュールへ集約した。テストと開発監査の直接呼出しは独立した比較相手として維持する。
 
 ## 呼出し契約
 
 - `ezjww.read_document(str(path))` を1回だけ呼ぶ。Pathでも文字列でも従来と同じstr変換を行う。
-- 戻った**同一の辞書オブジェクト**を返す。浅い/深いコピー、型変換、キーの追加/削除、文字復号、診断の正規化はしない。呼出し側は従来どおり辞書を更新できる。
+- 戻った**同一の辞書オブジェクト**を返す。浅い/深いコピー、型変換、キーの追加、文字復号、診断の正規化はしない。呼出し側は従来どおり辞書を更新できる。
+- キーの削除は、下の「0.7.13で増えた欄の取り除き」に挙げた7つの欄だけを、その場で行う。それ以外のキーは削除しない。
 - 例外を捕捉・再包装せず、その例外オブジェクトをそのまま伝播する。別Readerへの切替、再試行、部分成功の完全成功への変更はしない。
 - importは従来どおり即時に行い、ezjwwを必須依存のままにする。
-- 版固定はrequirements.txtで行う。契約テストも導入版0.2.13を確認するが、窓口に新たな版判定/型検証による実行時拒否は追加しない。契約違反をテストで検出する方式にして、既存の受理・拒否を変えない。
+- 版の範囲はpyproject.tomlとrequirements.txtで指定する。公開試験`tests/test_ezjww_adapter.py`が、導入版がこの範囲の中であることと、窓口の結果の欄の名前が0.2.13と同じであることを確かめる。窓口に新たな版判定/型検証による実行時拒否は追加しない。契約違反をテストで検出する方式にして、既存の受理・拒否を変えない。
+
+## 0.7.13で増えた欄の取り除き
+
+0.7.13の結果には、0.2.13になかった次の7つの欄がある。窓口はこれだけを取り除き、照合・`read_document()`の限定の読取り・テンプレートの読取りのどれにも、0.2.13と同じ形の結果を渡す。jwwkitの公開の出力（`CadDocument.header`、`read_document()`の結果など）は、これで変わらない。見せるかどうかは別のIssueで決める。
+
+|欄|場所|
+|---|---|
+|`pens`・`line_types`・`text_presets`|header|
+|`images`・`text_encoding`|結果の一番上|
+|`image`|TEXTの要素（図面直下とブロック定義の中）|
+|`base`|DIMENSIONの中のline・text・aux_lines・aux_points（0.2.13では欠けていた。残すと照合で比べる相手が増える）|
+
+- 欄の名前は公開の見本で調べ、実務図面の全件でもほかに増えた欄がないことを確かめた（Issue #46）。
+- これ以外の知らない欄が増えたときは、捨てずに残す。公開試験の欄の名前の比べで気づける。
+- 取り除いた後も、jwwkitが読めずezjwwが読めた図面では、`read_document()`の限定の読取りが返す要素が0.2.13と違うことがある。0.7.13が前より多く読めるためで、取り除きの対象ではない。
 
 ## 戻り値の契約
 
-0.2.13のJWW辞書は次の8キー。以下の型/意味はこの版の使用契約であり、新しい版へ一般化しない。未知の追加キーが返った場合も窓口は勝手に捨てない。
+窓口が返すJWW辞書は次の8キー（0.2.13と同じ形）。以下の型/意味は0.2.13で調べた使用契約であり、0.7.13でも前からある欄の値が同じであることを全件で確かめた（Issue #46）。新しい版へ一般化しない。上の7つ以外の未知の追加キーが返った場合も、窓口は勝手に捨てない。
 
 |キー|型|意味と利用|
 |---|---|---|
@@ -51,8 +67,8 @@ nameはnativeの復号/表示用代替名を含むことがある。原保存名
 |SOLID|point1～4のx/y：float、color：intまたはNone。頂点の保存順を入れ替えない|
 |CIRCLE_SOLID|center_x/center_y/radius/flatness/tilt_angle/start_angle/arc_angle/solid_mode：float、color：intまたはNone。solid_modeの意味を塗り種別へ固定しない（円環では内半径）|
 |BLOCK|ref_x/ref_y/scale_x/scale_y/rotation：float、def_number：int、block_name：strまたはNone（native追加欄）。scaleは無次元|
-|DIMENSION|line/text：dict、sxf_mode：intまたはNone、aux_lines：2個のlist[dict]、aux_points：4個のlist[dict]。0.2.13では内包base/typeが欠けることがある|
-|block_defs内の定義|number：int、is_referenced：bool、name：str、base：dict、entities：list[dict]。0.2.13は定義timestampを公開していない|
+|DIMENSION|line/text：dict、sxf_mode：intまたはNone、aux_lines：2個のlist[dict]、aux_points：4個のlist[dict]。内包のbase/typeは欠けることがある（0.7.13が返す内包のbaseは窓口が取り除く）|
+|block_defs内の定義|number：int、is_referenced：bool、name：str、base：dict、entities：list[dict]。定義timestampは公開していない|
 
 独自wrapperは数値/属性/要素数をnativeと突き合わせるが、font_name/content/timestampは比較から除外し、内包base/typeのnative欠落も従来どおり許容する。その後entities/block_defsを原文字・内包属性・日時を保持する独自rawへ置換する。adapterはこの処理を引き受けず、順序や条件も変えない。
 
