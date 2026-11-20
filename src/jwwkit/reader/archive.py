@@ -36,7 +36,8 @@ EZJWW_BLOCK_DEFINITION_LIMIT = 10000
 # schema == version for 230/300/351 (real drawings, #8), and schema 700 for
 # 230/300/351/420 (Jw_cad 10.03.6 saving in the old formats; 420 from one sample only).
 # (420, 0/1/230/310), (300, 1), (351, 1), (230, 65535) (#41): real drawings only (#40), where
-# jwwkit and ezjww agreed, the body re-serialised losslessly, and Jw_cad 10.03.6 re-saves matched.
+# jwwkit and ezjww agreed and the body re-serialised losslessly. Jw_cad 10.03.6 re-saves differed
+# only by its own re-save changes, also seen in controls (VERIFICATION.md sections 5 and 6).
 # The body is still read by the file version; only these exact schema values are accepted.
 OBSERVED_CLASS_SCHEMA_PAIRS = frozenset({
     (600, 700), (230, 700), (300, 700), (351, 700), (420, 700),

@@ -13,9 +13,19 @@
   - 根拠は、公開の説明や見本ではなく、実務図面37件でのjwwkitとezjwwの読みの一致と、損失のない書き直しです。
   - 寸法・ブロック・点の線種31と49・画像は、今までどおり拒否します。v600は今までどおり線・円弧・文字の3クラスだけです。
   - 観測していない形の点・ソリッドは、`Unobserved point form for rebro_schema0`、`Unobserved solid form for rebro_schema0` で拒否します。
+- 古い版の図面で、要素のクラスの宣言の版が0・1・230・310・65535のものを、読取り専用で開けるようにしました（#41）。
+  - 受け付ける組（ファイルの版, クラスの版）は、実務図面で観測した (420, 0)・(420, 1)・(420, 230)・(420, 310)・(300, 1)・(351, 1)・(230, 65535) だけです。ほかの値（(420, 420) など）と、宣言の混在は、今までどおり拒否します。
+  - 要素の個数が65535以上の書き方は、(420, 0) でも受け付けます。
+  - 本文の読み方は変わりません（本文の分かれ目は、今までどおりファイルの版で決めます）。編集と、新しい版への保存は拒否します。
+  - 根拠は実務図面だけです。jwwkitとezjwwの読みの一致と、損失のない書き直しです。Jw_cad 10.03.6で保存し直した図面とも比べ、違いはすべて、Jw_cadが保存し直すときの変化でした（前から受け付けている図面の対照でも同じ変化を確かめました。線種の名前の1件だけは、対照で確かめられていません）。詳しくは `VERIFICATION.md` の5と6。
 
 ### 変わる点・注意
 
+- 古い版で、クラスの宣言の版が上の値の図面のうち、別の理由で読めないものは、拒否の文が変わります。前は `Unsupported class schema: …`、今は次のとおりです。
+  - 要素が65535個以上の (420, 230) の図面：`Extended sequence count unobserved for (420, 230)`。
+  - 点の線種が2・5の点がある図面：`Unsupported point style`。
+  - 文字列にCP932として正しくない並びがある図面：文字のコードの拒否（`'cp932' codec can't decode …`）。
+- 正規化の点検（`inspect_schema_normalization` など）で、上の組の図面は、「対象外」（`unsupported`）から「正規化は要らない」（`not_needed`、`already_standard`）に変わります。既定の読取りで開けるためで、(420, 700) の図面と同じ扱いです。
 - schema 0の宣言で拒否したときの文の中の、クラスの一覧が変わりました。前は `permits only observed v600/v700 CDataSen/CDataEnko/CDataMoji (read-only)`、今は `permits only observed v600 CDataSen/CDataEnko/CDataMoji and v700 CDataSen/CDataEnko/CDataMoji/CDataTen/CDataSolid (read-only)` です。
 - 正規化の点検・計画の、対象外の宣言の理由の名前が変わりました。前は `outside_observed_three_class_schema0_scope`、今は `outside_observed_schema0_scope` です。この名前を読むプログラムは、直してください。
 - 正規化の計画は、作った版と同じ版のjwwkitで実行してください。前の版（0.3.1まで）で作った計画をこの版で実行すると（逆も同じ）、計画に記録した拒否の文が違うため「入力が変わった」（`Input SHA/classification/declarations changed; replan and obtain approval`）として止まり、出力はしません。作り直して、承認し直してください。
