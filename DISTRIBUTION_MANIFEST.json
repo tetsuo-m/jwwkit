@@ -98,8 +98,8 @@
     },
     {
       "path": "docs/ezjww_adapter_contract.md",
-      "size": 11263,
-      "sha256": "6cbb3667d448fd11a57c9544a1ea7dbaa7b42886f0d77a79df2c1e0d7e9f9b12"
+      "size": 11875,
+      "sha256": "c7ef5800aa2fa995940095d79d151ade55942750616f5c593def5cb974a7398e"
     },
     {
       "path": "docs/geometry_view.md",
@@ -1143,8 +1143,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 62241,
-      "sha256": "e95addf8c667dd7a6153853ac30952de668c70afbf5e073de65585f8fe231624"
+      "size": 66671,
+      "sha256": "9ab8f07e52a69f9be8c7c4930f853da3d3170c31cb04a41417d5d259ede93e12"
     }
   ]
 }
