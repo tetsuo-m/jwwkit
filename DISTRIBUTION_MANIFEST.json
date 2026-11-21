@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 25078,
-      "sha256": "fe81621f81d2be88ba9d6dc794deb9ff67797e6bae5f44ce000f0cb1f933d994"
+      "size": 26125,
+      "sha256": "9a9dc68406642ac23283ce101bc91cbd87fad8001f7e832744516d681d522b83"
     },
     {
       "path": "CLAUDE.md",
@@ -49,7 +49,7 @@
     {
       "path": "docs/api_list.md",
       "size": 115529,
-      "sha256": "487b24d6e6b0fe5699c2fa17e621e2f7c7b66f53fc5e40f4a4a0f1e46fedc952"
+      "sha256": "25e8690673f0a024973fbdac0a7685564edfe4eb75c05f98d1b68d623c8225d6"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -183,13 +183,13 @@
     },
     {
       "path": "pyproject.toml",
-      "size": 1071,
-      "sha256": "c451ae70860b0e3805da043a1c70ac0db3c90d09b8817e4b59dae2e4bfc3be66"
+      "size": 1074,
+      "sha256": "81c23e05efd36f605711a4224aed75fb666ff4c8b7f79af4e7098edb3af03124"
     },
     {
       "path": "README.md",
-      "size": 14774,
-      "sha256": "b90a733a3da2bce951b6c64f19fa32347a7247addd48bfe3179f5e7dfa7ae1d6"
+      "size": 15009,
+      "sha256": "02148da2f7276d79813860fa422a8908ce643a6670ed453365ace9d0607b5311"
     },
     {
       "path": "requirements.txt",
@@ -349,7 +349,7 @@
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
       "size": 115529,
-      "sha256": "487b24d6e6b0fe5699c2fa17e621e2f7c7b66f53fc5e40f4a4a0f1e46fedc952"
+      "sha256": "25e8690673f0a024973fbdac0a7685564edfe4eb75c05f98d1b68d623c8225d6"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -1148,8 +1148,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 75816,
-      "sha256": "f9bbb7c5f156649b81c169dbdeb651c15a93417eb922dbd43c55d1f0ea28d26d"
+      "size": 78444,
+      "sha256": "d9057a3feded69669916be83104f25bb94100eaf30108509c1037924357d6ad0"
     }
   ]
 }
