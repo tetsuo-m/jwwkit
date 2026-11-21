@@ -81,9 +81,11 @@ def check(*, compare_command, inspect_jwf_command, summarize_command, check_fold
         raise ValueError('Guide code inventory changed; update executable checks')
     ns = {'__name__': 'distribution_guide'}
     results = []
-    with tempfile.TemporaryDirectory(prefix='jww-install-check-') as tmp, \
+    with tempfile.TemporaryDirectory(prefix='jww-install-check-') as created, \
          patch('builtins.input', side_effect=AssertionError('No background keyboard approval')), \
          contextlib.redirect_stdout(io.StringIO()):
+        # Work in the real folder: normalization refuses paths under links (macOS /var -> /private/var).
+        tmp = str(Path(created).resolve())
         for i, code in enumerate(blocks):
             with contextlib.chdir(tmp):
                 exec(compile(code, f'usage_guide.md:block{i+1}', 'exec'), ns)
