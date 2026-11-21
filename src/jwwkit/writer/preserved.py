@@ -95,19 +95,30 @@ def count_forms(parsed):
     return parsed.get('count_forms')
 
 
-def expected_count_forms(original, definitions):
-    """保存した本文を読み直したときに出るはずのcount_forms（案A）。元に定義がなく、定義を足したときは普通の書き方。"""
-    forms = count_forms(original)
+def save_count_forms(original, entities, definitions):
+    """編集した保存で使う書き方。要素も定義もない本文は、宣言がなくクラスの版を示せないので普通の書き方にする。"""
+    return count_forms(original) if (entities or definitions) else None
+
+
+def expected_count_forms(original, entities, definitions):
+    """保存した本文を読み直したときに出るはずのcount_forms（案A）。
+
+    - 元に定義がなく、定義を足したときは普通の書き方。
+    - 65535個以上の並びは、どちらの書き方でも印+DWORDなので、読み直しでは書き方が分からない（数えない）。"""
+    forms = save_count_forms(original, entities, definitions)
     if forms is None:
         return None
+    small = [d for d in definitions if len(d['entities']) < 65535]
     inside = forms['definition_entities']
-    if inside is None and definitions:
+    if inside is None and small:
         inside = False
-    elif inside is not None and not definitions:
+    elif not small:
         inside = None
-    if not (forms['entities'] or forms['block_defs'] or inside):
+    top = forms['entities'] and len(entities) < 65535
+    listed = forms['block_defs'] and len(definitions) < 65535
+    if not (top or listed or inside):
         return None
-    return dict(entities=forms['entities'], block_defs=forms['block_defs'], definition_entities=inside)
+    return dict(entities=top, block_defs=listed, definition_entities=inside)
 
 
 def capture_source(path, *, schema_profile='strict'):
@@ -325,7 +336,7 @@ def _document_bytes(document):
     class_schema = original.get('class_schema', document.version)
     body = serialize_body(entities, definitions, document.version, encoding=original["body_encoding"], raw_trailer=original["raw_trailer"],
                           class_schema=class_schema if class_schema != document.version else None,
-                          count_forms=count_forms(original))
+                          count_forms=save_count_forms(original, entities, definitions))
     from jwwkit.writer.header import patch_scales
     header = document._source_bytes[:original['header_end']]
     if document._state_edits:
@@ -357,7 +368,7 @@ def _document_bytes(document):
     if (checked['entities'] != entities or checked['block_defs'] != definitions
             or checked["raw_trailer"] != original["raw_trailer"]):
         raise ValueError("保存前検証で本文が一致しません")
-    if checked.get('count_forms') != expected_count_forms(original, definitions):
+    if checked.get('count_forms') != expected_count_forms(original, entities, definitions):
         raise ValueError('保存前検証で個数の書き方が保たれません')
     if document.version == 700:
         # Image texts may only point to embedded images, unless the source already had such a text.

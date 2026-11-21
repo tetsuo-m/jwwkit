@@ -254,9 +254,12 @@ def _count_forms(c, version, class_schema, definitions):
     if (c.schema_profile != 'strict' or (version, class_schema) not in NONCANONICAL_COUNT_PAIRS
             or not c.class_declarations):
         raise RecordError(NONCANONICAL_COUNT_MESSAGE)
-    inside = {f'block_defs[{index}].entities' for index in range(len(definitions))}
-    if labels - inside - {'entities', 'block_defs'}:
+    every = {f'block_defs[{index}].entities' for index in range(len(definitions))}
+    if labels - every - {'entities', 'block_defs'}:
         raise RecordError(NONCANONICAL_COUNT_MESSAGE)
+    # A list of 65535 or more is written as marker + DWORD in either form, so it tells nothing about the form.
+    inside = {f'block_defs[{index}].entities' for index, definition in enumerate(definitions)
+              if len(definition['entities']) < 65535}
     if labels & inside and not inside <= labels:
         raise RecordError(MIXED_DEFINITION_COUNT_MESSAGE)
     return dict(entities='entities' in labels, block_defs='block_defs' in labels,
