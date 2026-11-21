@@ -128,7 +128,8 @@ def editing_methods():
 class TempDirTestCase(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
-        self.folder = Path(self._tmp.name)
+        # The real folder: normalization refuses paths under links (macOS /var -> /private/var).
+        self.folder = Path(self._tmp.name).resolve()
 
     def tearDown(self):
         self._tmp.cleanup()

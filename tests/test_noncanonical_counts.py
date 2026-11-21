@@ -54,7 +54,8 @@ def definition_count_offset(data: bytes, span) -> int:
 class NoncanonicalCountTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.folder = Path(tempfile.mkdtemp(prefix='jwwkit-noncanonical-'))
+        # The real folder: normalization refuses paths under links (macOS /var -> /private/var).
+        cls.folder = Path(tempfile.mkdtemp(prefix='jwwkit-noncanonical-')).resolve()
         cls.canonical = canonical_drawing(cls.folder / 'canonical.jww')
         cls.dword = with_forms(cls.canonical, ALL, cls.folder / 'dword.jww')
 
