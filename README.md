@@ -38,6 +38,7 @@ jwwkitは、それらの図面資産を、AIやプログラムから安全に扱
 - 新しい図面をゼロから作図する機能や、DXFなど他形式への変換は主な目的ではありません（DXFへの変換は [ezjww](https://pypi.org/project/ezjww/) が得意です）
 - 動作確認はJw_cad 10.03.6で行っています。それ以外の版で保存された図面では、未対応の形式として読み込みを拒否することがあります
 - 編集できる形式はJWWのv600/v700です。古い版（v230・v300・v351・v420）は、確かめた組み合わせだけを読取り専用で開けます（開く・集計・検索・比較・編集しない別名保存）。それ以外の古い版のJWWと、DOS版のJWCには対応していません
+- 要素の個数を普通と違う書き方（65535より小さい個数を、大きな個数と同じ形で書く）で保存したv700の図面は、その書き方のまま開いて編集・保存できます。受け付けるのは、実務図面で確かめた形だけです
 - 今のJw_cadがv6形式（Ver.6.00〜6.21a）で保存した図面は、開いて、図面にすでにある種類の要素だけを使う編集を保存できます。図面にない種類の要素を足す保存と、別の図面からのグループの取り込みは拒否します（Jw_cadでVer.7.00形式に保存し直せば扱えます）
 - 画像を含む図面（BMP・JPEG・PNG・GIF・TIFF、複数枚も可）は、画像をそのまま保持して保存できますが、画像そのものの追加・入替え・削除はできません
 - 縮尺の異なるグループへ、文字種の付いた文字・寸法を取り込む操作は、拒否します
@@ -115,7 +116,7 @@ AIに既存図面の編集を頼む場合、AIが示す計画の内容とSHA256�
 - `jwwkit compare --left before.jww --right after.jww --output comparison.json` で図面を比較します。
 - `jwwkit inspect-jwf --source settings.jwf --output settings.json` でJWFを読み取ります。
 - `jwwkit recognize-tategu --source input.jww --tolerances tolerances.json --output candidates.json` で建具の候補を抽出します。許容値は [建具候補の抽出](https://github.com/tetsuo-m/jwwkit/blob/main/docs/tategu_recognition.md) を参照してください。
-- `jwwkit check-folder <フォルダ>` で、フォルダの図面を「編集できる」「読取り専用」「明示の読み方が要る」「拒否」に分け、一覧（CSV）をそのフォルダに1つ作ります。図面は読むだけです。使い方は [利用ガイド](https://github.com/tetsuo-m/jwwkit/blob/main/docs/usage_guide.md) の「フォルダの図面を調べる」を参照してください。
+- `jwwkit check-folder <フォルダ>` で、フォルダの図面を「編集できる」「読取り専用」「明示の読み方が要る」「拒否」（予想外の例外やファイルを読めないときは「拒否（予想外）」）に分け、一覧（CSV）をそのフォルダに1つ作ります。図面は読むだけです。使い方は [利用ガイド](https://github.com/tetsuo-m/jwwkit/blob/main/docs/usage_guide.md) の「フォルダの図面を調べる」を参照してください。
 
 出力には新しいファイル名を指定してください。Pythonから手引きの場所を得るには `jwwkit.guide_paths()`、空テンプレートの場所を得るには `jwwkit.template_path()` を使います。
 

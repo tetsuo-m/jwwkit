@@ -464,7 +464,7 @@ read_records(path, *, schema_profile='strict')
 
 対応範囲・拒否条件：strict既定。明示schema_profile="rebro_schema0"はv600はschema0のSen/Enko/Moji、v700は加えてTen/Solid（点は線種1・仮点でない・記号の欄なし、ソリッドは線種1、円のソリッドは線種101で、どちらもRGB指定なしの形だけ）で宣言の順序/値も返す。strictはクラスの版がファイルの版と同じ宣言（v230/v300/v351/v600/v700）と、観測済みの組（ファイルの版600・230・300・351・420でクラスの版700。宣言がすべて700のときだけ）と、古い版で実務図面に観測した組（（420,0）（420,1）（420,230）（420,310）（300,1）（351,1）（230,65535）。宣言がすべて同じ値のときだけ）を受け付け、結果のclass_schemaに宣言の版を返す。古い版のヘッダーは公式の説明の区間の表で読み、420未満にはSXFの色名・線種名がない（空の一覧）。（420,700）の根拠は見本1件だけ。600と700の混在は拒否。混在・他クラス・画像/定義は拒否。未知クラス/末尾、切断、64bit/非正規/上限超の個数と未知参照を拒否。65535以上はWORDマーカー+DWORD（古い版では（230,700）と（420,0）だけ）。65535未満をWORDマーカー+DWORDで書く個数は、ファイルの版700・クラスの版700の図面でだけ受け付け、並びの種類（図面直下・定義の並び・定義の中）ごとの書き方を結果のcount_formsに返す（その書き方の図面だけ。定義の中の並びは、定義どうしで同じ書き方のときだけ受け付け、混在は拒否）。それ以外の非正規の個数は拒否し、拒否の文に受け付ける組を示す。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L127)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L154)。
 
 ### `read_records_bytes`
 
@@ -476,7 +476,7 @@ read_records_bytes(data, *, schema_profile='strict')
 
 対応範囲・拒否条件：strict既定。明示schema_profile="rebro_schema0"はv600はschema0のSen/Enko/Moji、v700は加えてTen/Solid（点は線種1・仮点でない・記号の欄なし、ソリッドは線種1、円のソリッドは線種101で、どちらもRGB指定なしの形だけ）で宣言の順序/値も返す。strictはクラスの版がファイルの版と同じ宣言（v230/v300/v351/v600/v700）と、観測済みの組（ファイルの版600・230・300・351・420でクラスの版700。宣言がすべて700のときだけ）と、古い版で実務図面に観測した組（（420,0）（420,1）（420,230）（420,310）（300,1）（351,1）（230,65535）。宣言がすべて同じ値のときだけ）を受け付け、結果のclass_schemaに宣言の版を返す。古い版のヘッダーは公式の説明の区間の表で読み、420未満にはSXFの色名・線種名がない（空の一覧）。（420,700）の根拠は見本1件だけ。600と700の混在は拒否。混在・他クラス・画像/定義は拒否。未知クラス/末尾、切断、64bit/非正規/上限超の個数と未知参照を拒否。65535以上はWORDマーカー+DWORD（古い版では（230,700）と（420,0）だけ）。65535未満をWORDマーカー+DWORDで書く個数は、ファイルの版700・クラスの版700の図面でだけ受け付け、並びの種類（図面直下・定義の並び・定義の中）ごとの書き方を結果のcount_formsに返す（その書き方の図面だけ。定義の中の並びは、定義どうしで同じ書き方のときだけ受け付け、混在は拒否）。それ以外の非正規の個数は拒否し、拒否の文に受け付ける組を示す。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L132)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L159)。
 
 ### `read_document`
 
@@ -488,7 +488,7 @@ read_document(path, *, schema_profile='strict')
 
 対応範囲・拒否条件：strict既定、schema0等のクラススキーマ違反は拒否（観測済みの組のv600・クラスの版700と、古い版の観測済みの組は受け付け、混在は拒否）。ezjwwが要素を0個で返しjwwkitが読めた場合は、照合できないので理由を示して拒否。明示schema_profile="rebro_schema0"は観測済みのクラス（v600は3クラス、v700は点・ソリッドを加えた5クラス）と形に限定、失敗時のフォールバックなし。それ以外のstrict本文読込み失敗では限定フォールバックと診断を返す場合があり、診断は安全な編集保存を保証しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L361)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/reader/archive.py#L428)。
 
 ### `jwf_setting_catalog`
 
