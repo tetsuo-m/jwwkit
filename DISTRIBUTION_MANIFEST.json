@@ -39,7 +39,7 @@
     {
       "path": "CHANGELOG.md",
       "size": 26843,
-      "sha256": "0d8df3b16f6be54ace2bc3b4e1d989fb99d972fc0d914bba9e7028a1cff6ad69"
+      "sha256": "6a2d5f682465632fde938c5394885db13105caf86386b0aab5da67848fd1f5f7"
     },
     {
       "path": "CLAUDE.md",
@@ -183,8 +183,8 @@
     },
     {
       "path": "pyproject.toml",
-      "size": 1074,
-      "sha256": "81c23e05efd36f605711a4224aed75fb666ff4c8b7f79af4e7098edb3af03124"
+      "size": 1071,
+      "sha256": "4e4309241f2b0ee6c518161646a701aca9705ca32a7ff122eb1428388b6e660f"
     },
     {
       "path": "README.md",
