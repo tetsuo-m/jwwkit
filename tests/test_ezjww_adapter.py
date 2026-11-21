@@ -289,7 +289,32 @@ class EzjwwAdapterTests(unittest.TestCase):
             native = key_paths(ezjww.read_document(str(path)))
             adapted = key_paths(read_native_document(path))
             for extra in native - adapted:
-                self.assertTrue(any(marker in extra for marker in removed), extra)
+                # the marker must end at the end of the path or at the next part ('.' or '[')
+                self.assertTrue(any(marker in extra and (extra.endswith(marker) or
+                                                         extra.split(marker, 1)[1][:1] in '.[')
+                                    for marker in removed), extra)
+
+    def test_text_image_and_dimension_part_base_only_are_removed(self):
+        def text():
+            return {'type': 'TEXT', 'base': {'layer': 1}, 'content': 'a', 'image': {'width': 1}}
+
+        def dimension():
+            part = lambda: {'base': {'layer': 2}, 'start_x': 0.0}
+            return {'type': 'DIMENSION', 'base': {'layer': 3}, 'line': part(), 'text': part(),
+                    'aux_lines': [part(), part()], 'aux_points': [part()]}
+        line = {'type': 'LINE', 'base': {'layer': 4}, 'image': 'kept on other kinds'}
+        result = {'header': {}, 'entities': [text(), dimension(), dict(line)], 'diagnostics': [],
+                  'block_defs': [{'number': 1, 'base': {'layer': 5}, 'entities': [text(), dimension()]}]}
+        with mock.patch.object(_ezjww_adapter._ezjww, 'read_document', return_value=result):
+            read_native_document('x.jww')
+        for entities in (result['entities'], result['block_defs'][0]['entities']):
+            self.assertEqual(entities[0], {'type': 'TEXT', 'base': {'layer': 1}, 'content': 'a'})
+            dim = entities[1]
+            self.assertEqual(dim['base'], {'layer': 3})
+            for part in [dim['line'], dim['text'], *dim['aux_lines'], *dim['aux_points']]:
+                self.assertEqual(part, {'start_x': 0.0})
+        self.assertEqual(result['entities'][2], line)
+        self.assertEqual(result['block_defs'][0]['base'], {'layer': 5})
 
     def test_same_object_is_returned_and_exceptions_pass_through(self):
         result = {'header': {'pens': 1, 'version': 700}, 'entities': [], 'block_defs': [], 'images': [],
@@ -313,9 +338,11 @@ class EzjwwAdapterTests(unittest.TestCase):
                    'entities[3].image.width', 'block_defs[2].entities[0].line.base',
                    'entities[5].aux_points[1].base.layer']
         kept = ['header.pens_extra', 'header.line_typesx.name', 'header.layer_groups[0].layers[2].name',
-                'entities[3].content', 'entities[3].text.content', 'imagesx', 'header.memo']
+                'entities[3].content', 'entities[3].text.content', 'entity.text.content', 'block_definition.name',
+                'imagesx', 'header.memo']
         diagnostics = [dict(code='CP932_DECODE_REPLACED', details=dict(field=f)) for f in removed + kept]
-        others = ['Exact text/embedded attributes unverified: x', dict(code='TRUNCATED', details={}),
+        # A diagnostic with no field (0.7.13's IMAGE_LIST_TRUNCATED, say) is kept: it does not point to a removed field.
+        others = ['Exact text/embedded attributes unverified: x', dict(code='IMAGE_LIST_TRUNCATED', details={}),
                   dict(code='OTHER')]
         result = {'header': {}, 'entities': [], 'block_defs': [], 'diagnostics': diagnostics + others}
         listed = result['diagnostics']
