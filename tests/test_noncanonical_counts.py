@@ -232,6 +232,61 @@ class NoncanonicalCountTests(unittest.TestCase):
         self.assertEqual(inspect_schema_normalization(self.dword)['status'],
                          inspect_schema_normalization(self.canonical)['status'])
 
+    def test_save_stops_when_the_forms_would_not_be_kept(self):
+        from unittest import mock
+        from jwwkit.writer import preserved
+        document = CadDocument.open(self.dword)
+        document.add_line((0, 0), (9, 9))
+        target = self.folder / 'forms_check.jww'
+        with mock.patch.object(preserved, 'expected_count_forms', return_value=None):
+            with self.assertRaises(ValueError) as caught:
+                document.save(target)
+        self.assertIn('個数の書き方', str(caught.exception))
+        self.assertFalse(target.exists())
+
+    def test_emptied_drawing_is_written_plainly(self):
+        # Without any element there is no class declaration to show the schema, so the counts are written plainly.
+        raw, parsed = capture_source(self.canonical)
+        header = raw[:parsed['header_end']]
+        body = serialize_body([Line((0, 0), (1, 1)).record()], [], 700, encoding=parsed['body_encoding'],
+                              raw_trailer=parsed['raw_trailer'], count_forms=dict(ALL, definition_entities=None))
+        source = self.write('one_line_dword.jww', header + body)
+        document = CadDocument.open(source)
+        self.assertEqual(document._source_records['count_forms']['entities'], True)
+        document.delete_entities(list(range(len(document.entities))))
+        target = self.folder / 'emptied.jww'
+        document.save(target)
+        data = target.read_bytes()
+        parsed_saved = read_records_bytes(data)
+        self.assertNotIn('count_forms', parsed_saved)
+        self.assertEqual(data[parsed_saved['header_end']:parsed_saved['header_end'] + 4], struct.pack('<HH', 0, 0))
+
+    def test_lists_of_65535_or_more_tell_nothing_about_the_form(self):
+        # Top level: 65534 lines in the DWORD form; one definition holds 65535 lines (marker + DWORD in either
+        # form) and the other two lines in the DWORD form.
+        raw, parsed = capture_source(self.canonical)
+        header = raw[:parsed['header_end']]
+        line = Line((0, 0), (1, 1)).record()
+        big = dict(type='BLOCK_DEF', base=dict(line['base']), number=1, is_referenced=False, timestamp=0,
+                   name='BIG', entities=[dict(line, base=dict(line['base'])) for _ in range(65535)])
+        small = dict(big, number=2, name='SMALL', entities=[dict(line, base=dict(line['base'])) for _ in range(2)])
+        top = [dict(line, base=dict(line['base'])) for _ in range(65534)]
+        body = serialize_body(top, [big, small], 700, encoding=parsed['body_encoding'],
+                              raw_trailer=parsed['raw_trailer'], count_forms=ALL)
+        source = self.write('large_dword.jww', header + body)
+        document = CadDocument.open(source)
+        self.assertEqual(document._source_records['count_forms'], ALL)
+        same = self.folder / 'large_dword_saved.jww'
+        document.save(same)
+        self.assertEqual(same.read_bytes(), source.read_bytes())
+        # One more top-level element makes 65535: the saved list cannot show the form, and the save goes on.
+        document.add_line((0, 0), (9, 9))
+        edited = self.folder / 'large_dword_edited.jww'
+        document.save(edited)
+        saved = read_records_bytes(edited.read_bytes())
+        self.assertEqual(len(saved['entities']), 65535)
+        self.assertEqual(saved['count_forms'], dict(ALL, entities=False))
+
     def test_check_folder_names_the_mix_as_the_count_form(self):
         from jwwkit._commands.check_folder import reason_of
         self.assertEqual(reason_of('Unobserved mix of noncanonical and plain sequence count forms inside block '
