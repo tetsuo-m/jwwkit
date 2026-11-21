@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 24302,
-      "sha256": "01d247862f279273c8be668b6f754c9bbf269bc22250219604fe1bbba3ed25cd"
+      "size": 25071,
+      "sha256": "e8f0bb1886bcf0a000e515e9aa95a143a2f701906223580f8d710a81836efb12"
     },
     {
       "path": "CLAUDE.md",
@@ -618,8 +618,8 @@
     },
     {
       "path": "src/jwwkit/reader/archive.py",
-      "size": 27439,
-      "sha256": "ab48b8784923255d47efd2774e40d9cf320bce5466b5567f0e09864fa782c60e"
+      "size": 27699,
+      "sha256": "9d1450c6fd363cf89697f2cd3bcee92d319e30f56713bde64c245c9954f76df3"
     },
     {
       "path": "src/jwwkit/reader/images.py",
@@ -738,8 +738,8 @@
     },
     {
       "path": "src/jwwkit/writer/preserved.py",
-      "size": 24959,
-      "sha256": "4ac829ae1b168ef7a717b86f95849e5c99c62461ee049485b405702091c91c32"
+      "size": 25594,
+      "sha256": "eaff6ee624a61297c8a43a6e076918ac0f5eea71c3e2e92e88605c91cb6f2285"
     },
     {
       "path": "src/jwwkit/writer/strings.py",
@@ -1003,8 +1003,8 @@
     },
     {
       "path": "tests/test_noncanonical_counts.py",
-      "size": 13230,
-      "sha256": "7ccc1f17f0ff32024e2df37fc1526dda709d868583b635987c79be33f3c8a555"
+      "size": 16579,
+      "sha256": "baa5ec9861f1d6be557da6af6cad7789efa11960fcc8a5738b8c68cbc4d4653c"
     },
     {
       "path": "tests/test_old_schema_pairs.py",
@@ -1148,8 +1148,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 73659,
-      "sha256": "eeecf9d518e08f904adb7a5165a428108eab2593cceebc3374bdc9cc8ba475d8"
+      "size": 74641,
+      "sha256": "3d588649bd66a14e63ee25787ba8ade04f2f7fbb034ea670febcfe795026697c"
     }
   ]
 }
