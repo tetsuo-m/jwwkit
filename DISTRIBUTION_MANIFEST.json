@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 26125,
-      "sha256": "9a9dc68406642ac23283ce101bc91cbd87fad8001f7e832744516d681d522b83"
+      "size": 26843,
+      "sha256": "0d8df3b16f6be54ace2bc3b4e1d989fb99d972fc0d914bba9e7028a1cff6ad69"
     },
     {
       "path": "CLAUDE.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "README.md",
-      "size": 15009,
-      "sha256": "02148da2f7276d79813860fa422a8908ce643a6670ed453365ace9d0607b5311"
+      "size": 15146,
+      "sha256": "1a199634549c58d79c25e18a275122be0a4e25b9eafb88cd8273c31f91cdcf78"
     },
     {
       "path": "requirements.txt",
@@ -1148,8 +1148,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 78444,
-      "sha256": "d9057a3feded69669916be83104f25bb94100eaf30108509c1037924357d6ad0"
+      "size": 78489,
+      "sha256": "9ccf93cadf89026715e74ca08c528e9e7360bfecab4da99b350cfedc6a3ca710"
     }
   ]
 }
