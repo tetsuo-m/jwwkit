@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 20973,
-      "sha256": "7c946698e0f07fa7b171a36d69d383776b501b92b88e36af764add889fe519f2"
+      "size": 22043,
+      "sha256": "b4cba7504518811e174f67f4a1fe7abf4f543707a61913c0afa0a1fd66f0e218"
     },
     {
       "path": "CLAUDE.md",
@@ -98,8 +98,8 @@
     },
     {
       "path": "docs/ezjww_adapter_contract.md",
-      "size": 8468,
-      "sha256": "bba2e155df352ab4106da6f3a7ada0bfac40b2e7400071579cfaf12bfd035e3f"
+      "size": 12397,
+      "sha256": "6464766aba106780aed1b482223d02ae36393e4f3b9f5230c5f75ba2355a00b6"
     },
     {
       "path": "docs/geometry_view.md",
@@ -123,8 +123,8 @@
     },
     {
       "path": "docs/read_view.md",
-      "size": 9845,
-      "sha256": "3fa9494f421279cd6eecceaf7d754afc36f17fbb83bd7eba6b87f95f249818a4"
+      "size": 9866,
+      "sha256": "3001679d559b3da2f2c126d9bf2e4a8c2e67cd70e1bdb4e6b5e660cf065e6f6d"
     },
     {
       "path": "docs/reading_to_editing.md",
@@ -184,17 +184,17 @@
     {
       "path": "pyproject.toml",
       "size": 1071,
-      "sha256": "879fef38fcbc2f0595dbd2ed43c25f2b5d357fddb0958c37d9379100ab997b63"
+      "sha256": "c451ae70860b0e3805da043a1c70ac0db3c90d09b8817e4b59dae2e4bfc3be66"
     },
     {
       "path": "README.md",
       "size": 14774,
-      "sha256": "2f29699b67aeb594bff9cb8d2422ea08f1a0d165555b721588634a64e0aed2c6"
+      "sha256": "b90a733a3da2bce951b6c64f19fa32347a7247addd48bfe3179f5e7dfa7ae1d6"
     },
     {
       "path": "requirements.txt",
       "size": 19,
-      "sha256": "7a9aff67cfe35d2f61fd20a32cf37eefa6a20d4fb2957b75232838bfc147cbc1"
+      "sha256": "d7c555ae92cdc296dfbddfecb4feab644ba438ddbd97449f97c8762cdcc243fd"
     },
     {
       "path": "SECURITY.md",
@@ -263,8 +263,8 @@
     },
     {
       "path": "src/jwwkit/_ezjww_adapter.py",
-      "size": 468,
-      "sha256": "e79221f719300e3f261f2672113710e0ccce4d8a70d6bcf539033379a91c1786"
+      "size": 3586,
+      "sha256": "e975158208746631f85e0abc1899a06c6f86b2aabfa5ba21eaeee7093f8b8c3e"
     },
     {
       "path": "src/jwwkit/_geometry_engine.py",
@@ -388,8 +388,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/read_view.md",
-      "size": 9845,
-      "sha256": "3fa9494f421279cd6eecceaf7d754afc36f17fbb83bd7eba6b87f95f249818a4"
+      "size": 9866,
+      "sha256": "3001679d559b3da2f2c126d9bf2e4a8c2e67cd70e1bdb4e6b5e660cf065e6f6d"
     },
     {
       "path": "src/jwwkit/guides/docs/reading_to_editing.md",
@@ -618,8 +618,8 @@
     },
     {
       "path": "src/jwwkit/reader/archive.py",
-      "size": 24589,
-      "sha256": "9d4fbf20a1182c748bddcba4505a5b69b3d933e96ad8e753ce83891468449e7f"
+      "size": 24602,
+      "sha256": "3fb3f43932c1a082bf59912671e19bea4aafb4260f602715a51894fa1972030e"
     },
     {
       "path": "src/jwwkit/reader/images.py",
@@ -948,8 +948,8 @@
     },
     {
       "path": "tests/test_block_definition_limit.py",
-      "size": 5609,
-      "sha256": "2df262f844a87bfda4327162ee2bb91fe83ebd9856204f25b99bd4f1979cc16c"
+      "size": 5624,
+      "sha256": "a63973c7fd43f8531799970bfbf42a7d9284c3bf070c306bb206dc16d35cf47b"
     },
     {
       "path": "tests/test_block_names.py",
@@ -990,6 +990,11 @@
       "path": "tests/test_extended_counts.py",
       "size": 3066,
       "sha256": "c463e6be620a9a3d394b39f06b7b67eb26825ed8234ca9a71d6c31ba13dc7842"
+    },
+    {
+      "path": "tests/test_ezjww_adapter.py",
+      "size": 16838,
+      "sha256": "5684546c437024d2a69fa91e35b3d3205d3d74b51c77d7316d9c24ebe06f1361"
     },
     {
       "path": "tests/test_geometry_guide.py",
@@ -1094,7 +1099,7 @@
     {
       "path": "THIRD_PARTY_NOTICES.md",
       "size": 3092,
-      "sha256": "13f72716f45cc946230b6027451141544b71f02cec037ef1e2d63f021bd3a6a5"
+      "sha256": "8a32802c10f073827f3b2a76d49e56986645825d585f00f50df0ecd81cc06b18"
     },
     {
       "path": "tools/build_release.py",
@@ -1138,8 +1143,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 62241,
-      "sha256": "e95addf8c667dd7a6153853ac30952de668c70afbf5e073de65585f8fe231624"
+      "size": 67477,
+      "sha256": "404441b29aa665ed95698e98acffbd82a9354cd65b77e8994709ed09befc4368"
     }
   ]
 }
