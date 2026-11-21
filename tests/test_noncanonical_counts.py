@@ -161,7 +161,7 @@ class NoncanonicalCountTests(unittest.TestCase):
         data[offset:offset + 6] = struct.pack('<H', 2)
         with self.assertRaises(RecordError) as caught:
             read_records_bytes(bytes(data))
-        self.assertIn('Unobserved mix of sequence count forms inside block definitions', str(caught.exception))
+        self.assertIn('Unobserved mix of noncanonical and plain sequence count forms', str(caught.exception))
         with self.assertRaises(RecordError):
             CadDocument.open(self.write('mixed.jww', bytes(data)))
 
@@ -173,18 +173,69 @@ class NoncanonicalCountTests(unittest.TestCase):
             read_records_bytes(bytes(data))
         self.assertIn(NONCANONICAL, str(caught.exception))
 
-    def test_other_versions_and_schemas_are_rejected(self):
-        # v700 whose classes use schema 600 (an unobserved pair) with the form: rejected for the form.
+    def test_unobserved_class_schemas_stop_before_the_form(self):
+        # v700 whose classes use schema 600 (an unobserved pair): the declarations are refused first.
         data = bytearray(self.dword.read_bytes())
         for declaration in read_records_bytes(bytes(data))['class_declarations']:
             struct.pack_into('<H', data, declaration['offset'] + 2, 600)
         with self.assertRaises(RecordError) as caught:
             read_records_bytes(bytes(data))
         self.assertIn('Unsupported class schema', str(caught.exception))
+
+    def test_rebro_schema0_with_the_form_is_rejected(self):
+        # A v700 drawing that rebro_schema0 reads (schema 0 lines and texts, no definitions), with the form.
+        document = JwwDocument()
+        document.add_line((0, 0), (1, 1))
+        plain = self.folder / 'schema0_plain.jww'
+        document.save(plain)
+        data = bytearray(with_forms(plain, dict(entities=True, block_defs=True, definition_entities=None),
+                                    self.folder / 'schema0_dword_700.jww').read_bytes())
+        for declaration in read_records_bytes(bytes(data))['class_declarations']:
+            struct.pack_into('<H', data, declaration['offset'] + 2, 0)
+        plain_zero = bytearray(plain.read_bytes())
+        for declaration in read_records_bytes(bytes(plain_zero))['class_declarations']:
+            struct.pack_into('<H', plain_zero, declaration['offset'] + 2, 0)
+        # The same drawing with plain counts is read by the profile, so only the form is refused.
+        read_records_bytes(bytes(plain_zero), schema_profile='rebro_schema0')
+        with self.assertRaises(RecordError) as caught:
+            read_records_bytes(bytes(data), schema_profile='rebro_schema0')
+        self.assertIn(NONCANONICAL, str(caught.exception))
+
+    def test_old_versions_and_v600_with_the_form_are_rejected(self):
+        fixtures = Path(__file__).resolve().parent / 'fixtures' / 'jwcad_saved'
+        for version in (230, 420, 600):
+            with self.subTest(version=version):
+                data = (fixtures / f'jwcad10036_save_v{version}.jww').read_bytes()
+                parsed = read_records_bytes(data)
+                end = parsed['header_end']
+                count, = struct.unpack_from('<H', data, end)
+                self.assertEqual(count, len(parsed['entities']))
+                with self.assertRaises(RecordError) as caught:
+                    read_records_bytes(data[:end] + struct.pack('<HI', 65535, count) + data[end + 2:])
+                self.assertIn(NONCANONICAL, str(caught.exception))
         # The writer keeps the form only for v700.
         raw, parsed = capture_source(self.canonical)
         with self.assertRaises(ValueError):
             serialize_body(parsed['entities'], parsed['block_defs'], 600, encoding='cp932', count_forms=ALL)
+
+    def test_drawing_without_class_declarations_is_not_taken_as_schema_700(self):
+        data = self.canonical.read_bytes()
+        parsed = read_records_bytes(data)
+        empty = data[:parsed['header_end']] + struct.pack('<HIHI', 65535, 0, 65535, 0) + parsed['raw_trailer']
+        read_records_bytes(data[:parsed['header_end']] + struct.pack('<HH', 0, 0) + parsed['raw_trailer'])
+        with self.assertRaises(RecordError) as caught:
+            read_records_bytes(empty)
+        self.assertIn(NONCANONICAL, str(caught.exception))
+
+    def test_normalization_inspection_sees_an_accepted_drawing_as_standard(self):
+        from jwwkit.normalization import inspect_schema_normalization
+        self.assertEqual(inspect_schema_normalization(self.dword)['status'],
+                         inspect_schema_normalization(self.canonical)['status'])
+
+    def test_check_folder_names_the_mix_as_the_count_form(self):
+        from jwwkit._commands.check_folder import reason_of
+        self.assertEqual(reason_of('Unobserved mix of noncanonical and plain sequence count forms inside block '
+                                   'definitions (…)'), '要素の個数が普通と違う書き方')
 
 
 if __name__ == '__main__':
