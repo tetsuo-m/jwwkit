@@ -23,8 +23,8 @@
     },
     {
       "path": ".github/workflows/tests.yml",
-      "size": 820,
-      "sha256": "5bbdd09fb20b68c97ff935636c7a59cbcef1154d8ce8f0910cd7554fcebea8d8"
+      "size": 1612,
+      "sha256": "bf9b0653351b729c09fbe2c2d9026a60b27c76858c439182c219188152e2a27d"
     },
     {
       "path": ".gitignore",
