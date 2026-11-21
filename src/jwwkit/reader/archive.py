@@ -2,7 +2,8 @@
 
 Native ezjww remains the header/metadata reader. This supplement retains
 CP932 strings and embedded dimension attributes that its public model loses.
-It rejects unknown classes, object references and unbounded/noncanonical counts.
+It rejects unknown classes, object references and unbounded/noncanonical counts, except the
+noncanonical count form observed in v700 drawings with class schema 700 (NONCANONICAL_COUNT_PAIRS).
 Observed gzip/BMP image trailers are validated and retained as raw bytes.
 """
 from pathlib import Path
@@ -56,7 +57,15 @@ JWS_OBSERVED_OLD_CLASSES = {
     420: frozenset({'CDataSen', 'CDataEnko'}),
 }
 NONCANONICAL_COUNT_MESSAGE = ('Unsupported noncanonical/64-bit sequence count (a count below 65535 written in the '
-                              'DWORD form; ezjww returns no elements for it, so it cannot be cross-checked)')
+                              'DWORD form is accepted only in v700 drawings whose classes use schema 700)')
+# A count below 65535 written as the 65535 marker + DWORD (#43, #46): observed in 40 real v700 drawings with class
+# schema 700, in the top-level element list, the block definition list and the lists inside definitions (all
+# definitions alike). ezjww 0.7.13 reads them and they re-serialise losslessly when the form is kept; Jw_cad 10.03.6
+# reads the same counts and re-saves them in the plain WORD form. Only that form is accepted; the form of each
+# list is kept in 'count_forms' and written back (writer.preserved.count_forms).
+NONCANONICAL_COUNT_PAIRS = frozenset({(700, 700)})
+MIXED_DEFINITION_COUNT_MESSAGE = ('Unobserved mix of noncanonical and plain sequence count forms inside block '
+                                  'definitions (some lists write a count below 65535 in the DWORD form and some do not)')
 
 
 def is_read_only_version(version):
@@ -189,6 +198,7 @@ def _read_records(c):
     c.accepted_schema_pairs = OBSERVED_CLASS_SCHEMA_PAIRS
     c.same_schema_versions = SAME_CLASS_SCHEMA_VERSIONS
     c.old_extended_counts = 0
+    c.noncanonical_counts = []
     entities, definitions, spans = read_entity_sequences(c, version)
     schemas = {d['schema'] for d in c.class_declarations}
     class_schema = version
@@ -201,6 +211,7 @@ def _read_records(c):
             raise RecordError(f'Old version {version} without class declarations is unobserved')
         if c.old_extended_counts and (version, class_schema) not in OLD_EXTENDED_COUNT_PAIRS:
             raise RecordError(f'Extended sequence count unobserved for ({version}, {class_schema})')
+    count_forms = _count_forms(c, version, class_schema, definitions)
     if c.schema_profile == 'rebro_schema0':
         if definitions or any(r['type'] not in REBRO_SCHEMA0_TYPES[version] for r in entities):
             raise RecordError('Unobserved structure for rebro_schema0')
@@ -221,12 +232,39 @@ def _read_records(c):
     raw_trailer = c.data[tail_offset:c.pos]
     if c.pos != len(c.data):
         raise RecordError('Unsupported trailer/layout')
-    return dict(entities=entities, block_defs=definitions, header_end=header_end,
-                tail_offset=tail_offset, raw_trailer=raw_trailer, images=images,
-                spans=spans, version=version, memo=memo,
-                schema_profile=c.schema_profile, class_declarations=c.class_declarations,
-                class_schema=class_schema,
-                layer_names=layer_names, color_names=color_names, line_type_names=line_type_names)
+    result = dict(entities=entities, block_defs=definitions, header_end=header_end,
+                  tail_offset=tail_offset, raw_trailer=raw_trailer, images=images,
+                  spans=spans, version=version, memo=memo,
+                  schema_profile=c.schema_profile, class_declarations=c.class_declarations,
+                  class_schema=class_schema,
+                  layer_names=layer_names, color_names=color_names, line_type_names=line_type_names)
+    if count_forms is not None:
+        # Only drawings that use the form get the key, so the result for every other drawing is unchanged.
+        result['count_forms'] = count_forms
+    return result
+
+
+def _count_forms(c, version, class_schema, definitions):
+    """Which lists write a count below 65535 as marker + DWORD (None when none does). Accepted only for the
+    observed pair and form (NONCANONICAL_COUNT_PAIRS); the lists inside definitions must all agree."""
+    labels = set(c.noncanonical_counts)
+    if not labels:
+        return None
+    # The class schema must be seen in the declarations: a drawing without any is not taken as schema 700.
+    if (c.schema_profile != 'strict' or (version, class_schema) not in NONCANONICAL_COUNT_PAIRS
+            or not c.class_declarations):
+        raise RecordError(NONCANONICAL_COUNT_MESSAGE)
+    every = {f'block_defs[{index}].entities' for index in range(len(definitions))}
+    if labels - every - {'entities', 'block_defs'}:
+        raise RecordError(NONCANONICAL_COUNT_MESSAGE)
+    # A list of 65535 or more is written as marker + DWORD in either form, so it tells nothing about the form.
+    inside = {f'block_defs[{index}].entities' for index, definition in enumerate(definitions)
+              if len(definition['entities']) < 65535}
+    if labels & inside and not inside <= labels:
+        raise RecordError(MIXED_DEFINITION_COUNT_MESSAGE)
+    return dict(entities='entities' in labels, block_defs='block_defs' in labels,
+                # None: no definitions to tell the form of the lists inside them (new ones are written plainly)
+                definition_entities=(inside <= labels) if inside else None)
 
 
 
@@ -323,8 +361,14 @@ def read_entity_sequences(c, version):
                     raise RecordError('Extended sequence count unobserved for this old schema')
                 c.old_extended_counts += 1
             n, = c.unpack('<I')
-            if n < 65535 or n == 0xffffffff:
+            if n == 0xffffffff:
                 raise RecordError(NONCANONICAL_COUNT_MESSAGE)
+            if n < 65535:
+                # Recorded only by the JWW reader for v700; checked against the class schema after reading.
+                forms = getattr(c, 'noncanonical_counts', None)
+                if forms is None or version != 700:
+                    raise RecordError(NONCANONICAL_COUNT_MESSAGE)
+                forms.append(label)
         if n > (len(c.data)-c.pos)//2:
             raise RecordError('Sequence count exceeds remaining record-tag capacity')
         records = []

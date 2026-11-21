@@ -4,8 +4,11 @@ from jwwkit.model.base import BASE_KEYS
 from .strings import cstring
 
 
-def records_bytes(records, registry=None, *, version=700, encoding="utf-16le"):
-    """確認済みJWW230/300/351/420/600/700・JWS230/351/420/600/700のMFC要素列を保存する。"""
+def records_bytes(records, registry=None, *, version=700, encoding="utf-16le", sequence="entities"):
+    """確認済みJWW230/300/351/420/600/700・JWS230/351/420/600/700のMFC要素列を保存する。
+
+    sequence is the kind of list (entities, block_defs, definition_entities); registry['count_forms'] says which
+    kinds write a count below 65535 as the 65535 marker + DWORD (kept from the source, v700 only, #46)."""
     if version not in (230,300,351,420,600,700):
         raise ValueError("Unsupported archive schema")
     count=len(records)
@@ -15,7 +18,10 @@ def records_bytes(records, registry=None, *, version=700, encoding="utf-16le"):
         raise ValueError('Extended sequence counts unobserved for this old schema')
     if count >= 0xffffffff:
         raise ValueError('64-bit sequence counts are not supported')
-    data = bytearray(struct.pack('<H', count) if count < 65535 else struct.pack('<HI',65535,count))
+    dword = bool((registry.get('count_forms') or {}).get(sequence))
+    if dword and version != 700:
+        raise ValueError('The DWORD form for a count below 65535 is kept only in v700 drawings')
+    data = bytearray(struct.pack('<H', count) if count < 65535 and not dword else struct.pack('<HI',65535,count))
     classes = registry['classes']
     for record in records:
         kind = record['type']
@@ -92,7 +98,8 @@ def payload_bytes(record, registry=None, *, version=700, encoding="utf-16le"):
     elif kind == 'BLOCK_DEF':
         data += struct.pack('<III',record['number'],int(record['is_referenced']),record['timestamp'])
         data += field_string(record, 'name', encoding)
-        data += records_bytes(record['entities'], registry, version=version, encoding=encoding)
+        data += records_bytes(record['entities'], registry, version=version, encoding=encoding,
+                              sequence='definition_entities')
     elif kind == 'DIMENSION':
         data += payload_bytes(record['line'], version=version, encoding=encoding) + payload_bytes(record['text'], version=version, encoding=encoding)
         if version < 420:  # no SXF part before 420

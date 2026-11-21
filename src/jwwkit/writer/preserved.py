@@ -17,18 +17,21 @@ OLD_VERSION_HINT = ('. Old JWW versions are read-only (unedited save-as only); t
 
 
 def serialize_body(entities, definitions, version, *, encoding=None, raw_trailer=None, class_declarations=None,
-                   class_schema=None, old_extended_counts=False):
-    """既知の本文を共通MFCレジストリで直列化する。class_schemaは新しく書く宣言の版（既定はファイルの版）。"""
+                   class_schema=None, old_extended_counts=False, count_forms=None):
+    """既知の本文を共通MFCレジストリで直列化する。class_schemaは新しく書く宣言の版（既定はファイルの版）。
+    count_formsは、元の図面の個数の書き方（並びの種類ごと。#46）。"""
     registry = {"classes": {}, "next_index": 1}
     if old_extended_counts:
         registry['old_extended_counts'] = True
+    if count_forms:
+        registry['count_forms'] = count_forms
     if class_schema is not None:
         registry['class_schema'] = class_schema
     if class_declarations is not None:
         registry.update(class_declarations=class_declarations, declaration_position=0)
     encoding = encoding or ("cp932" if version == 600 else "utf-16le")
     body = records_bytes(entities, registry, version=version, encoding=encoding)
-    body += records_bytes(definitions, registry, version=version, encoding=encoding)
+    body += records_bytes(definitions, registry, version=version, encoding=encoding, sequence='block_defs')
     if class_declarations is not None and registry['declaration_position'] != len(class_declarations):
         raise ValueError('Original class declarations not fully consumed')
     if version == 700:
@@ -84,6 +87,40 @@ def old_extended_counts(parsed):
     return (parsed['version'], parsed.get('class_schema', parsed['version'])) in OLD_EXTENDED_COUNT_PAIRS
 
 
+def count_forms(parsed):
+    """元の図面の個数の書き方（#46）。v700・クラスの版700で、65535未満をDWORDで書く並びがある図面だけ。
+
+    編集した後の保存も同じ書き方にする（案A）。前からある並びはその並びの書き方、新しいブロック定義の中の並びは
+    元の定義の中の並びと同じ書き方（元に定義がなければ普通の書き方）。それ以外の図面ではNone。"""
+    return parsed.get('count_forms')
+
+
+def save_count_forms(original, entities, definitions):
+    """編集した保存で使う書き方。要素も定義もない本文は、宣言がなくクラスの版を示せないので普通の書き方にする。"""
+    return count_forms(original) if (entities or definitions) else None
+
+
+def expected_count_forms(original, entities, definitions):
+    """保存した本文を読み直したときに出るはずのcount_forms（案A）。
+
+    - 元に定義がなく、定義を足したときは普通の書き方。
+    - 65535個以上の並びは、どちらの書き方でも印+DWORDなので、読み直しでは書き方が分からない（数えない）。"""
+    forms = save_count_forms(original, entities, definitions)
+    if forms is None:
+        return None
+    small = [d for d in definitions if len(d['entities']) < 65535]
+    inside = forms['definition_entities']
+    if inside is None and small:
+        inside = False
+    elif not small:
+        inside = None
+    top = forms['entities'] and len(entities) < 65535
+    listed = forms['block_defs'] and len(definitions) < 65535
+    if not (top or listed or inside):
+        return None
+    return dict(entities=top, block_defs=listed, definition_entities=inside)
+
+
 def capture_source(path, *, schema_profile='strict'):
     """開く時点の原データを捕捉し、本文再直列化の全バイト一致を確認する。"""
     raw, parsed = _capture_source(path, schema_profile=schema_profile)
@@ -107,7 +144,7 @@ def _capture_source(path, *, schema_profile='strict'):
         try:
             body = serialize_body(parsed["entities"], parsed["block_defs"], parsed["version"], encoding=encoding, raw_trailer=parsed["raw_trailer"],
                 class_declarations=parsed['class_declarations'] if keeps_class_declarations(parsed) else None,
-                old_extended_counts=old_extended_counts(parsed))
+                old_extended_counts=old_extended_counts(parsed), count_forms=count_forms(parsed))
         except (UnicodeError, ValueError) as exc:
             serialization_errors.append(f'{encoding}: {exc}')
             continue
@@ -298,7 +335,8 @@ def _document_bytes(document):
     # (600, 700): Jw_cad 10.03.6 v6 output. Write every declaration with the source class schema.
     class_schema = original.get('class_schema', document.version)
     body = serialize_body(entities, definitions, document.version, encoding=original["body_encoding"], raw_trailer=original["raw_trailer"],
-                          class_schema=class_schema if class_schema != document.version else None)
+                          class_schema=class_schema if class_schema != document.version else None,
+                          count_forms=save_count_forms(original, entities, definitions))
     from jwwkit.writer.header import patch_scales
     header = document._source_bytes[:original['header_end']]
     if document._state_edits:
@@ -330,6 +368,8 @@ def _document_bytes(document):
     if (checked['entities'] != entities or checked['block_defs'] != definitions
             or checked["raw_trailer"] != original["raw_trailer"]):
         raise ValueError("保存前検証で本文が一致しません")
+    if checked.get('count_forms') != expected_count_forms(original, entities, definitions):
+        raise ValueError('保存前検証で個数の書き方が保たれません')
     if document.version == 700:
         # Image texts may only point to embedded images, unless the source already had such a text.
         before = dangling_image_references(original)
@@ -386,7 +426,8 @@ def _readonly_bytes(document):
         definitions.append(record)
     body = serialize_body(current, definitions, original['version'],
         encoding=document._source_records['body_encoding'], raw_trailer=original['raw_trailer'],
-        class_declarations=original['class_declarations'], old_extended_counts=old_extended_counts(original))
+        class_declarations=original['class_declarations'], old_extended_counts=old_extended_counts(original),
+        count_forms=count_forms(original))
     result = document._source_bytes[:original['header_end']] + body
     if result != document._source_bytes:
         raise ValueError(f'Read-only {label} serialization must be byte-identical')

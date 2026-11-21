@@ -328,14 +328,15 @@ class SyntheticOldVersionTests(TempDirTestCase):
         with self.assertRaises(ValueError):
             serialize_body(records, [], 230, encoding='cp932')
 
-    def test_noncanonical_count_message_names_the_ezjww_limit(self):
+    def test_noncanonical_count_message_names_the_accepted_pair(self):
+        # #46: the form is accepted only for (700, 700); a v600 drawing with it stays rejected.
         data = synthetic(600, 600)
         end = read_records_bytes(data)['header_end']
         count, = struct.unpack_from('<H', data, end)
         broken = data[:end] + struct.pack('<HI', 65535, count) + data[end + 2:]
         with self.assertRaises(RecordError) as caught:
             read_records_bytes(broken)
-        self.assertIn('ezjww returns no elements', str(caught.exception))
+        self.assertIn('accepted only in v700 drawings whose classes use schema 700', str(caught.exception))
 
     def test_ezjww_returning_no_elements_is_rejected_with_reason(self):
         import jwwkit.reader.archive as archive
