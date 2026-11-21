@@ -23,8 +23,8 @@
     },
     {
       "path": ".github/workflows/tests.yml",
-      "size": 1612,
-      "sha256": "bf9b0653351b729c09fbe2c2d9026a60b27c76858c439182c219188152e2a27d"
+      "size": 1670,
+      "sha256": "0a2dbe58adcbefb597054e461347db19e4a14faa1657037da9f07531596b41e0"
     },
     {
       "path": ".gitignore",
@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 26843,
-      "sha256": "6a2d5f682465632fde938c5394885db13105caf86386b0aab5da67848fd1f5f7"
+      "size": 27488,
+      "sha256": "e70a72a0f61792218f749cf1e103aec23ef6e1293f12f6b2e760bb9c5f64a705"
     },
     {
       "path": "CLAUDE.md",
@@ -228,8 +228,8 @@
     },
     {
       "path": "src/jwwkit/_commands/check_installation.py",
-      "size": 46752,
-      "sha256": "9e6e95e9fabbe023c5e567c95a6000562d9bb421732517996f4212110718501c"
+      "size": 46904,
+      "sha256": "0b4f8afc93d10383a3c843566539140de60faa0fb4bb7fc9a5d9524146d415f8"
     },
     {
       "path": "src/jwwkit/_commands/compare_drawings.py",
@@ -1003,8 +1003,8 @@
     },
     {
       "path": "tests/test_noncanonical_counts.py",
-      "size": 16579,
-      "sha256": "baa5ec9861f1d6be557da6af6cad7789efa11960fcc8a5738b8c68cbc4d4653c"
+      "size": 16686,
+      "sha256": "6d1d99d64fc1b4dabc3210db0f5a2201b779581b48169ccfdbe429d62ed44fd3"
     },
     {
       "path": "tests/test_old_schema_pairs.py",
@@ -1093,8 +1093,8 @@
     },
     {
       "path": "tests/test_v600_schema700.py",
-      "size": 26888,
-      "sha256": "b09748c8192e6d2a9080f179c9da4df86834185591d4499122bb24430255989b"
+      "size": 26995,
+      "sha256": "3bbe04f4d167c944390fecf29c78519cfe4f7368c655e97d7c0816ae31fa5db0"
     },
     {
       "path": "tests/test_workflow_settings.py",
