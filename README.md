@@ -28,7 +28,7 @@ jwwkitは、それらの図面資産を、AIやプログラムから安全に扱
 - **条件検索**：AND/OR/NOT、属性のフラグ、線の向き、長さ・半径、表示状態、文字の前方一致・正規表現、全角半角などの表記揺れ（指定した場合のみ）
 - **形状と位置からの検索**：要素の外形・中心・文字枠の取得、指定した点の近くにある要素・最も近い要素の検索
 - **Jw_cadの環境設定ファイル（.jwf）**の読み取りと比較
-- **他のCADが出力したJWW**：TFAS 14eの出力はそのまま、Rebroの出力は対象のクラス宣言欄の明示的な正規化の後に扱えます
+- **他のCADが出力したJWW**：TFAS 14eの出力はそのまま、Rebroの出力は対象のクラス宣言欄の明示的な正規化の後に扱えます。要素の個数を普通と違う書き方で保存したv700の図面も、その書き方のまま開いて編集・保存できます（実務図面で確かめた形だけ）
 - **AIに使わせるための安全な編集手順（safe_edit）**：「計画 → 確認・承認 → 実行」の2段階で編集し、意図しない変更を防ぎます。編集の結果は、追加・変更・削除・拒否・注意を共通の形で返します
 - **AI向けの利用ガイド**：AIエージェントにこのライブラリを使わせるときの手引き（`jwwkit guide` で場所を表示）
 
@@ -115,7 +115,7 @@ AIに既存図面の編集を頼む場合、AIが示す計画の内容とSHA256�
 - `jwwkit compare --left before.jww --right after.jww --output comparison.json` で図面を比較します。
 - `jwwkit inspect-jwf --source settings.jwf --output settings.json` でJWFを読み取ります。
 - `jwwkit recognize-tategu --source input.jww --tolerances tolerances.json --output candidates.json` で建具の候補を抽出します。許容値は [建具候補の抽出](https://github.com/tetsuo-m/jwwkit/blob/main/docs/tategu_recognition.md) を参照してください。
-- `jwwkit check-folder <フォルダ>` で、フォルダの図面を「編集できる」「読取り専用」「明示の読み方が要る」「拒否」に分け、一覧（CSV）をそのフォルダに1つ作ります。図面は読むだけです。使い方は [利用ガイド](https://github.com/tetsuo-m/jwwkit/blob/main/docs/usage_guide.md) の「フォルダの図面を調べる」を参照してください。
+- `jwwkit check-folder <フォルダ>` で、フォルダの図面を「編集できる」「読取り専用」「明示の読み方が要る」「拒否」（予想外の例外は「拒否（予想外）」）に分け、一覧（CSV）をそのフォルダに1つ作ります。図面は読むだけです。使い方は [利用ガイド](https://github.com/tetsuo-m/jwwkit/blob/main/docs/usage_guide.md) の「フォルダの図面を調べる」を参照してください。
 
 出力には新しいファイル名を指定してください。Pythonから手引きの場所を得るには `jwwkit.guide_paths()`、空テンプレートの場所を得るには `jwwkit.template_path()` を使います。
 
