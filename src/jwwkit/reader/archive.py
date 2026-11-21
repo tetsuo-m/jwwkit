@@ -64,8 +64,8 @@ NONCANONICAL_COUNT_MESSAGE = ('Unsupported noncanonical/64-bit sequence count (a
 # reads the same counts and re-saves them in the plain WORD form. Only that form is accepted; the form of each
 # list is kept in 'count_forms' and written back (writer.preserved.count_forms).
 NONCANONICAL_COUNT_PAIRS = frozenset({(700, 700)})
-MIXED_DEFINITION_COUNT_MESSAGE = ('Unobserved mix of sequence count forms inside block definitions (some lists '
-                                  'use the DWORD form for a count below 65535 and some do not)')
+MIXED_DEFINITION_COUNT_MESSAGE = ('Unobserved mix of noncanonical and plain sequence count forms inside block '
+                                  'definitions (some lists write a count below 65535 in the DWORD form and some do not)')
 
 
 def is_read_only_version(version):
@@ -250,7 +250,9 @@ def _count_forms(c, version, class_schema, definitions):
     labels = set(c.noncanonical_counts)
     if not labels:
         return None
-    if c.schema_profile != 'strict' or (version, class_schema) not in NONCANONICAL_COUNT_PAIRS:
+    # The class schema must be seen in the declarations: a drawing without any is not taken as schema 700.
+    if (c.schema_profile != 'strict' or (version, class_schema) not in NONCANONICAL_COUNT_PAIRS
+            or not c.class_declarations):
         raise RecordError(NONCANONICAL_COUNT_MESSAGE)
     inside = {f'block_defs[{index}].entities' for index in range(len(definitions))}
     if labels - inside - {'entities', 'block_defs'}:

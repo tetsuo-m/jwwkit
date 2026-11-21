@@ -95,6 +95,21 @@ def count_forms(parsed):
     return parsed.get('count_forms')
 
 
+def expected_count_forms(original, definitions):
+    """保存した本文を読み直したときに出るはずのcount_forms（案A）。元に定義がなく、定義を足したときは普通の書き方。"""
+    forms = count_forms(original)
+    if forms is None:
+        return None
+    inside = forms['definition_entities']
+    if inside is None and definitions:
+        inside = False
+    elif inside is not None and not definitions:
+        inside = None
+    if not (forms['entities'] or forms['block_defs'] or inside):
+        return None
+    return dict(entities=forms['entities'], block_defs=forms['block_defs'], definition_entities=inside)
+
+
 def capture_source(path, *, schema_profile='strict'):
     """開く時点の原データを捕捉し、本文再直列化の全バイト一致を確認する。"""
     raw, parsed = _capture_source(path, schema_profile=schema_profile)
@@ -342,6 +357,8 @@ def _document_bytes(document):
     if (checked['entities'] != entities or checked['block_defs'] != definitions
             or checked["raw_trailer"] != original["raw_trailer"]):
         raise ValueError("保存前検証で本文が一致しません")
+    if checked.get('count_forms') != expected_count_forms(original, definitions):
+        raise ValueError('保存前検証で個数の書き方が保たれません')
     if document.version == 700:
         # Image texts may only point to embedded images, unless the source already had such a text.
         before = dangling_image_references(original)
