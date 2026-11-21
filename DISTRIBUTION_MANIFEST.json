@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 21959,
-      "sha256": "516b02bff5002bc07263c1a9d30ae42869d6c69506007c14f9b4fdf96ec26b76"
+      "size": 22043,
+      "sha256": "b4cba7504518811e174f67f4a1fe7abf4f543707a61913c0afa0a1fd66f0e218"
     },
     {
       "path": "CLAUDE.md",
@@ -98,8 +98,8 @@
     },
     {
       "path": "docs/ezjww_adapter_contract.md",
-      "size": 11875,
-      "sha256": "c7ef5800aa2fa995940095d79d151ade55942750616f5c593def5cb974a7398e"
+      "size": 12397,
+      "sha256": "6464766aba106780aed1b482223d02ae36393e4f3b9f5230c5f75ba2355a00b6"
     },
     {
       "path": "docs/geometry_view.md",
@@ -993,8 +993,8 @@
     },
     {
       "path": "tests/test_ezjww_adapter.py",
-      "size": 14940,
-      "sha256": "31fa9ae63a887fa9505c57c76a7615c99927f4d0fae7afbaa7bce15819ea5670"
+      "size": 16838,
+      "sha256": "5684546c437024d2a69fa91e35b3d3205d3d74b51c77d7316d9c24ebe06f1361"
     },
     {
       "path": "tests/test_geometry_guide.py",
@@ -1143,8 +1143,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 66671,
-      "sha256": "9ab8f07e52a69f9be8c7c4930f853da3d3170c31cb04a41417d5d259ede93e12"
+      "size": 67251,
+      "sha256": "22b311dbbb4d47e83697a0a64f5845bc453b2cbe0bb83f32d27396d4d9fc577e"
     }
   ]
 }
