@@ -2,7 +2,8 @@
 
 Native ezjww remains the header/metadata reader. This supplement retains
 CP932 strings and embedded dimension attributes that its public model loses.
-It rejects unknown classes, object references and unbounded/noncanonical counts.
+It rejects unknown classes, object references and unbounded/noncanonical counts, except the
+noncanonical count form observed in v700 drawings with class schema 700 (NONCANONICAL_COUNT_PAIRS).
 Observed gzip/BMP image trailers are validated and retained as raw bytes.
 """
 from pathlib import Path
