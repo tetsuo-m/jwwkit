@@ -46,7 +46,7 @@ CadDocument.open(path: str | Path, *, include_metadata: bool=False, schema_profi
 
 対応範囲・拒否条件：観測済みv600/v700と、読取り専用の古い版（下）。schema_profile="strict"既定。明示"rebro_schema0"はschema0のSen/Enko/Moji（v700は加えてTen/Solid。点は線種1・仮点でない・記号の欄なし、ソリッドは線種1、円のソリッドは線種101で、どちらもRGB指定なしの形だけ）だけの読取り/無編集別名保存用で、31編集APIと直接編集の保存を拒否。混在/他クラス/画像/定義へ広げない。include_metadata=Falseは設定を公開要素から除く。未知構造/診断付きは保存不能の場合がある。今のJw_cad（10.03.6で確認）がv6形式で保存した図面（ファイルの版600、要素のクラスの版がすべて700）も、既定のstrictで開ける。要素の並びはv600のまま。無編集の別名保存は原本とバイト一致（include_metadata=Trueで開いた場合は無編集の別名保存だけ）。編集はv600と同じ条件で保存でき、宣言はすべてクラスの版700で書き、末尾は付けない。ただし、図面に宣言のないクラスの要素が要る保存（ソリッドのない図面へのソリッドの追加、定義のない図面でのブロックの作成など）と、import_groupは拒否する（Jw_cadでVer.7.00形式に保存し直せば、その編集ができる）。600と700の混在、ほかのクラスの版の組み合わせは拒否する。ブロック定義が10,000個を超える図面は、ezjwwが定義を返さず照合できないため、`RecordError`（`Block definitions exceed the ezjww limit`）で拒否する（現在は読めない）。古い版（#17）：観測した組（ファイルの版, クラスの版）だけを読取り専用で開く。（230,230）（300,300）（351,351）は実物の図面、（230,700）（300,700）（351,700）（420,700）は今のJw_cadが古い形式で保存した見本による。（420,700）の根拠は見本1件だけ。（420,0）（420,1）（420,230）（420,310）（300,1）（351,1）（230,65535）（#41）は手元の図面（作者の手元にある、非公開の図面）だけを根拠とする（jwwkitとezjwwの一致、損失のない書き直し、Jw_cad 10.03.6で保存し直した図面との比べで、違いがすべてJw_cadが保存し直すときの変化だったこと。VERIFICATION.mdの5・6）。この値だけを受け付け、ほかの値は拒否する。ヘッダーは公式の説明の区間の表どおりに読み、本文は線幅（351以上）・寸法のSXFの部分（420以上）・点のコード（252以上）の条件で読む。420未満の寸法は、ezjwwと同じくsxf_mode=None、補助の線・点は空。252未満の点の線種番号は0と1だけ。古い版の大きな個数は（230,700）と（420,0）だけ（大きな（420,230）は、クラスの参照の書き方を書き直せないので拒否）。無編集の別名保存は原本とバイト一致。31編集API・import_group・直接編集の保存・版の変換（versionを変えた保存）は拒否し、Jw_cadでVer.7.00形式に保存し直す道を示す。v220・v252、ほかの組（（420,420）、（300,0）など）、宣言の混在、宣言のない古い版は拒否する。252以上の版で、点の線種が1・100以外の点（2・5など）は、どの組でも拒否する。同梱の画像（v700の末尾、#19）：0〜256枚。区間は原本のバイトのまま保ち、作り直さない。入れ物（名前が.gzで終わる、大きさの欄、gzipがちょうど1つ、ほどいた大きさの一致、余りなし、1枚128MB・合計512MBの上限）は厳しく検査する。中身はJw_cadが元のファイルのまま入れるので、BMP・JPEG・PNG・GIF・TIFFを、それぞれの公開の仕様の決まりとして最後まで矛盾なく読めることで確かめる（画素は読まない）。形式の終わり（JPEGのEOI、PNGのIEND、GIFの終わりの印、BMPの画素）の後ろの余り、BMPのファイルの大きさの欄・RLEの画像の大きさの欄の食い違い、124バイトの情報部のBMPの画素と色の情報の間の隙間・色の情報の後ろの余り、TIFFの奇数の位置のIFDは、拒否せずに受け入れ、embedded_imagesのtrailing_bytesとnotesに記録し、verified=Falseにする。形式を始まりから終わりまで読めない（途中で切れる、区切りの長さが超える、画素がファイルに収まらない、CRCが合わないなど）ときだけ拒否する。拡張子（bmp、jpg/jpeg/jpe、png、gif、tif/tiff）と中身の形式が合うこと。壊れた形は`Invalid embedded image:`、5形式以外の中身や拡張子、圧縮しない同梱、BMPのBI_JPEG/BI_PNG/BI_ALPHABITFIELDSは`Embedded image unverified:`で拒否する。Jw_cadの出力として確かめていない組み合わせは拒否せず、embedded_imagesと集計のembedded_imagesのverified=Falseで示す。集計のembedded_imagesにもtrailing_bytesとnotesがあり、印付きで受け入れた画像（notesあり）と、確かめていない形の画像（notesが空）を区別できる。編集した保存でも区間は原本のまま。v700で、同梱されていない名前を指す^@BM%temp%文字が新しくできる保存は拒否する。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L51)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L52)。
 
 ```python
 cad = CadDocument.open('input.jww')
@@ -62,7 +62,7 @@ CadDocument.save(path: str | Path)
 
 対応範囲・拒否条件：既存出力と不正保存値を拒否。原本、未確認診断、未許可ヘッダー直接編集、未解決参照等を拒否。strictは設定込みモデルを拒否。rebro_schema0と古い版（v230/v300/v351/v420）は設定込み読取りも無編集なら可、モデル全欄と宣言の検証/全バイト一致を経た別名保存だけで編集と版の変換を拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L86)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L87)。
 
 ```python
 cad.save('new_output.jww')
@@ -228,7 +228,7 @@ CadDocument.get_sxf_colors(*, include_unnamed=False)
 
 対応範囲・拒否条件：観測済みJWW420/600/700原ヘッダー。v420より前の版にはSXFの表がなく、空の一覧を返す。include_unnamedはbool、既定Falseで名前付き非予約行のみ、Trueで予約/未使用を含む色257/線種33行。表示/印刷色と生幅を区別し、定義は作成せず編集許可も付与しない。ヘッダー境界不一致・切断・非有限設定・区間数10超を拒否。返り値は独立コピー。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L98)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L99)。
 
 ### `CadDocument.get_sxf_linetypes`
 
@@ -240,7 +240,7 @@ CadDocument.get_sxf_linetypes(*, include_unnamed=False)
 
 対応範囲・拒否条件：観測済みJWW420/600/700原ヘッダー。v420より前の版にはSXFの表がなく、空の一覧を返す。include_unnamedはbool、既定Falseで名前付き非予約行のみ、Trueで予約/未使用を含む色257/線種33行。表示/印刷色と生幅を区別し、定義は作成せず編集許可も付与しない。ヘッダー境界不一致・切断・非有限設定・区間数10超を拒否。返り値は独立コピー。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L105)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L106)。
 
 ### `CadDocument.get_sxf_color`
 
@@ -252,7 +252,7 @@ SXF色の保存番号または完全一致名から1行を読む。
 
 対応範囲・拒否条件：整数保存番号または非空完全一致名。bool・範囲外・不存在名・同名複数を拒否。SXF名redと標準色の赤を混同しない。予約/無名の行を番号で読めても編集許可ではない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L112)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L113)。
 
 ### `CadDocument.get_sxf_linetype`
 
@@ -264,7 +264,7 @@ SXF線種の保存番号または完全一致名から1行を読む。
 
 対応範囲・拒否条件：整数保存番号または非空完全一致名。bool・範囲外・不存在名・同名複数を拒否。SXF名redと標準色の赤を混同しない。予約/無名の行を番号で読めても編集許可ではない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L117)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L118)。
 
 ### `CadDocument.find_entities`
 
@@ -276,7 +276,7 @@ CadDocument.find_entities(*, layer=None, layer_group=None, entity_type=None, blo
 
 対応範囲・拒否条件：従来スカラー条件は互換維持。種類/群/層/色/線種/保存ブロック名は一覧OR、引数間/queryはAND。queryはsearch_queries.mdのJSON条件、未判定時は例外。定義内は対象外、非表示は既定で含む。SXF名は定義済み完全一致だけ。TEXT/POINT/円ソリッドの別用途の欄を線種とみなさない。空一覧・不正条件を拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L193)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L194)。
 
 ```python
 ids = cad.find_entities(entity_type='LINE', layer=2)
@@ -292,7 +292,7 @@ JSON論理式・文字/数値/flag/方向/状態で読み取り検索する。no
 
 対応範囲・拒否条件：queryはall/any/notと名前付き葉だけ。scope drawing既定、definitions/drawing_and_definitionsは保存定義を1回ずつ読み、別識別子/ローカル紙面mmだけ。未判定はcomplete=false、timeoutは部分結果なしで例外。length/radiusの単位必須、楕円は未判定。flag_bitsは外側uint16の全set/clearで意味を一般化しない。line_angleは+X反時計回り[0,180)・端点反転同一・deg/radと許容必須。状態は群/層の保存値0..3。regexは子プロセス5秒既定/最大30秒。固定/時間制限と規則版を返す。詳細はsearch_queries.md。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L202)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L203)。
 
 ### `CadDocument.get_text_preset`
 
@@ -304,7 +304,7 @@ CadDocument.get_text_preset(text_type: int)
 
 対応範囲・拒否条件：文字種1～10の整数だけ。設定位置を確認済みの原ヘッダーから読み、フォントは返さない。古い版（v230/v300/v351/v420）も、ヘッダー末尾の同じ並びから読む（公開の見本でv700と同じ値を確認）。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L305)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L306)。
 
 ### `CadDocument.get_layer_name`
 
@@ -316,7 +316,7 @@ CadDocument.get_layer_name(layer_group, layer)
 
 対応範囲・拒否条件：層/群0～15、名称は文字列。CadDocumentは原CString符号化を保持し、表現できない名称は拒否。空/不完全CP932保存名は読取り時に補完しない。未知のヘッダー状態は編集しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L386)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L387)。
 
 ### `CadDocument.get_group_name`
 
@@ -328,7 +328,7 @@ CadDocument.get_group_name(layer_group)
 
 対応範囲・拒否条件：層/群0～15、名称は文字列。CadDocumentは原CString符号化を保持し、表現できない名称は拒否。空/不完全CP932保存名は読取り時に補完しない。未知のヘッダー状態は編集しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L391)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L392)。
 
 ### `CadDocument.get_group_state`
 
@@ -340,7 +340,7 @@ CadDocument.get_group_state(layer_group)
 
 対応範囲・拒否条件：観測済みv600/v700。群/層0～15、bool拒否。raw_valueは0非表示・1表示のみ・2編集可・3書込み選択。返り値は独立辞書。層のselected_for_writingは各群内の選択で、親群が非書込みなら現在の全図面書込み先を意味しない。effective_visible/effective_editableは群と層の状態だけの合成で、保護設定等の追加制限を保証しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L395)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L396)。
 
 ### `CadDocument.snapshot_group`
 
@@ -352,7 +352,7 @@ CadDocument.snapshot_group(layer_group)
 
 対応範囲・拒否条件：観測済みv600/v700の保存可能なモデルだけ。群0～15、bool拒否。全保存根要素（設定TEXTも含む）、順序/重複数、群/層の状態・保護・名称CString/縮尺、参照定義の全欄/日時と共有・入れ子閉包を厳密照合する。内包要素/定義の参照群ヘッダー・共通設定TEXT・共通ヘッダーも比較するため、未解析共通設定やGUIの保存表現変化も差とする。絶対アーカイブ番号は比較しない。無関係な群や未参照定義の変更は影響しない。画像依存群/循環・深いグラフ/未解決参照/改変snapshotのSHA不一致は理由付き拒否。差を正規化せず、差がある場合はpassed=False。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L400)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L401)。
 
 ### `CadDocument.audit_group_unchanged`
 
@@ -364,7 +364,7 @@ CadDocument.audit_group_unchanged(layer_group, before)
 
 対応範囲・拒否条件：観測済みv600/v700の保存可能なモデルだけ。群0～15、bool拒否。全保存根要素（設定TEXTも含む）、順序/重複数、群/層の状態・保護・名称CString/縮尺、参照定義の全欄/日時と共有・入れ子閉包を厳密照合する。内包要素/定義の参照群ヘッダー・共通設定TEXT・共通ヘッダーも比較するため、未解析共通設定やGUIの保存表現変化も差とする。絶対アーカイブ番号は比較しない。無関係な群や未参照定義の変更は影響しない。画像依存群/循環・深いグラフ/未解決参照/改変snapshotのSHA不一致は理由付き拒否。差を正規化せず、差がある場合はpassed=False。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L405)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L406)。
 
 ### `CadDocument.get_layer_state`
 
@@ -376,7 +376,7 @@ CadDocument.get_layer_state(layer_group, layer)
 
 対応範囲・拒否条件：観測済みv600/v700。群/層0～15、bool拒否。raw_valueは0非表示・1表示のみ・2編集可・3書込み選択。返り値は独立辞書。層のselected_for_writingは各群内の選択で、親群が非書込みなら現在の全図面書込み先を意味しない。effective_visible/effective_editableは群と層の状態だけの合成で、保護設定等の追加制限を保証しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L410)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L411)。
 
 ### `JwwDocument.layer_groups`
 
@@ -871,7 +871,7 @@ CadDocument.get_group_scale(layer_group: int)
 
 対応範囲・拒否条件：層群0～15の整数、縮尺は有限正数、座標は有限2成分。paper/real以外を拒否。line_pointsはLINEのみ。縮尺変更で紙面位置は変わらず実寸が変わる。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L234)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L235)。
 
 ### `CadDocument.set_group_scale`
 
@@ -883,7 +883,7 @@ CadDocument.set_group_scale(layer_group: int, scale: float)
 
 対応範囲・拒否条件：層群0～15の整数、縮尺は有限正数、座標は有限2成分。paper/real以外を拒否。line_pointsはLINEのみ。縮尺変更で紙面位置は変わらず実寸が変わる。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L239)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L240)。
 
 ### `CadDocument.convert_point`
 
@@ -895,7 +895,7 @@ CadDocument.convert_point(point, *, layer_group=0, from_units='paper', to_units=
 
 対応範囲・拒否条件：層群0～15の整数、縮尺は有限正数、座標は有限2成分。paper/real以外を拒否。line_pointsはLINEのみ。縮尺変更で紙面位置は変わらず実寸が変わる。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L249)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L250)。
 
 ### `CadDocument.line_points`
 
@@ -907,7 +907,7 @@ LINE両端点を指定単位で返す。
 
 対応範囲・拒否条件：層群0～15の整数、縮尺は有限正数、座標は有限2成分。paper/real以外を拒否。line_pointsはLINEのみ。縮尺変更で紙面位置は変わらず実寸が変わる。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L263)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L264)。
 
 ### `JwwDocument.get_group_scale`
 
@@ -969,7 +969,7 @@ CadDocument.add_line(start, end, *, layer_group=0, units='paper', **attributes)
 
 対応範囲・拒否条件：有限2次元位置と確認済み保存属性。CadDocumentの位置/半径はunits、JwwDocumentは紙面mm。TEXTの幅/高さ/間隔は紙面mm・角度は度、円弧/傾きはrad。層/群0～15、候補全保存欄の直列化/読戻し一致を追加前検査。未定義色/線種、不正整数欄、保存不能な符号化は追加前拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L273)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L274)。
 
 ```python
 cad.add_line((0, 0), (1000, 0), units='real', layer=2)
@@ -985,7 +985,7 @@ CadDocument.add_text(start, end=None, content=None, *, layer_group=0, units='pap
 
 対応範囲・拒否条件：有限2次元位置と確認済み保存属性。CadDocumentの位置/半径はunits、JwwDocumentは紙面mm。TEXTの幅/高さ/間隔は紙面mm・角度は度、円弧/傾きはrad。層/群0～15、候補全保存欄の直列化/読戻し一致を追加前検査。未定義色/線種、不正整数欄、保存不能な符号化は追加前拒否。 end省略時は確認済みフォント/alignment、幅欄・flag0等の自動計算条件に限定。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L287)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L288)。
 
 ```python
 cad.add_text((0, 0), content='ABC', size_x=3, size_y=3)
@@ -1001,7 +1001,7 @@ CadDocument.add_circle(center, radius, *, layer_group=0, units='paper', flatness
 
 対応範囲・拒否条件：有限2次元位置と確認済み保存属性。CadDocumentの位置/半径はunits、JwwDocumentは紙面mm。TEXTの幅/高さ/間隔は紙面mm・角度は度、円弧/傾きはrad。層/群0～15、候補全保存欄の直列化/読戻し一致を追加前検査。未定義色/線種、不正整数欄、保存不能な符号化は追加前拒否。 扁平率は有限正数。全周専用なのでstart_angle/arc_angle/is_full_circleの上書きを拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L313)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L314)。
 
 ### `CadDocument.add_point`
 
@@ -1013,7 +1013,7 @@ CadDocument.add_point(position, *, layer_group=0, units='paper', **attributes)
 
 対応範囲・拒否条件：有限2次元位置と確認済み保存属性。CadDocumentの位置/半径はunits、JwwDocumentは紙面mm。TEXTの幅/高さ/間隔は紙面mm・角度は度、円弧/傾きはrad。層/群0～15、候補全保存欄の直列化/読戻し一致を追加前検査。未定義色/線種、不正整数欄、保存不能な符号化は追加前拒否。 普通点は角度/倍率が保存されないため非ゼロ拒否。コードはuint32。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L333)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L334)。
 
 ### `CadDocument.add_solid`
 
@@ -1025,7 +1025,7 @@ CadDocument.add_solid(points, *, rgb=None, layer_group=0, units='paper', **attri
 
 対応範囲・拒否条件：有限2次元頂点4個。外周順1,3,2,4。色1～10、RGBは色10の0～255整数3個のみ。不正組合せを拒否。 作図見本SXF102/104/110/112のstyle1/31・flag0、ネイティブ移動対照の102/104/110/112のstyle1・flag2に限定。新規SXF省略線種は作成見本の31、既存値は変更しない。CadDocumentはpoints/rgb/units引数、JwwDocumentはSolidモデル。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L345)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L346)。
 
 ### `CadDocument.add_circle_solid`
 
@@ -1037,7 +1037,7 @@ CadDocument.add_circle_solid(center, radius, *, solid_mode=100.0, flatness=1.0, 
 
 対応範囲・拒否条件：標準色ではpen_style101、solid_mode5(弓形)/100(全円)、flag0/2048。有限正半径/扁平率、正の掃引は2π以下、全円は2πと開始角0。位置/半径はpaper/real、角度rad。追加属性はLineモデルと同じcolor/width/layer/group/flagでlinetype指定不可。色1～10、10の場合だけrgb整数0～0xffffffを指定。未観測モード/円周、退化、未知フラグ、不正属性は追加前に拒否。 実測したSXF107全円/104正掃引弓形はflag0/2、114負掃引弓形もflag0/2。SXF楕円は未観測で拒否。inner_radiusを指定するとSXF107・flag0/2・真円全周の円環105（内半径が正かつ外半径未満）。座標/内外半径はunits、回転はrad。円環の非等方変形・楕円/部分円環/未観測色フラグを拒否。円環の内半径は、Jw_cadのDXF出力では失われる。JWW全属性一致と無編集native対照を条件に、この欠落だけ承認済み。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L357)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L358)。
 
 ```python
 cad.add_circle_solid((0, 0), 3, solid_mode=100., color=7)
@@ -1053,7 +1053,7 @@ CadDocument.add_arc(center, radius, start_angle, arc_angle, *, layer_group=0, un
 
 対応範囲・拒否条件：有限2次元位置と確認済み保存属性。CadDocumentの位置/半径はunits、JwwDocumentは紙面mm。TEXTの幅/高さ/間隔は紙面mm・角度は度、円弧/傾きはrad。層/群0～15、候補全保存欄の直列化/読戻し一致を追加前検査。未定義色/線種、不正整数欄、保存不能な符号化は追加前拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L482)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L483)。
 
 ### `JwwDocument.add_line`
 
@@ -1251,7 +1251,7 @@ CadDocument.delete_entity(index)
 
 対応範囲・拒否条件：公開番号を指定し、不正番号/bool/一括番号重複を拒否。削除は形状変換をしないため未知型も選択自体は可能。空の一括選択は何もしない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L122)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L123)。
 
 ### `CadDocument.delete_entities`
 
@@ -1263,7 +1263,7 @@ CadDocument.delete_entities(indices)
 
 対応範囲・拒否条件：公開番号を指定し、不正番号/bool/一括番号重複を拒否。削除は形状変換をしないため未知型も選択自体は可能。空の一括選択は何もしない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L128)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L129)。
 
 ### `CadDocument.move_entities`
 
@@ -1275,7 +1275,7 @@ CadDocument.move_entities(indices, delta, *, units='paper')
 
 対応範囲・拒否条件：既知9種類。円ソリッドの標準色は101・mode5/100・flag0/2048、SXFはadd_circle_solid記載の観測プロフィールと105真円円環に限定。移動は中心だけ変更し他欄を保持。不正番号/bool/一括重複、未知形状/未観測円ソリッドを拒否。移動量は有限値、unitsはpaper/real。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L134)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L135)。
 
 ```python
 cad.move_entities([0, 1], (100, 0), units='real')
@@ -1291,7 +1291,7 @@ CadDocument.move_entity(index, delta, *, units='paper')
 
 対応範囲・拒否条件：既知9種類。円ソリッドの標準色は101・mode5/100・flag0/2048、SXFはadd_circle_solid記載の観測プロフィールと105真円円環に限定。移動は中心だけ変更し他欄を保持。不正番号/bool/一括重複、未知形状/未観測円ソリッドを拒否。移動量は有限値、unitsはpaper/real。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L140)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L141)。
 
 ### `CadDocument.set_entity_attributes`
 
@@ -1303,7 +1303,7 @@ CadDocument.set_entity_attributes(index, *, color=None, linetype=None, width=Non
 
 対応範囲・拒否条件：色は標準保存欄0～9/定義済みSXF、RGBソリッドだけ10、線種は標準1～9/定義済みSXF。完全一致SXF名も可、未定義/予約/無名未確認欄は拒否。幅0～65535、層/群0～15。円ソリッドの標準色は101・mode5/100・flag0/2048、SXFはadd_circle_solid記載の観測プロフィールと105真円円環に限定。線種欄は原本の101/105から変更不可、RGB保存形式の切替えを拒否。異縮尺realは中心/外半径/円環内半径を換算し他欄を保持。TEXT/POINT/BLOCKの線種、TEXT/DIMENSIONの幅、文字種付き寸法の色変更と未観測の群変更、文字種付き文字/コード点の異縮尺実寸保持を拒否。v700/文字種1/等縮尺/群だけの指定/既知flag0または2/mode0で補助線と点がゼロのプレースホルダー/内包線と文字の所属が元群と一致、に限り外側群のみ変更して内包全属性とflagを保持する限定対応（承認済み計画の実行・全属性/DXF/PDF受入れ済み）。他の文字種・異縮尺・色/線種/幅/レイヤとの同時変更は拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L184)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L185)。
 
 ```python
 cad.set_entity_attributes(0, layer_group=1, preserve='real')
@@ -1319,7 +1319,7 @@ CadDocument.set_text(index: int, content: str, *, recalculate_end: bool=False)
 
 対応範囲・拒否条件：負/bool/範囲外番号、非TEXT/非文字列、保存不能な符号化/不対サロゲートを変更前拒否。終点自動計算は確認済みフォント、alignment1～9、幅欄/flag0のみ。空/制御文字、不正幅/間隔を拒否。候補全保存欄をメモリ往復で検証。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L207)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L208)。
 
 ```python
 cad.set_text(0, '変更文字', recalculate_end=True)
@@ -1335,7 +1335,7 @@ CadDocument.recalculate_text_endpoint(index: int)
 
 対応範囲・拒否条件：負/bool/範囲外番号、非TEXT/非文字列、保存不能な符号化/不対サロゲートを変更前拒否。終点自動計算は確認済みフォント、alignment1～9、幅欄/flag0のみ。空/制御文字、不正幅/間隔を拒否。候補全保存欄をメモリ往復で検証。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L225)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L226)。
 
 ### `CadDocument.set_group_state`
 
@@ -1347,7 +1347,7 @@ CadDocument.set_group_state(layer_group, state)
 
 対応範囲・拒否条件：hidden/display_only/editable（整数0/1/2も可）の状態欄DWORDだけ変更。bool/不正番号/未知状態、書込み選択3への変更・3からの変更、保護された群/層の変更を事前拒否。現在値3への同値指定は無変更。未解析ヘッダー・要素・定義・縮尺・名称・書込み先を保持。独立メモリで全保存/読戻し検証後だけ確定し、safe_editの計画にも対応。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L415)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L416)。
 
 ### `CadDocument.set_layer_state`
 
@@ -1359,7 +1359,7 @@ CadDocument.set_layer_state(layer_group, layer, state)
 
 対応範囲・拒否条件：hidden/display_only/editable（整数0/1/2も可）の状態欄DWORDだけ変更。bool/不正番号/未知状態、書込み選択3への変更・3からの変更、保護された群/層の変更を事前拒否。現在値3への同値指定は無変更。未解析ヘッダー・要素・定義・縮尺・名称・書込み先を保持。独立メモリで全保存/読戻し検証後だけ確定し、safe_editの計画にも対応。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L421)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L422)。
 
 ### `CadDocument.set_layer_name`
 
@@ -1371,7 +1371,7 @@ CadDocument.set_layer_name(layer_group, layer, name)
 
 対応範囲・拒否条件：層/群0～15、名称は文字列。CadDocumentは原CString符号化を保持し、表現できない名称は拒否。空/不完全CP932保存名は読取り時に補完しない。未知のヘッダー状態は編集しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L435)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L436)。
 
 ### `CadDocument.set_group_name`
 
@@ -1383,7 +1383,7 @@ CadDocument.set_group_name(layer_group, name)
 
 対応範囲・拒否条件：層/群0～15、名称は文字列。CadDocumentは原CString符号化を保持し、表現できない名称は拒否。空/不完全CP932保存名は読取り時に補完しない。未知のヘッダー状態は編集しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L446)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L447)。
 
 ### `CadDocument.set_dimension_text`
 
@@ -1395,7 +1395,7 @@ CadDocument.set_dimension_text(index: int, content: str)
 
 対応範囲・拒否条件：寸法自動計算/自動関連付けはしない。新規寸法はSXF0、Line/Text、補助線2本/補助点4個の確認済み構造。set_dimension_textは既存DIMENSIONと文字列のみ。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L500)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L501)。
 
 ### `JwwDocument.set_layer_name`
 
@@ -1443,7 +1443,7 @@ safe_edit.write_plan(cad, indices, actions, output, plan_path, *, dependencies=(
 
 対応範囲・拒否条件：未編集CadDocument・許可操作だけ。selectionは直下complete必須。workflowは既知の差し替えレシピ・設定スナップショット/実効値とactions/全監査の一致が必要。設定変化中の計画/未知/既存出力/競合/無許可対象を拒否。旧schema1～4維持。schema5は共通窓口だけ、workflow同時計画を拒否。承認や実行は行わない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/safe_edit.py#L200)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/safe_edit.py#L210)。
 
 ```python
 receipt = write_plan(cad, [0], [{'op': 'move_entities', 'indices': [0], 'kwargs': {'delta': [100, 0], 'units': 'real'}}], 'new.jww', 'plan.json')
@@ -1459,7 +1459,7 @@ safe_edit.verify_plan(plan_path, *, approved_sha256)
 
 対応範囲・拒否条件：チャットで承認した64桁SHAを必須指定。変更・不正スキーマ/対象/操作・既存出力・入力/依存との競合を拒否。schema1は従来操作のみ。人の承認を署名で証明するAPIではない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/safe_edit.py#L282)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/safe_edit.py#L292)。
 
 ```python
 cad, plan = verify_plan('plan.json', approved_sha256=approved_plan_hash)
@@ -1475,7 +1475,7 @@ safe_edit.execute_plan(plan_path, *, approved_sha256)
 
 対応範囲・拒否条件：編集24操作。元番号追跡・要素/定義の型別名。未知API/GUI実行/無許可対象/別名混用/依存変化/既存定義改変/保存不一致等を拒否。途中拒否は元図面不変・未保存。対応一覧はplan_api_coverage.md。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/safe_edit.py#L432)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/safe_edit.py#L442)。
 
 ```python
 report = execute_plan('plan.json', approved_sha256=approved_plan_hash)
@@ -1541,7 +1541,7 @@ CadDocument.transform_entities(indices, **options)
 
 対応範囲・拒否条件：既知9種類の表現可能な変換のみ。円ソリッドは101・モード5/100・フラグ0/2048に限定し、特異変換と未検証の塗りを拒否。空/重複/不正選択、非有限値、ゼロ倍率、文字グリフ反転、制御文字、未観測文字種/flag、文字種付き文字/寸法の拡縮・反転、コード点線形変換、参照/文字のせん断を拒否。変換角度はrad、unitsはpaper/real。剛体回転の対照で確認した文字種2/3/4/5と観測flag、mode0文字種3/flag8192寸法は倍率1の剛体移動/回転に限定対応し、角度以外の文字様式を保持する。mode0未使用補助欄は非ゼロ/符号付きゼロも含め保存値を変換せず保持。全円の開始角も剛体変換では保持。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L146)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L147)。
 
 委譲先の有効引数：`transform_entities(indices, *, base_point=(0, 0), translation=(0, 0), rotation=0, scale_x=1, scale_y=1, units='paper', copy_entities=False)`（[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/transformations.py#L120)）。
 
@@ -1555,7 +1555,7 @@ CadDocument.copy_entities(indices, delta=(0, 0), *, units='paper')
 
 対応範囲・拒否条件：既知9種類。円ソリッドの検証済み全円/弓形も対象。空/重複/不正選択、未対応型、非有限移動を拒否。元要素は保持し、定義は複写せず再利用する。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L152)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L153)。
 
 ```python
 cad.copy_entities([0, 1], (100, 0), units='real')
@@ -1571,7 +1571,7 @@ CadDocument.align_two_points(indices, source_points, target_points, *, distance_
 
 対応範囲・拒否条件：距離許容mmと角度許容は必須。angle_units=rad/deg、結果は両単位と基線端部の角度許容変位mm。角度許容は対応点対の向きの差の上限。既定は倍率1、allow_scale=Trueだけ一様倍率補正。実寸専用。重複点・非有限値・許容超過・表現不能要素を拒否。補正有効でも元の距離差の許容判定を省略しない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L157)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L158)。
 
 ### `CadDocument.rotate_entities`
 
@@ -1583,7 +1583,7 @@ CadDocument.rotate_entities(indices, angle, **options)
 
 対応範囲・拒否条件：既知9種類の表現可能な変換のみ。円ソリッドは101・モード5/100・フラグ0/2048に限定し、特異変換と未検証の塗りを拒否。空/重複/不正選択、非有限値、ゼロ倍率、文字グリフ反転、制御文字、未観測文字種/flag、文字種付き文字/寸法の拡縮・反転、コード点線形変換、参照/文字のせん断を拒否。変換角度はrad、unitsはpaper/real。剛体回転の対照で確認した文字種2/3/4/5と観測flag、mode0文字種3/flag8192寸法は倍率1の剛体移動/回転に限定対応し、角度以外の文字様式を保持する。mode0未使用補助欄は非ゼロ/符号付きゼロも含め保存値を変換せず保持。全円の開始角も剛体変換では保持。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L169)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L170)。
 
 委譲先の有効引数：`rotate_entities(indices, angle, *, base_point=(0, 0), units='paper', copy=False)`（[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/transformations.py#L164)）。
 
@@ -1601,7 +1601,7 @@ axis_pointを通るaxis_angle方向の軸で要素を反転する。
 
 対応範囲・拒否条件：既知9種類の表現可能な変換のみ。円ソリッドは101・モード5/100・フラグ0/2048に限定し、特異変換と未検証の塗りを拒否。空/重複/不正選択、非有限値、ゼロ倍率、文字グリフ反転、制御文字、未観測文字種/flag、文字種付き文字/寸法の拡縮・反転、コード点線形変換、参照/文字のせん断を拒否。変換角度はrad、unitsはpaper/real。剛体回転の対照で確認した文字種2/3/4/5と観測flag、mode0文字種3/flag8192寸法は倍率1の剛体移動/回転に限定対応し、角度以外の文字様式を保持する。mode0未使用補助欄は非ゼロ/符号付きゼロも含め保存値を変換せず保持。全円の開始角も剛体変換では保持。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L174)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L175)。
 
 委譲先の有効引数：`reflect_entities(indices, *, axis_point=(0, 0), axis_angle=0, units='paper', copy=False)`（[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/transformations.py#L173)）。
 
@@ -1615,7 +1615,7 @@ CadDocument.scale_entities(indices, scale_x, scale_y=None, **options)
 
 対応範囲・拒否条件：既知9種類の表現可能な変換のみ。円ソリッドは101・モード5/100・フラグ0/2048に限定し、特異変換と未検証の塗りを拒否。空/重複/不正選択、非有限値、ゼロ倍率、文字グリフ反転、制御文字、未観測文字種/flag、文字種付き文字/寸法の拡縮・反転、コード点線形変換、参照/文字のせん断を拒否。変換角度はrad、unitsはpaper/real。剛体回転の対照で確認した文字種2/3/4/5と観測flag、mode0文字種3/flag8192寸法は倍率1の剛体移動/回転に限定対応し、角度以外の文字様式を保持する。mode0未使用補助欄は非ゼロ/符号付きゼロも含め保存値を変換せず保持。全円の開始角も剛体変換では保持。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L179)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L180)。
 
 委譲先の有効引数：`scale_entities(indices, scale_x, scale_y=None, *, base_point=(0, 0), units='paper', copy=False)`（[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/transformations.py#L168)）。
 
@@ -1629,7 +1629,7 @@ CadDocument.import_group(path, source_group, target_group, *, sync_scale=False, 
 
 対応範囲・拒否条件：同版のみ。取込み元か取込み先が、v600でクラスの版700（今のJw_cadのv6形式）の図面なら、変更前に拒否する（Ver.7.00形式に保存し直せば取り込める）。settings_policyはstrictが既定で全体設定差を拒否。明示destinationだけ同一性比較を外し、先の全体設定生バイト（未確定3バイト含む）を保持、源の要素属性番号は維持し見え方は先に従う。未定義色/線種番号は両方で事前拒否。計画には両設定ハッシュ/差を明記。sync_scale/sync_group_name/sync_layer_namesは独立bool。同名定義は番号以外の全内容一致だけ再利用、明示block_renames可。画像/新規入れ子/優先参照群変更/未知構造は全体拒否。文字種付き寸法はv700/mode0/補助線2点4のゼロ座標/同縮尺だけ。文字種1は根flag0,2で外側群だけ変更。文字種3は実測した属性の組み合わせ（根/線flag8192、文字flag16400/幅67/線種2、MSゴシック有限角（剛体回転の照合を含む）、宣言文字種3のサイズ/色一致、既定の観測ペン/補助属性）だけ、外側と文字の群を変更し、線/補助の群・全flagを保持。元/先の元縮尺が異なる場合はsync_scaleでも拒否。未観測の文字種/フラグ/様式・非ゼロ補助・定義内寸法・保持内包群設定の不一致は拒否。座標は原点位置を保持。文字種1は実図面で照合済み、文字種3はネイティブ21件対照と承認済みAPI1205件取込みのJWW全属性/DXF全数値/PDF受入れ合格。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L580)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L581)。
 
 ### `solve_two_point_alignment`
 
@@ -1655,7 +1655,7 @@ CadDocument.add_block_definition(name, entities, *, timestamp=0, compound_kind=N
 
 対応範囲・拒否条件：新規入れ子定義は未対応。名前/子属性/日時uint32/符号化を検証。CadDocumentは非空。JwwDocumentは番号重複を拒否。compound_kindは1～4/None、既存印との二重指定を拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L456)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L457)。
 
 ```python
 definition = cad.add_block_definition('記号A', [Line((0, 0), (10, 0))], compound_kind=4)
@@ -1671,7 +1671,7 @@ CadDocument.place_block(def_number, position, *, layer_group=0, units='paper', *
 
 対応範囲・拒否条件：位置は指定単位（JwwDocumentは紙面）、回転rad、倍率無次元。不存在番号・不正保存値は両入口で追加前拒否。確認済み参照style0/1/2/3/64/65/66/67は優先等の専用欄で、SXF線種にしない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L516)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L517)。
 
 ```python
 cad.place_block(definition.number, (20, 30), rotation=0.5)
@@ -1687,7 +1687,7 @@ CadDocument.block_reference_counts()
 
 対応範囲・拒否条件：直下参照のみ、表示名で集計。未解決定義参照を拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L532)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L533)。
 
 ### `CadDocument.replace_entities_with_block`
 
@@ -1699,7 +1699,7 @@ CadDocument.replace_entities_with_block(indices, name, **options)
 
 対応範囲・拒否条件：正倍率、基準点/回転、混在属性、優先切替を扱う。空/重複選択、入れ子/制御・せん断文字、未観測bit2組合せ、同名複数定義/形状属性不一致を変更前に拒否。match_toleranceは0～1e-6紙面mm。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L537)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L538)。
 
 委譲先の有効引数：`replace_entities_with_block(indices, name, *, base_point=(0, 0), rotation=0, scale_x=1, scale_y=1, layer_group=None, layer=None, layer_priority=True, reuse_existing=True, compound_kind=4, units='paper', match_tolerance=1e-08)`（[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/block_operations.py#L108)）。
 
@@ -1717,7 +1717,7 @@ CadDocument.get_block_layer_priority(index: int)
 
 対応範囲・拒否条件：BLOCK・pen_style0/1/2/3/64/65/66/67・幅0・flag0のみ。未知属性は拒否。enabledはbool。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L543)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L544)。
 
 ### `CadDocument.set_block_layer_priority`
 
@@ -1729,7 +1729,7 @@ CadDocument.set_block_layer_priority(index: int, enabled: bool)
 
 対応範囲・拒否条件：BLOCK・pen_style0/1/2/3/64/65/66/67・幅0・flag0のみ。未知属性は拒否。enabledはbool。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L554)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L555)。
 
 ### `JwwDocument.add_block_definition`
 
@@ -1885,7 +1885,7 @@ CadDocument.summary()
 
 対応範囲・拒否条件：直下と定義内を分離。設定込みモデル、非有限値、不正層/群、未解決参照/重複定義を拒否。write_summaryは同名出力を拒否し、NaN禁止・不完全CP932はJSONエスケープで保持。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L427)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L428)。
 
 ### `CadDocument.write_summary`
 
@@ -1897,7 +1897,7 @@ CadDocument.write_summary(path)
 
 対応範囲・拒否条件：直下と定義内を分離。設定込みモデル、非有限値、不正層/群、未解決参照/重複定義を拒否。write_summaryは同名出力を拒否し、NaN禁止・不完全CP932はJSONエスケープで保持。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L431)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L432)。
 
 ```python
 cad.write_summary('new_summary.json')
@@ -1913,7 +1913,7 @@ CadDocument.entity_counts
 
 対応範囲・拒否条件：現在の公開entitiesだけ集計する。定義内子要素・既定で除外した設定要素は数えない。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L570)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L571)。
 
 ### `CadDocument.embedded_images`
 
@@ -1925,7 +1925,7 @@ CadDocument.embedded_images
 
 対応範囲・拒否条件：開いたときの図面の同梱の画像を返す（add_image・delete_image・replace_imageの保存前の変更は含まない。保存して開き直すと反映される）。verifiedは、Jw_cad 10.03.6の見本か実物で確かめた組み合わせならTrue。Falseの画像は、形式の決まりとしては正しいが、Jw_cadの出力として確かめていないことを示す注意で、拒否や保存の妨げにはならない。trailing_bytesは形式の終わりの後ろの余りのバイト数（ふつうは0）、notesは受け入れた注意の短い文のtuple（余り、大きさの欄の食い違い、TIFFの奇数の位置のIFD、JPEGの後ろに続く別のJPEG）。notesのある画像はverified=False。画像のない図面やv700以外では空のtuple。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L574)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L575)。
 
 ### `CadDocument.add_image`
 
@@ -1935,9 +1935,9 @@ CadDocument.add_image(path, position, width, *, height=None, angle=0, transparen
 
 v700の図面に画像のファイルを同梱して入れる（#57）。画像を指す文字（`^@BM%temp%名前,幅,高さ,0,0,1,角度,R,G,B`）を1つ足して返し、保存のときに画像を末尾の最後に足す。positionは見えている画像の左下（unitsは位置だけに当てる）、幅・高さは紙面mm、角度は度、transparent_colorは透過色の赤・緑・青。
 
-対応範囲・拒否条件：v700だけ（v600・今のJw_cadのv6形式・古い版・rebro_schema0・include_metadata=Trueは拒否）。画像を指す文字に、透過色の欄がない形（名前の後の欄が6個。手元の図面に多い。どのJw_cadが書いた形かは分からない）が1つでもある図面は拒否する（Jw_cad 10.03.6の9個の形と混ざった図面は確かめていないため）。幅は必須（正の数）。高さを省くと画素の縦横の比から決める。数はJw_cadと同じく有効数字6けたで書き、指数の形になる値は拒否。角度は0以上360未満。名前は、Jw_cadの画像同梱の「相対パス」で図面と同じフォルダの画像を入れた形（BMPは`<名前>_bmp.bmp`、ほかは`<名前>.<拡張子>`）で、ファイルの場所は図面に入れない。name=で名前を指定できる（同じ決まりを当てる）。名前はCP932で書ける文字で、`\ / : * ? " < > | , ^ .`・制御文字・両端の空白は拒否。拡張子は`.bmp .jpg .png .gif .tif`（小文字）だけ。画像は読取りと同じ検査を当て、本体の形がJw_cadの見本で確かめた形でなければ拒否（24ビットのBMPか普通のJPEGに保存し直す案内つき）。形式の終わりの後ろの余りなどの注意（notes）は受け入れる。同じ中身（SHA256）の画像がすでにあれば、新しく入れずにその名前を指す（共有）。同じ名前（大文字小文字を区別しない）で中身が違えば拒否。画像は変換せず元のバイトのまま入れ、EXIFの向き（1以外）・位置の情報（GPSの欄）は計画の結果に注意を出すだけ（値は読まない）。gzipの見出しはJw_cadと同じ値（時刻0・XFL 0・OS 10・名前なし）だが、圧縮の本体はJw_cadと同じバイトにはならない（ほどいた中身は同じ）。トリミング（欄3〜5は0,0,1だけ）と文字の印flagの2は書かない。透過色で透けて表示されることと、印刷での画像の出方は確かめていない（VERIFICATION.mdの16）。import_groupとは一緒に使えない。
+対応範囲・拒否条件：v700だけ（v600・今のJw_cadのv6形式・古い版・rebro_schema0・include_metadata=Trueは拒否）。画像を指す文字に、透過色の欄がない形（名前の後の欄が6個。手元の図面に多い。どのJw_cadが書いた形かは分からない）が1つでもある図面は拒否する（Jw_cad 10.03.6の9個の形と混ざった図面は確かめていないため）。幅は必須（正の数）。高さを省くと画素の縦横の比から決める。数はJw_cadと同じく有効数字6けたで書き、指数の形になる値は拒否。角度は0以上360未満。名前は、Jw_cadの画像同梱の「相対パス」で図面と同じフォルダの画像を入れた形（BMPは`<名前>_bmp.bmp`、ほかは`<名前>.<拡張子>`）で、ファイルの場所は図面に入れない。name=で名前を指定できる（同じ決まりを当てる）。名前はCP932で書ける文字（外字の領域を除く）で、`\ / : * ? " < > | , ^ .`・制御文字・両端の空白は拒否。拡張子は`.bmp .jpg .png .gif .tif`（小文字）だけ。画像は読取りと同じ検査を当て、本体の形がJw_cadの見本で確かめた形でなければ拒否（24ビットのBMPか普通のJPEGに保存し直す案内つき）。形式の終わりの後ろの余りなどの注意（notes）は受け入れる。同じ中身（SHA256）の画像がすでにあれば、新しく入れずにその名前を指す（共有）。同じ名前（大文字小文字を区別しない）で中身が違えば拒否。画像は変換せず元のバイトのまま入れ、EXIFの向き（1以外）・位置の情報（GPSの欄）は計画の結果に注意を出すだけ（値は読まない）。gzipの見出しはJw_cadと同じ値（時刻0・XFL 0・OS 10・名前なし）だが、圧縮の本体はJw_cadと同じバイトにはならない（ほどいた中身は同じ）。トリミング（欄3〜5は0,0,1だけ）と文字の印flagの2は書かない。透過色で透けて表示されることと、印刷での画像の出方は確かめていない（VERIFICATION.mdの16）。import_groupとは一緒に使えない（どちらの順でも拒否）。画像の個数（256枚）と合計の大きさ（512MB）の上限は、入れるときに確かめる。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L608)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L610)。
 
 ### `CadDocument.delete_image`
 
@@ -1949,7 +1949,7 @@ CadDocument.delete_image(index)
 
 対応範囲・拒否条件：v700だけ。同梱の画像を指す`^@BM%temp%`の文字でなければ拒否。欄が9個（Jw_cad 10.03.6）の形と、6個（透過色の欄がない形）を受け付け、ほかの欄の数は拒否する（消すのに使うのは名前だけ。6個の形そのものをJw_cadで消して保存した見本はない）。トリミング済みやflag 2の画像も消せる。delete_entityで画像の文字を消したときは、今までどおり画像を末尾に残す（外すのはdelete_imageだけ）。共有の画像は、delete_imageとdelete_entityの順番によらず、保存のときにどの文字からも指されていなければ外す。原本にもともとあった、どの文字からも指されない画像は残す。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L620)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L622)。
 
 ### `CadDocument.replace_image`
 
@@ -1957,11 +1957,11 @@ CadDocument.delete_image(index)
 CadDocument.replace_image(index, path, *, name=None, keep_height=False)
 ```
 
-画像を入れ替える（#57）。Jw_cadの結果と同じく、元の文字を消して新しい文字を本文の最後に足し、古い画像は指されなくなれば末尾から外し、新しい画像を末尾の最後に足す。位置・幅・角度・透過色・層は元の文字のまま。高さは新しい画像の縦横の比から決め直す（keep_height=Trueなら元の高さ）。
+画像を入れ替える（#57）。Jw_cadの結果と同じく、元の文字を消して新しい文字を本文の最後に足し、古い画像は指されなくなれば末尾から外し、新しい画像を末尾の最後に足す。位置・幅・角度・透過色・層・線色・グループは元の文字のまま（線種・文字の大きさ・書体は、Jw_cadが画像の文字に書く値）。高さは新しい画像の縦横の比から決め直す（keep_height=Trueなら元の高さ）。
 
 対応範囲・拒否条件：add_imageと同じ名前・画像の検査と、delete_imageと同じ文字の検査。透過色の欄がない形（欄6個）の画像を指す文字が1つでもある図面は拒否。元の画像がトリミング済み（欄3〜5が0,0,1でない）か、文字の印flagが0でなければ拒否。角度が0以上360未満でなければ拒否。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L625)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L627)。
 
 ### `safe_edit.diff_report`
 

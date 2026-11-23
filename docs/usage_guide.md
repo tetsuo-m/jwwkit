@@ -351,7 +351,7 @@ CadDocument.add_solid(points, color=..., units="real")を計画のadd_solid操�
 
 
 ## 画像を入れる・消す・入れ替える（v700）
-v700の図面では、CadDocument.add_image・delete_image・replace_imageで、同梱の画像を入れる・消す・入れ替えることができる（#57）。計画ではadd_image（kwargsにpath・position・widthなど）、delete_image・replace_image（indicesに画像を指す文字を1つ）の操作として使い、チャットで承認してから実行する。計画の結果（resource_targets）には、画像のファイルの場所・SHA256・形式・画素の数・作る名前・注意（notes、EXIFの向き、位置の情報の有無）と、実行前の同梱の画像の一覧が入る。画像のファイルは計画の依存ファイルになり、承認の後に中身が変わると実行を止める。実行の報告（.changes.json）には、同梱の画像の前後の一覧が入る。
+v700の図面では、CadDocument.add_image・delete_image・replace_imageで、同梱の画像を入れる・消す・入れ替えることができる（#57）。計画ではadd_image（kwargsにpath・position・widthなど）、delete_image・replace_image（indicesに画像を指す文字を1つ）の操作として使い、チャットで承認してから実行する。計画の結果（resource_targets）には、画像のファイルの場所・SHA256・形式・画素の数・作る名前・注意（notes、EXIFの向き、位置の情報の有無）と、計画の中のそれまでの操作を当てた同梱の画像の一覧が入る。同じ中身の画像がすでにある（計画の前の操作で入れたものも含む）ときは、shared_withに共有する画像の名前が入り、新しい画像は入らない。画像のファイルは計画の依存ファイルになり、承認の後に中身が変わると実行を止める。実行の報告（.changes.json）には、同梱の画像の前後の一覧が入る。
 
 - 位置は見えている画像の左下、幅・高さは紙面mm。高さを省くと画素の縦横の比から決める。
 - 名前は、Jw_cadの「相対パス」で図面と同じフォルダの画像を入れた形になる。利用者のフォルダの場所は図面に入らない。同じ名前で中身が違う画像は、name=で別の名前を指定する。
