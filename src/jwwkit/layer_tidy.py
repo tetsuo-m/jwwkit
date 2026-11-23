@@ -5,11 +5,17 @@ match a sample element by shape and position (real mm, every element whatever it
 that element's group and layer; only the group and layer change. Elements with no counterpart in the sample
 (electrical symbols and so on) stay where they are, or move to a chosen empty group/layer.
 
-Matching uses compare_drawings (exact, then unique same-shape pairs, then lines split differently that cover
-each other) and adds one rule of its own: a target line wholly covered by sample lines whose destinations are
-one and the same. Nothing is guessed: pairs whose destination is not unique, partly overlapping lines,
-unsupported elements, moves between groups of different scales and moves the editing API refuses are listed
-and left alone. The result is a review and a safe_edit plan; executing the plan needs the usual approval.
+Matching uses the shape description and the shape test of compare_drawings (``_rows``/``_geometry``, the same
+units, tolerance and supported kinds) and looks, for every target element, at all sample elements of the same
+shape and place:
+- the text content (also inside blocks and dimensions) and the point kind (temporary or not) must be the same;
+- if they all have one destination, the element goes there (several target copies may share it: an overlap);
+- if not, and only then, the elements whose other attributes (pen colour, style, width, flags) are equal decide
+  it when that leaves one destination (attribute tie-break, #56 decision); otherwise it is ambiguous.
+Lines that are split differently use compare_drawings' line partitions, and a target line wholly inside one
+sample line is matched to it (one-sided cover). Nothing is guessed: ambiguous elements, lines that only partly
+overlap, unsupported elements, moves between groups of different scales and moves the editing API refuses are
+listed and left alone. The result is a review and a safe_edit plan; executing the plan needs the usual approval.
 """
 from __future__ import annotations
 
@@ -21,7 +27,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from jwwkit.cad_model import CadDocument
-from jwwkit.drawing_comparison import compare_drawings
+from jwwkit.drawing_comparison import _geometry, _rows, _scope, compare_drawings
 
 __all__ = ['analyze', 'write_plan']
 
@@ -29,23 +35,80 @@ __all__ = ['analyze', 'write_plan']
 # Jw_cad stores split points as computed doubles, so an exact zero cannot be asked for.
 COVER_EPSILON = 1e-9
 REASONS = {
-    'ambiguous': 'The destination is not unique (several sample elements of the same shape on different layers)',
-    'partial_line': 'A line only partly overlaps the sample lines',
+    'ambiguous': 'The destination is not unique (sample elements of the same shape on different layers)',
+    'partial_line': 'A line only partly overlaps a sample line',
     'unsupported': 'compare_drawings does not support this element',
     'scale': 'The source group and the destination group have different scales',
     'edit_refused': 'The editing API refuses to change this element',
     'content_differs': 'Same place as a sample element but a different text content or point kind',
 }
-# Upper limit of target-line x sample-line pairs tested for covering (as compare_drawings' candidate limit).
-MAX_COVER_PAIRS = 2_000_000
+# Upper limit of element pairs tested (as compare_drawings' max_candidate_pairs).
+MAX_PAIRS = 2_000_000
+# Grid cell (real mm) for finding lines near a point.
+LINE_CELL = 5000.0
+TIEBREAK_ATTRIBUTES = ('pen_color', 'pen_style', 'pen_width', 'flag')
 
 
 def _slot(entity):
     return (entity.attributes['layer_group'], entity.attributes['layer'])
 
 
+def _row_slot(row):
+    return (row['attributes']['layer_group'], row['attributes']['layer'])
+
+
 def _scale(document, group):
     return document.get_group_scale(group)
+
+
+class _Budget:
+    def __init__(self):
+        self.used = 0
+
+    def spend(self, n=1):
+        self.used += n
+        if self.used > MAX_PAIRS:
+            raise ValueError(f'More than {MAX_PAIRS} element pairs to test; the drawings are too large for one run')
+
+
+def _same_shape_candidates(sample_rows, target_rows, tolerance, budget):
+    """{target index: [sample rows of the same shape and place]} using compare_drawings' _geometry."""
+    def cell(point):
+        if tolerance > 0:
+            return (math.floor(point[0] / tolerance), math.floor(point[1] / tolerance))
+        return (point[0], point[1])
+    buckets = defaultdict(list)
+    for row in sample_rows:
+        buckets[(row['type'], cell(row['anchor']))].append(row)
+    out = {}
+    for row in target_rows:
+        cx, cy = cell(row['anchor'])
+        keys = [(row['type'], (cx + dx, cy + dy)) for dx in (-1, 0, 1) for dy in (-1, 0, 1)] if tolerance > 0 \
+            else [(row['type'], (cx, cy))]
+        found = []
+        for key in keys:
+            for candidate in buckets.get(key, ()):
+                budget.spend()
+                errors = _geometry(candidate, row, tolerance, 0.0)
+                if errors is not None:
+                    found.append((candidate, errors))
+        out[row['index']] = found
+    return out
+
+
+def _content_same(sample_row, target_row, errors):
+    """Same text content (also inside blocks/dimensions) and the same point kind (temporary, symbol code)."""
+    from jwwkit._comparison_composites import changes
+    attributes, content_changes, _ = changes(sample_row, target_row, errors, 0.0)
+    if content_changes:
+        return False
+    if sample_row['type'] == 'POINT':
+        return not any(c['field'].endswith(('.is_temporary', '.code')) for c in attributes)
+    return True
+
+
+def _key(row):
+    return tuple(row['attributes'][k] for k in TIEBREAK_ATTRIBUTES)
 
 
 def _real_line(document, entity):
@@ -56,61 +119,46 @@ def _real_line(document, entity):
     return a, b
 
 
-def _covers(line, point, tolerance):
+def _on_line(line, point, limit):
+    """(distance from the infinite line, position along the segment) of a point."""
     (ax, ay), (bx, by) = line
     dx, dy = bx - ax, by - ay
     length = math.hypot(dx, dy)
-    if length == 0:
-        return False
     px, py = point[0] - ax, point[1] - ay
-    distance = abs(dx * py - dy * px) / length
-    along = (dx * px + dy * py) / length
+    return abs(dx * py - dy * px) / length, (dx * px + dy * py) / length, length
+
+
+def _relation(sample_line, target_line, tolerance):
+    """'covered' (the target lies wholly on the sample line), 'partial' (same straight line, overlapping
+    in part), or None."""
     limit = tolerance + COVER_EPSILON
-    return distance <= limit and -limit <= along <= length + limit
+    if math.dist(*sample_line) == 0 or math.dist(*target_line) == 0:
+        return None
+    d1, t1, length = _on_line(sample_line, target_line[0], limit)
+    d2, t2, _ = _on_line(sample_line, target_line[1], limit)
+    if d1 > limit or d2 > limit:
+        return None
+    low, high = min(t1, t2), max(t1, t2)
+    if low >= -limit and high <= length + limit:
+        return 'covered'
+    if min(high, length) - max(low, 0.0) > limit:
+        return 'partial'
+    return None
 
 
-def _one_sided_cover(sample, target, candidates, sample_lines, tolerance):
-    """Target lines wholly inside one sample line. Returns {target index: [sample indices covering it]}."""
-    out = {}
-    lines = [(i, _real_line(sample, sample.entities[i])) for i in sample_lines]
-    for t in candidates:
-        entity = target.entities[t]
-        if entity.entity_type != 'LINE':
-            continue
-        a, b = _real_line(target, entity)
-        covering = [i for i, line in lines if _covers(line, a, tolerance) and _covers(line, b, tolerance)]
-        if covering:
-            out[t] = covering
-    return out
-
-
-TIEBREAK_ATTRIBUTES = ('pen_color', 'pen_style', 'pen_width', 'flag')
-
-
-def _same_line(a, b, tolerance):
-    limit = tolerance + COVER_EPSILON
-    close = lambda p, q: math.hypot(p[0] - q[0], p[1] - q[1]) <= limit
-    return (close(a[0], b[0]) and close(a[1], b[1])) or (close(a[0], b[1]) and close(a[1], b[0]))
-
-
-def _attribute_tiebreak(sample, target, sample_indices, target_indices, tolerance):
-    """Within one ambiguous component of lines: {target: sample} for pairs that are one-to-one when the other
-    attributes (TIEBREAK_ATTRIBUTES) must also be equal and the lines are the same in real mm."""
-    def key(document, i):
-        entity = document.entities[i]
-        return tuple(entity.attributes[k] for k in TIEBREAK_ATTRIBUTES)
-    if any(sample.entities[i].entity_type != 'LINE' for i in sample_indices) or any(
-            target.entities[i].entity_type != 'LINE' for i in target_indices):
-        return {}
-    s_lines = {i: _real_line(sample, sample.entities[i]) for i in sample_indices}
-    t_lines = {i: _real_line(target, target.entities[i]) for i in target_indices}
-    candidates = {t: [s for s in sample_indices if key(sample, s) == key(target, t)
-                      and _same_line(s_lines[s], t_lines[t], tolerance)] for t in target_indices}
-    reverse = defaultdict(list)
-    for t, ss in candidates.items():
-        for s in ss:
-            reverse[s].append(t)
-    return {t: ss[0] for t, ss in candidates.items() if len(ss) == 1 and len(reverse[ss[0]]) == 1}
+def _line_index(document, indices, tolerance):
+    """Grid of real-mm cells -> sample line indices whose (widened) box touches the cell."""
+    grid = defaultdict(list)
+    lines = {}
+    margin = tolerance + COVER_EPSILON
+    for i in indices:
+        a, b = _real_line(document, document.entities[i])
+        lines[i] = (a, b)
+        x0, x1 = sorted((a[0], b[0])); y0, y1 = sorted((a[1], b[1]))
+        for cx in range(math.floor((x0 - margin) / LINE_CELL), math.floor((x1 + margin) / LINE_CELL) + 1):
+            for cy in range(math.floor((y0 - margin) / LINE_CELL), math.floor((y1 + margin) / LINE_CELL) + 1):
+                grid[(cx, cy)].append(i)
+    return grid, lines
 
 
 def _check_settings(value, what):
@@ -118,32 +166,9 @@ def _check_settings(value, what):
         raise ValueError(f"{what} must be 'keep' or 'sample'")
 
 
-def _content_differs(match, s_doc, t_doc):
-    """compare_drawings pairs texts by position and angle and reports a different content separately; a point
-    and a temporary point also pair. The plan requires the same content / the same kind of point."""
-    if match['category'] == 'text_changed' or match.get('content_changes'):
-        return True
-    for s, t in zip(match['left_indices'], match['right_indices']):
-        a, b = s_doc.entities[s], t_doc.entities[t]
-        if a.entity_type == 'POINT' and a.geometry.get('is_temporary') != b.geometry.get('is_temporary'):
-            return True
-    return False
-
-
-def _without_others(target_path, keep, folder):
-    """A copy of the target holding only the elements in ``keep`` (in order), for the second comparison."""
-    document = CadDocument.open(target_path)
-    drop = [i for i in range(len(document.entities)) if i not in set(keep)]
-    if drop:
-        document.delete_entities(drop)
-    path = Path(folder) / 'leftover.jww'
-    document.save(path)
-    return path
-
-
 def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_settings='keep',
             group_settings='keep', strict=False):
-    """Match the target against the sample and decide where each target element goes. No file is kept.
+    """Match the target against the sample and decide where each target element goes. No file is written.
 
     unmatched: 'keep', or ('move', layer_group, layer) for target elements with no counterpart in the sample.
     layer_settings / group_settings: 'keep' (report differences only) or 'sample' (make the destination
@@ -162,101 +187,130 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
         raise ValueError('position_tolerance must be a finite number of 0 or more (real mm)')
     sample_path, target_path = Path(sample).resolve(), Path(target).resolve()
     hashes = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in (sample_path, target_path)}
-    options = dict(units='real', position_tolerance=position_tolerance, line_coverage=True)
-    comparison = compare_drawings(sample_path, target_path, **options)
     s_doc, t_doc = CadDocument.open(sample_path), CadDocument.open(target_path)
-    if len(s_doc.entities) != len(comparison['left_entities']) or len(t_doc.entities) != len(comparison['right_entities']):
-        raise ValueError('Element numbering of compare_drawings and CadDocument differ')
+    s_rows = _rows(s_doc, _scope(None), 'real', (0, 0, 0))
+    t_rows = _rows(t_doc, _scope(None), 'real', (0, 0, 0))
+    if [r['index'] for r in s_rows] != list(range(len(s_doc.entities))) or \
+            [r['index'] for r in t_rows] != list(range(len(t_doc.entities))):
+        raise ValueError('Element numbering of the comparison rows and CadDocument differ')
+    s_ok = [r for r in s_rows if r['status'] == 'supported']
+    t_ok = [r for r in t_rows if r['status'] == 'supported']
+    budget = _Budget()
+    candidates = _same_shape_candidates(s_ok, t_ok, position_tolerance, budget)
 
-    destination = {}      # target index -> (group, layer)
-    how = {}              # target index -> how it was matched
-    listed = defaultdict(list)  # reason -> target indices left alone
-    sample_matched = set()
-    unsupported_sample = {u['index'] for u in comparison['unsupported'] if u['side'] == 'left'}
-
-    def assign(target_indices, sample_indices, kind):
-        slots = {_slot(s_doc.entities[i]) for i in sample_indices}
-        if len(slots) != 1:
-            listed['ambiguous'].extend(target_indices)
-            return
-        slot = slots.pop()
-        sample_matched.update(sample_indices)
-        for t in target_indices:
-            destination[t] = slot
-            how[t] = kind
-
-    def consume(result, to_target, repeat):
-        """Use one compare_drawings result; to_target maps its right indices to target indices."""
-        for match in result['matches']:
-            targets = [to_target[i] for i in match['right_indices']]
-            if _content_differs(dict(match, right_indices=targets), s_doc, t_doc):
-                listed['content_differs'].extend(targets)
-                continue
-            if match.get('correspondence') == 'line_partition_equivalent':
-                kind = 'line_partition'
-            elif repeat or len(targets) > 1:
-                kind = 'overlap'
+    destination, how, listed = {}, {}, defaultdict(list)
+    tiebreak = {}  # target -> the one sample element chosen by attributes (must be one-to-one)
+    sample_used = set()
+    attribute_fields = Counter()
+    leftover = []
+    from jwwkit._comparison_composites import changes
+    for row in t_ok:
+        t = row['index']
+        same = [(s, e) for s, e in candidates[t] if _content_same(s, row, e)]
+        if not same:
+            if candidates[t]:
+                listed['content_differs'].append(t)
             else:
-                kind = 'shape'
-            assign(targets, match['left_indices'], kind)
-        for component in result['ambiguous']:
-            # Same shapes on both sides: move them only if every sample element has one destination.
-            sample_indices = component['left_indices']
-            targets = [to_target[i] for i in component['right_indices']]
-            if len({_slot(s_doc.entities[i]) for i in sample_indices}) == 1:
-                assign(targets, sample_indices, 'overlap')
+                leftover.append(t)
+            continue
+        slots = {_row_slot(s) for s, _ in same}
+        chosen = same
+        here = [(s, e) for s, e in same if _row_slot(s) == _row_slot(row) and _key(s) == _key(row)]
+        if len(slots) > 1 and here:
+            # Already in the layer of an identical sample element: in place, not a tie-break candidate.
+            destination[t] = _row_slot(row)
+            how[t] = 'shape'
+            sample_used.add(here[0][0]['index'])
+            continue
+        if len(slots) == 1:
+            kind = 'shape' if len(same) == 1 else 'overlap'
+        else:
+            # Shape and position leave the destination open: only here, the other attributes decide (#56).
+            chosen = [(s, e) for s, e in same if _key(s) == _key(row)]
+            if len(chosen) != 1:
+                listed['ambiguous'].append(t)
                 continue
-            # Only here (shape and position leave the destination open): pair elements whose other
-            # attributes (pen colour, style, width and flags) are all equal, one-to-one (#56 decision).
-            paired = _attribute_tiebreak(s_doc, t_doc, sample_indices, targets, position_tolerance)
-            for t in targets:
-                if t in paired:
-                    assign([t], [paired[t]], 'attribute_tiebreak')
-                else:
-                    listed['ambiguous'].append(t)
-        partial = [to_target[t] for c in result['partial_lines'] for t in c['right_indices']]
-        added = [to_target[t] for t in result['added']]
-        unsupported = [to_target[u['index']] for u in result['unsupported'] if u['side'] == 'right']
-        return partial, added, unsupported
+            tiebreak[t] = chosen[0][0]['index']
+            slots = {_row_slot(chosen[0][0])}
+            kind = 'attribute_tiebreak'
+        destination[t] = slots.pop()
+        how[t] = kind
+        sample_used.update(s['index'] for s, _ in chosen)
+        attributes, _, _ = changes(chosen[0][0], row, chosen[0][1], 0.0)
+        attribute_fields.update(c['field'] for c in attributes if not c['field'].endswith(('.layer_group', '.layer')))
+    # A target copy that repeats a sample element which another target element also matched: an overlap.
+    shared = Counter(tuple(sorted(s['index'] for s, _ in candidates[t] if _content_same(s, t_rows[t], _)))
+                     for t in destination)
+    for t in destination:
+        key = tuple(sorted(s['index'] for s, e in candidates[t] if _content_same(s, t_rows[t], e)))
+        if how[t] == 'shape' and shared[key] > 1:
+            how[t] = 'overlap'
 
-    partial, added, unsupported = consume(comparison, list(range(len(t_doc.entities))), False)
-    # Second look at what is left: a target element may repeat a sample element that already found its pair
-    # (an overlap), or a line may partly overlap a sample line that is already paired.
-    if added:
-        import tempfile
-        with tempfile.TemporaryDirectory(prefix='jwwkit-layer-tidy-') as folder:
-            leftover_path = _without_others(target_path, added, folder)
-            second = compare_drawings(sample_path, leftover_path, **options)
-        partial2, added, unsupported2 = consume(second, added, True)
-        partial += partial2
-        unsupported += [t for t in unsupported2 if t not in unsupported]
-    sample_lines = [i for i, e in enumerate(s_doc.entities) if e.entity_type == 'LINE' and i not in unsupported_sample]
-    leftover = sorted(set(added) | set(partial))
-    if len(leftover) * len(sample_lines) > MAX_COVER_PAIRS:
-        raise ValueError(f'Too many line pairs to test for covering ({len(leftover)} x {len(sample_lines)}; '
-                         f'the limit is {MAX_COVER_PAIRS})')
-    covered = _one_sided_cover(s_doc, t_doc, leftover, sample_lines, position_tolerance)
-    open_targets, open_samples = [], set()
-    for t, sample_indices in covered.items():
-        if len({_slot(s_doc.entities[i]) for i in sample_indices}) == 1:
-            assign([t], sample_indices, 'line_cover')
-        else:
-            open_targets.append(t)
-            open_samples.update(sample_indices)
-    # Covered by sample lines on different layers: the same attribute tie-break as for ambiguous components.
-    paired = _attribute_tiebreak(s_doc, t_doc, sorted(open_samples), open_targets, position_tolerance)
-    for t in open_targets:
-        if t in paired:
-            assign([t], [paired[t]], 'attribute_tiebreak')
-        else:
-            listed['ambiguous'].append(t)
-    for t in partial:
-        if t not in destination and t not in listed['ambiguous']:
+    # Lines split differently: compare_drawings' line partitions (both sides cover each other).
+    leftover_lines = [t for t in leftover if t_doc.entities[t].entity_type == 'LINE']
+    if leftover_lines:
+        comparison = compare_drawings(sample_path, target_path, units='real', position_tolerance=position_tolerance,
+                                      line_coverage=True)
+        waiting = set(leftover_lines)
+        for match in comparison['matches']:
+            if match.get('correspondence') == 'line_partition_equivalent' and set(match['right_indices']) <= waiting:
+                slots = {_slot(s_doc.entities[i]) for i in match['left_indices']}
+                if len(slots) == 1:
+                    slot = slots.pop()
+                    for t in match['right_indices']:
+                        destination[t] = slot
+                        how[t] = 'line_partition'
+                    sample_used.update(match['left_indices'])
+    # One-sided cover: a target line wholly on one sample line; partial overlaps are listed.
+    remaining = [t for t in leftover if t not in destination]
+    sample_lines = [r['index'] for r in s_ok if r['type'] == 'LINE']
+    grid, s_lines = _line_index(s_doc, sample_lines, position_tolerance)
+    unmatched_targets = []
+    for t in remaining:
+        if t_doc.entities[t].entity_type != 'LINE':
+            unmatched_targets.append(t)
+            continue
+        line = _real_line(t_doc, t_doc.entities[t])
+        cell = (math.floor(line[0][0] / LINE_CELL), math.floor(line[0][1] / LINE_CELL))
+        near = {i for dx in (-1, 0, 1) for dy in (-1, 0, 1) for i in grid.get((cell[0] + dx, cell[1] + dy), ())}
+        budget.spend(len(near))
+        covering, partial = [], False
+        for i in sorted(near):
+            relation = _relation(s_lines[i], line, position_tolerance)
+            if relation == 'covered':
+                covering.append(i)
+            elif relation == 'partial':
+                partial = True
+        if covering:
+            rows = [s_rows[i] for i in covering]
+            slots = {_row_slot(r) for r in rows}
+            kind = 'line_cover'
+            if len(slots) != 1:
+                rows = [r for r in rows if _key(r) == _key(t_rows[t])]
+                slots = {_row_slot(r) for r in rows} if len(rows) == 1 else set()
+                kind = 'attribute_tiebreak'
+                if rows and len(rows) == 1:
+                    tiebreak[t] = rows[0]['index']
+            if len(slots) == 1:
+                destination[t] = slots.pop()
+                how[t] = kind
+                sample_used.update(r['index'] for r in rows)
+            else:
+                listed['ambiguous'].append(t)
+        elif partial:
             listed['partial_line'].append(t)
-    listed['unsupported'].extend(t for t in unsupported if t not in destination)
-    decided = set(destination) | {t for v in listed.values() for t in v}
-    unmatched_targets = sorted(t for t in set(added) if t not in decided)
-    sample_only = [i for i in comparison['deleted'] if i not in sample_matched]
+        else:
+            unmatched_targets.append(t)
+    # The attribute tie-break must pair one to one: a sample element chosen by two target elements is open.
+    chosen_by = Counter(tiebreak.values())
+    for t, s in tiebreak.items():
+        if chosen_by[s] > 1 and t in destination:
+            del destination[t]
+            listed['ambiguous'].append(t)
+    listed['unsupported'].extend(r['index'] for r in t_rows if r['status'] != 'supported')
+    seen = {s['index'] for found in candidates.values() for s, _ in found}
+    sample_only = [r['index'] for r in s_ok if r['index'] not in sample_used and r['index'] not in seen]
+    sample_unsupported = sum(r['status'] != 'supported' for r in s_rows)
 
     # (b) move the unmatched elements to an empty group/layer that the sample does not use.
     if unmatched != 'keep':
@@ -301,11 +355,9 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
     for p, h in hashes.items():
         if hashlib.sha256(p.read_bytes()).hexdigest() != h:
             raise ValueError('An input drawing changed while it was being read')
-    attribute_counts = Counter(c['field'] for m in comparison['matches'] for c in m['attribute_changes']
-                               if not c['field'].endswith(('.layer_group', '.layer')))
     review = dict(
         schema='jwwkit.layer_tidy.review/1',
-        sample=dict(sha256=hashes[sample_path], elements=len(s_doc.entities)),
+        sample=dict(sha256=hashes[sample_path], elements=len(s_doc.entities), unsupported=sample_unsupported),
         target=dict(sha256=hashes[target_path], elements=len(t_doc.entities)),
         options=dict(position_tolerance=position_tolerance, units='real',
                      unmatched=list(unmatched) if unmatched != 'keep' else 'keep',
@@ -321,13 +373,12 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
             refused_for_scale=len(listed['scale']),
             sample_only=len(sample_only),
             sample_only_by_type=dict(Counter(s_doc.entities[i].entity_type for i in sample_only)),
-            attribute_differences_in_matches=dict(attribute_counts),
+            attribute_differences_in_matches=dict(attribute_fields),
         ),
         left_alone=[dict(index=t, kind=k, reason=REASONS[k], type=t_doc.entities[t].entity_type,
                          slot=list(_slot(t_doc.entities[t])))
                     for k, v in listed.items() for t in sorted(v)],
         settings=settings['review'],
-        compare_complete=comparison['complete'],
     )
     return dict(review=review, moves=moves, settings_actions=settings['actions'], target=target_path)
 
