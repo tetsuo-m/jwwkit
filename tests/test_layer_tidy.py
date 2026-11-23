@@ -1,0 +1,216 @@
+"""Issue #56: tidy a target drawing's groups/layers after a sample drawing (synthetic drawings only)."""
+import json
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+import jwwkit
+from jwwkit import CadDocument, layer_tidy
+from jwwkit.safe_edit import execute_plan
+
+from test_v600_schema700 import TempDirTestCase
+
+ARCH = 'architecture'
+
+
+def slot(entity):
+    return (entity.attributes['layer_group'], entity.attributes['layer'])
+
+
+class LayerTidyTests(TempDirTestCase):
+    def build_sample(self):
+        """Architecture only, sorted into group 0 layers 1..4."""
+        doc = CadDocument.open(jwwkit.template_path())
+        doc.add_line((0, 0), (100, 0), layer_group=0, layer=1)          # wall, split in the target
+        doc.add_line((0, 0), (0, 80), layer_group=0, layer=1)
+        doc.add_line((0, 80), (100, 80), layer_group=0, layer=1)
+        doc.add_circle((50, 40), 5, layer_group=0, layer=2)
+        doc.add_arc((20, 20), 4, 0.0, 1.5, layer_group=0, layer=2)
+        doc.add_point((10, 10), layer_group=0, layer=3)
+        doc.add_text((30, 30), None, ARCH, layer_group=0, layer=3)
+        doc.add_solid(((60, 60), (70, 60), (70, 70), (60, 70)), layer_group=0, layer=4)
+        doc.add_line((0, 100), (40, 100), layer_group=0, layer=4)       # only in the sample
+        path = self.folder / 'sample.jww'
+        doc.save(path)
+        return path
+
+    def build_target(self, sample, *, edit=None, name='target.jww'):
+        """The sample's elements scattered over other groups/layers, plus symbols that are not in the sample."""
+        doc = CadDocument.open(sample)
+        moves = {0: (3, 5), 1: (4, 0), 2: (0, 1), 3: (5, 7), 4: (5, 7), 5: (6, 2), 6: (7, 3), 7: (2, 9)}
+        for index, (g, l) in moves.items():
+            doc.set_entity_attributes(index, layer_group=g, layer=l)
+        doc.delete_entity(8)                                             # the sample-only line
+        doc.add_circle((80, 20), 3, layer_group=0, layer=1)              # electrical symbol
+        doc.add_text((82, 20), None, 'E', layer_group=4, layer=0)
+        if edit is not None:
+            edit(doc)
+        path = self.folder / name
+        doc.save(path)
+        return path
+
+    def run_plan(self, sample, target, **options):
+        receipt = layer_tidy.write_plan(sample, target, self.folder / 'out.jww', self.folder / 'plan.json', **options)
+        execute_plan(receipt['plan']['path'], approved_sha256=receipt['plan']['sha256'])
+        return receipt, CadDocument.open(self.folder / 'out.jww')
+
+    def test_matched_elements_take_the_sample_slots(self):
+        sample = self.build_sample()
+        target = self.build_target(sample)
+        before = target.read_bytes()
+        receipt, out = self.run_plan(sample, target)
+        self.assertEqual(target.read_bytes(), before)
+        s = CadDocument.open(sample)
+        expected = [slot(e) for e in s.entities[:8]]
+        self.assertEqual([slot(e) for e in out.entities[:8]], expected)
+        self.assertEqual([slot(e) for e in out.entities[8:]], [(0, 1), (4, 0)])  # symbols stay
+        counts = receipt['review']['counts']
+        self.assertEqual(counts['move'], 7)            # index 2 was already in place
+        self.assertEqual(counts['already_in_place'], 1)
+        self.assertEqual(counts['unmatched'], 2)
+        self.assertEqual(counts['sample_only'], 1)
+        self.assertEqual(counts['sample_only_by_type'], {'LINE': 1})
+        self.assertTrue(Path(receipt['review_path']).exists())
+        # Only groups and layers changed.
+        t = CadDocument.open(target)
+        for a, b in zip(t.entities, out.entities):
+            self.assertEqual(a.geometry, b.geometry)
+            self.assertEqual({k: v for k, v in a.attributes.items() if k not in ('layer_group', 'layer')},
+                             {k: v for k, v in b.attributes.items() if k not in ('layer_group', 'layer')})
+
+    def test_hidden_layers_are_matched_too(self):
+        sample = self.build_sample()
+        target = self.build_target(sample, edit=lambda d: (d.set_layer_state(3, 5, 'hidden'),
+                                                            d.set_layer_state(6, 2, 'display_only')))
+        receipt, out = self.run_plan(sample, target)
+        self.assertEqual(slot(out.entities[0]), (0, 1))
+        self.assertEqual(slot(out.entities[5]), (0, 3))
+
+    def test_split_lines(self):
+        sample = self.build_sample()
+
+        def split(d):
+            d.delete_entity(0)                                   # replace the wall by two pieces
+            d.add_line((0, 0), (60, 0), layer_group=9, layer=9)
+            d.add_line((60, 0), (100, 0), layer_group=9, layer=9)
+            d.add_line((10, 80), (30, 80), layer_group=9, layer=8)   # wholly inside a sample line
+            d.add_line((90, 80), (120, 80), layer_group=9, layer=8)  # sticks out: partial
+        target = self.build_target(sample, edit=split)
+        result = layer_tidy.analyze(sample, target)
+        t = CadDocument.open(target)
+        found = {tuple(sorted(((e.geometry['start_x'], e.geometry['end_x'])))): result['moves'].get(i)
+                 for i, e in enumerate(t.entities) if e.entity_type == 'LINE' and slot(e)[0] == 9}
+        self.assertEqual(found[(0.0, 60.0)], (0, 1))
+        self.assertEqual(found[(60.0, 100.0)], (0, 1))
+        self.assertEqual(found[(10.0, 30.0)], (0, 1))
+        self.assertIsNone(found[(90.0, 120.0)])
+        self.assertIn('line_cover', result['review']['counts']['move_by_match'])
+
+    def test_overlapping_and_ambiguous(self):
+        sample = self.build_sample()
+        doc = CadDocument.open(sample)
+        doc.add_line((0, 200), (50, 200), layer_group=0, layer=1)
+        doc.add_line((0, 200), (50, 200), layer_group=0, layer=2)    # same shape, other layer
+        doc.save(self.folder / 'sample2.jww')
+        sample2 = self.folder / 'sample2.jww'
+
+        def extra(d):
+            d.add_line((0, 0), (0, 80), layer_group=8, layer=8)      # duplicate of a wall
+            d.add_line((0, 200), (50, 200), layer_group=8, layer=1)
+            d.add_line((0, 200), (50, 200), layer_group=8, layer=2)
+        target = self.build_target(sample2, edit=extra)
+        result = layer_tidy.analyze(sample2, target)
+        kinds = {x['kind'] for x in result['review']['left_alone']}
+        self.assertIn('ambiguous', kinds)
+        self.assertEqual(result['review']['counts']['left_alone']['ambiguous'], 2)
+        t = CadDocument.open(target)
+        dup = [i for i, e in enumerate(t.entities) if slot(e) == (8, 8)][0]
+        self.assertEqual(result['moves'][dup], (0, 1))
+
+    def test_groups_of_other_scales_are_refused(self):
+        sample = self.build_sample()
+        def rescale(d):
+            d.delete_entity(0)
+            end = d.convert_point((100, 0), layer_group=0, from_units='paper', to_units='real')
+            d.set_group_scale(3, 2 * d.get_group_scale(0) if d.get_group_scale(0) != 50 else 25)
+            d.add_line((0, 0), end, layer_group=3, layer=5, units='real')   # same real place, other scale
+        target = self.build_target(sample, edit=rescale)
+        result = layer_tidy.analyze(sample, target)
+        self.assertEqual(result['review']['counts']['refused_for_scale'], 1)
+        self.assertEqual(result['review']['counts']['unmatched'], 2)
+
+    def test_unmatched_elements_can_move_to_an_empty_layer(self):
+        sample = self.build_sample()
+        target = self.build_target(sample)
+        receipt, out = self.run_plan(sample, target, unmatched=('move', 10, 15))
+        self.assertEqual([slot(e) for e in out.entities[8:]], [(10, 15), (10, 15)])
+        with self.assertRaisesRegex(ValueError, 'not empty'):
+            layer_tidy.analyze(sample, target, unmatched=('move', 0, 1))
+        with self.assertRaisesRegex(ValueError, 'used in the sample'):
+            layer_tidy.analyze(sample, target, unmatched=('move', 0, 4))
+
+    def test_layer_and_group_settings(self):
+        sample = self.build_sample()
+        doc = CadDocument.open(sample)
+        doc.set_layer_name(0, 1, 'wall')
+        doc.set_group_name(0, 'arch')
+        doc.set_layer_state(0, 2, 'display_only')
+        doc.save(self.folder / 'named.jww')
+        named = self.folder / 'named.jww'
+        target = self.build_target(named, edit=lambda d: (d.set_layer_name(0, 1, 'x'), d.set_group_name(0, 'y'),
+                                                           d.set_layer_state(0, 2, 'editable')))
+        keep = layer_tidy.analyze(named, target)['review']['settings']
+        self.assertEqual(keep['actions'], [])
+        self.assertTrue(any(r['kind'] == 'layer' and r['layer'] == 1 for r in keep['differences']))
+        receipt, out = self.run_plan(named, target, layer_settings='sample', group_settings='sample')
+        self.assertEqual(out.get_layer_name(0, 1), 'wall')
+        self.assertEqual(out.get_group_name(0), 'arch')
+        self.assertEqual(out.get_layer_state(0, 2)['state'], 'display_only')
+
+    def test_tolerance(self):
+        sample = self.build_sample()
+
+        def shift(d):
+            d.delete_entity(3)
+            d.add_circle((50 + 0.000002, 40), 5, layer_group=11, layer=11)   # 0.0002 real mm at 1/100
+        target = self.build_target(sample, edit=shift)
+        strict_zero = layer_tidy.analyze(sample, target)
+        self.assertEqual(strict_zero['review']['counts']['unmatched'], 3)
+        loose = layer_tidy.analyze(sample, target, position_tolerance=0.001)
+        self.assertEqual(loose['review']['counts']['unmatched'], 2)
+
+    def test_edit_refusals_are_listed_or_stop(self):
+        sample = self.build_sample()
+        target = self.build_target(sample)
+        original = CadDocument.set_entity_attributes
+
+        def refuse_first(self_, index, **kwargs):
+            if index == 0:
+                raise ValueError('refused for the test')
+            return original(self_, index, **kwargs)
+        with patch.object(CadDocument, 'set_entity_attributes', refuse_first):
+            result = layer_tidy.analyze(sample, target)
+            self.assertNotIn(0, result['moves'])
+            self.assertEqual(result['review']['counts']['left_alone']['edit_refused'], 1)
+            with self.assertRaisesRegex(ValueError, 'strict=True'):
+                layer_tidy.analyze(sample, target, strict=True)
+
+    def test_bad_options(self):
+        sample = self.build_sample()
+        target = self.build_target(sample)
+        for kwargs in (dict(layer_settings='x'), dict(group_settings=1), dict(strict='yes'),
+                       dict(unmatched=('move', 16, 0)), dict(position_tolerance=-1)):
+            with self.subTest(kwargs=kwargs), self.assertRaises(ValueError):
+                layer_tidy.analyze(sample, target, **kwargs)
+
+    def test_review_has_no_drawing_text(self):
+        sample = self.build_sample()
+        target = self.build_target(sample)
+        receipt = layer_tidy.write_plan(sample, target, self.folder / 'out.jww', self.folder / 'plan.json')
+        text = Path(receipt['review_path']).read_text(encoding='utf-8')
+        self.assertNotIn(ARCH, text)
+        self.assertEqual(json.loads(text)['plan_sha256'], receipt['plan']['sha256'])
+
+
+if __name__ == '__main__':
+    unittest.main()
