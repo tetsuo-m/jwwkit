@@ -10,8 +10,9 @@ _OLD_OPS=frozenset(('set_text','move_entities','set_entity_attributes','delete_e
 _ADD_OPS=frozenset(('add_line','add_text','add_circle','add_arc','add_point','add_circle_solid','add_solid'))
 _GROUP_OPS=frozenset(('set_layer_name','set_group_name','set_group_scale','set_group_state','set_layer_state'))
 _SINGLE_OPS=frozenset(('set_text','set_entity_attributes','set_dimension_text','set_block_layer_priority'))
-_OPS=_OLD_OPS|_ADD_OPS|_GROUP_OPS|{'set_dimension_text','set_block_layer_priority','add_block_definition','place_block','align_two_points','import_group'}
-_NEW_ENTITY_OPS=_ADD_OPS|{'copy_entities','place_jws','place_block','import_group'}
+_IMAGE_OPS=frozenset(('add_image','delete_image','replace_image'))  # embedded images (#57)
+_OPS=_OLD_OPS|_ADD_OPS|_GROUP_OPS|_IMAGE_OPS|{'set_dimension_text','set_block_layer_priority','add_block_definition','place_block','align_two_points','import_group'}
+_NEW_ENTITY_OPS=_ADD_OPS|{'copy_entities','place_jws','place_block','import_group','add_image'}
 _COMMON_EXTRA_OPS=frozenset(('delete_entity','move_entity','transform_entities','recalculate_text_endpoint'))
 
 def file_sha256(path):
@@ -64,7 +65,11 @@ def save_checked(cad,before,source_sha256,output,*,approved_plan_sha256=None,ali
         _require(workflow_plan.get('schema_version')==4 and workflow_plan['source_sha256']==source_sha256
                  and Path(workflow_plan['output']).resolve()==output.resolve(),'Invalid workflow save context')
         audit_result(cad,workflow_plan)
+    images_before=[dict(identifier=i['identifier'],sha256=i['sha256']) for i in cad.embedded_images]
     cad.save(output);reloaded=CadDocument.open(output);actual=snapshot(reloaded)
+    images_after=[dict(identifier=i['identifier'],sha256=i['sha256']) for i in reloaded.embedded_images]
+    if images_after!=images_before or cad._image_edits:
+        report.update(embedded_images_before=images_before,embedded_images_after=images_after)
     _require([e['record'] for e in expected['entities']]==[e['record'] for e in actual['entities']],'Saved entity fields differ')
     _require(expected['definitions']==actual['definitions'],'Saved definition fields differ')
     _require(expected['groups']==actual['groups'],'Saved names, scales or display states differ')
@@ -96,7 +101,7 @@ def _actions(actions,targets,*,common_result=False):
         _require(isinstance(a,dict) and set(a)<= {'op','indices','kwargs','as'},'Invalid action fields')
         _require(a.get('op') in (_OPS|_COMMON_EXTRA_OPS if common_result else _OPS) and isinstance(a.get('kwargs',{}),dict),'Unsupported operation or kwargs')
         op=a['op'];kw=a.get('kwargs',{})
-        selects=op not in (_ADD_OPS|_GROUP_OPS|{'place_jws','place_block','gui_acceptance','import_group'})
+        selects=op not in (_ADD_OPS|_GROUP_OPS|{'place_jws','place_block','gui_acceptance','import_group','add_image'})
         if op=='add_block_definition':
             selects='indices' in a
             _require(selects != ('entities' in kw),'Definition requires either selected indices or declarative children, not both')
@@ -108,7 +113,7 @@ def _actions(actions,targets,*,common_result=False):
         if selects:
             indices=a.get('indices');_require(isinstance(indices,list) and indices,'Action requires selected indices')
             _require(all((type(i) is int and i in targets) or (type(i) is str and i in aliases) for i in indices),'Action targets an unapproved element or undefined alias')
-            if op in ('delete_entity','move_entity','recalculate_text_endpoint'):_require(len(indices)==1,'Single method requires exactly one target')
+            if op in ('delete_entity','move_entity','recalculate_text_endpoint','delete_image','replace_image'):_require(len(indices)==1,'Single method requires exactly one target')
         else:
             _require('indices' not in a,'This operation does not accept element indices')
         if op=='place_block':
@@ -179,6 +184,15 @@ def _resource_targets(cad,actions):
             fit=solve_two_point_alignment(**kw)
             _require(fit['passed'],'Alignment refused: '+ '; '.join(fit['reasons']))
             row=dict(action_index=action_index,kind=op,alignment=fit)
+        elif op in _IMAGE_OPS:
+            # Embedded images (#57): the trailer is not in snapshot(), so review it here. The image
+            # file review holds format, size, SHA256, name, notes and EXIF presence flags only.
+            row=dict(action_index=action_index,kind=op,
+                     embedded_images_before=[dict(identifier=i['identifier'],sha256=i['sha256']) for i in cad.embedded_images])
+            if op!='delete_image':
+                from jwwkit.writer.images import check_new_image
+                p=Path(kw['path']);review=check_new_image(p.read_bytes(),kw.get('name') or p.name)
+                row['image']=dict(path=str(p.resolve()),**review)
         else:continue
         row=_json(row);row['sha256']=_hash(row);rows.append(row)
     return rows
@@ -206,6 +220,8 @@ def write_plan(cad,indices,actions,output,plan_path,*,dependencies=(),selection=
     paths={Path(p).resolve() for p in dependencies};figures=[]
     for a in actions:
         if a['op']=='import_group':
+            p=Path(a['kwargs']['path']).resolve();a['kwargs']['path']=str(p);paths.add(p)
+        if a['op'] in ('add_image','replace_image'):
             p=Path(a['kwargs']['path']).resolve();a['kwargs']['path']=str(p);paths.add(p)
         if a['op']=='place_jws':
             p=Path(a['kwargs']['path']).resolve();a['kwargs']['path']=str(p);paths.add(p)
@@ -243,7 +259,8 @@ def write_plan(cad,indices,actions,output,plan_path,*,dependencies=(),selection=
     if not any(a['op']=='gui_acceptance' for a in actions):
         from dataclasses import replace
         staged=replace(cad,header=copy.deepcopy(cad.header),_name_edits=dict(cad._name_edits),
-            _group_scale_edits=dict(cad._group_scale_edits),_new_block_records=copy.deepcopy(cad._new_block_records))
+            _group_scale_edits=dict(cad._group_scale_edits),_new_block_records=copy.deepcopy(cad._new_block_records),
+            _image_edits=copy.deepcopy(cad._image_edits))
         _apply_edit_actions(staged,plan,operation_results=[] )if common_result else _apply_edit_actions(staged,plan)
     with plan_path.open('x',encoding='utf-8') as stream:json.dump(plan,stream,ensure_ascii=True,indent=2,allow_nan=False)
     _require(file_sha256(source)==source_hash,'Source changed while writing plan')
@@ -369,6 +386,10 @@ def _apply_edit_actions(cad,plan,*,import_results=None,operation_results=None):
             cad._validate_addition(entity_record(entity))
         elif op in _GROUP_OPS:
             invoke(op,**kw)
+        elif op=='add_image':
+            entity=invoke('add_image',**kw)
+            from jwwkit.writer.preserved import entity_record
+            cad._validate_addition(entity_record(entity))
         elif op=='add_block_definition':
             from jwwkit.model.block_operations import RecordChild,inverse_record
             from jwwkit.writer.preserved import entity_record
@@ -391,7 +412,7 @@ def _apply_edit_actions(cad,plan,*,import_results=None,operation_results=None):
             cad._validate_addition(entity_record(entity))
         else:
             chosen=alias_indices(a['indices'])
-            if op in _SINGLE_OPS or op in ('delete_entity','move_entity','recalculate_text_endpoint'):
+            if op in _SINGLE_OPS or op in ('delete_entity','move_entity','recalculate_text_endpoint','delete_image','replace_image'):
                 if op in _COMMON_EXTRA_OPS:_require(len(chosen)==1,'Single method requires one resolved target')
                 for i in chosen:invoke(op,i,**kw)
             else:
@@ -401,7 +422,7 @@ def _apply_edit_actions(cad,plan,*,import_results=None,operation_results=None):
                     alignment_results.append(dict(action_index=action_index,alignment=result))
         # Existing aliases may refer to transformed frozen models. Rebind them
         # through index positions only while this operation cannot shift indices.
-        if op not in ('delete_entities','delete_entity','replace_entities_with_block'):
+        if op not in ('delete_entities','delete_entity','replace_entities_with_block','delete_image','replace_image'):
             for name,objects in list(aliases.items()):
                 positions=[i for i,e in enumerate(before_objects) if any(e is o for o in objects)]
                 if positions:aliases[name]=[cad.entities[i] for i in positions]
@@ -444,6 +465,7 @@ def _execute_plan(plan_path,*,approved_sha256,operation_results=None,execution_c
             _require(old_name==new_name or (g,'layers',layer) in group_fields,'Unapproved layer name changed')
         for layer,(old_state,new_state) in enumerate(zip(old['layer_states'],new['layer_states'])):
             _require(old_state==new_state or (g,'layer_states',layer) in group_fields,'Unapproved layer state changed')
+    _require(not cad._image_edits or any(a['op'] in _IMAGE_OPS for a in plan['actions']),'Unapproved embedded image change')
     _require(after['definitions'][:len(before['definitions'])]==before['definitions'],'Existing definition changed')
     if len(after['definitions'])!=len(before['definitions']):
         _require(any(a['op'] in ('add_block_definition','place_jws','replace_entities_with_block','import_group') for a in plan['actions']),'Unapproved definition added')
