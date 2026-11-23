@@ -386,6 +386,25 @@ class LayerTidyTests(TempDirTestCase):
         layer_tidy.analyze(self.folder / 'sample6.jww', target)
         self.assertLess(time.time() - start, 30)
 
+    def test_many_lines_with_wiring_do_not_hit_the_limit(self):
+        import random
+        rng = random.Random(56)
+        doc = CadDocument.open(jwwkit.template_path())
+        for _ in range(4000):                                   # architecture in 30 m x 20 m (real mm)
+            x, y = rng.uniform(0, 30000), rng.uniform(0, 20000)
+            doc.add_line((x, y), (x + rng.uniform(-3000, 3000), y + rng.uniform(-3000, 3000)),
+                         layer_group=0, layer=rng.randrange(1, 5), units='real')
+        doc.save(self.folder / 'dense.jww')
+        target = CadDocument.open(self.folder / 'dense.jww')
+        for _ in range(1500):                                   # wiring that is not in the sample
+            x, y = rng.uniform(0, 30000), rng.uniform(0, 20000)
+            target.add_line((x, y), (x + rng.uniform(-2000, 2000), y + rng.uniform(-2000, 2000)),
+                            layer_group=0, layer=9, units='real')
+        target.save(self.folder / 'dense_target.jww')
+        result = layer_tidy.analyze(self.folder / 'dense.jww', self.folder / 'dense_target.jww')
+        self.assertEqual(result['review']['counts']['already_in_place'], 4000)
+        self.assertEqual(result['review']['counts']['unmatched'], 1500)
+
     def test_covered_pieces_do_not_use_the_tiebreak(self):
         sample = self.build_sample()
         doc = CadDocument.open(sample)
