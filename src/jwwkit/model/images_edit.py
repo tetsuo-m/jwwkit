@@ -11,8 +11,8 @@ from pathlib import Path
 
 from jwwkit.model.common_entities import model_entity
 from jwwkit.model.text import Text
-from jwwkit.writer.images import (TEXT_FONT, TEXT_SIZE, check_new_image, embedded_name, image_text,
-                                  parse_image_text)
+from jwwkit.writer.images import (LEGACY_FORM_MESSAGE, TEXT_FONT, TEXT_SIZE, check_new_image, embedded_name,
+                                  image_text, parse_image_text, split_image_text)
 
 
 def _require_image_document(document):
@@ -41,6 +41,36 @@ def embedded_images(document):
     images += [dict(identifier=i['identifier'], sha256=i['sha256'], raw_size=len(i['raw']), source=False)
                for i in (document._image_edits or {}).get('added', ())]
     return images
+
+
+def _embedded_names(document):
+    return {i['identifier'].lower()[:-3] for i in embedded_images(document)}
+
+
+def _texts(entities):
+    for entity in entities:
+        if entity.entity_type == 'TEXT':
+            yield entity.geometry.get('content', '')
+        elif entity.entity_type == 'DIMENSION':
+            yield (entity.geometry.get('text') or {}).get('content', '')
+
+
+def has_legacy_image_texts(document):
+    """True if an embedded image text does not have Jw_cad 10.03.6's 9 fields (6 in older drawings)."""
+    names = _embedded_names(document)
+    contents = list(_texts(document.entities))
+    for definition in document.block_definitions:
+        contents += list(_texts(definition.entities))
+    for content in contents:
+        split = split_image_text(content, names)
+        if split is not None and len(split[1]) != 9:
+            return True
+    return False
+
+
+def _refuse_legacy(document):
+    if has_legacy_image_texts(document):
+        raise ValueError(LEGACY_FORM_MESSAGE)
 
 
 def _number_check(value, what, *, positive=False):
@@ -95,6 +125,7 @@ def _text_entity(document, name, start, width, height, angle, color, layer_group
 def add_image(document, path, position, width, *, height=None, angle=0, transparent_color=(255, 255, 255),
               name=None, layer_group=0, layer=0, units='paper'):
     _require_image_document(document)
+    _refuse_legacy(document)
     width = _number_check(width, 'width', positive=True)
     angle = _number_check(angle, 'angle')
     if not 0 <= angle < 360:
@@ -120,12 +151,10 @@ def image_text_at(document, index):
     if type(index) is not int or not 0 <= index < len(document.entities):
         raise ValueError('Image text index out of range')
     entity = document.entities[index]
-    fields = parse_image_text(entity.geometry.get('content', '')) if entity.entity_type == 'TEXT' else None
+    content = entity.geometry.get('content', '') if entity.entity_type == 'TEXT' else ''
+    fields = parse_image_text(content, _embedded_names(document))
     if fields is None:
         raise ValueError('The element is not an image text (^@BM%temp%...) of an embedded image')
-    names = {i['identifier'].lower()[:-3] for i in embedded_images(document)}
-    if fields['name'].lower() not in names:
-        raise ValueError('The image text points to an image that is not embedded')
     return entity, fields
 
 
@@ -141,6 +170,7 @@ def replace_image(document, index, path, *, name=None, keep_height=False):
     _require_image_document(document)
     if type(keep_height) is not bool:
         raise ValueError('keep_height must be True or False')
+    _refuse_legacy(document)
     entity, fields = image_text_at(document, index)
     if fields['trimming'] != (0.0, 0.0, 1.0):
         raise ValueError('Replacing a trimmed image is not supported (the trimming rules are not known)')

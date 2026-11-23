@@ -77,19 +77,44 @@ def image_text(name, width, height, angle, color):
             f'{number(angle, "angle")},{color[0]},{color[1]},{color[2]}')
 
 
-def parse_image_text(content):
-    """Split ``^@BM%temp%name,w,h,a,b,c,angle,R,G,B`` (the embedded form). Return None for other texts."""
+LEGACY_FORM_MESSAGE = (
+    'This drawing has image texts in an older Jw_cad form without the transparent-colour fields '
+    '(6 fields after the name), so images cannot be added or replaced in it; mixing the two forms has not '
+    'been checked in Jw_cad. Deleting images (delete_image) is still possible. '
+    '(この図面の画像は古いJw_cadの形（透過色の欄がない形）なので、画像の追加と入れ替えはできません)')
+
+
+def split_image_text(content, names):
+    """For ``^@BM%temp%<embedded name>,fields...``: (name as written, field strings). None for other texts.
+
+    ``names`` are the embedded names (lower case, without ``.gz``); the longest matching one is used, so
+    commas inside a name do not move the fields. A text pointing to no embedded image gives None.
+    """
     if content[:len(IMAGE_PREFIX)].lower() != IMAGE_PREFIX.lower():
         return None
-    parts = content[len(IMAGE_PREFIX):].rsplit(',', 9)
-    if len(parts) != 10:
+    rest = content[len(IMAGE_PREFIX):]
+    for name in sorted(names, key=len, reverse=True):
+        if rest[:len(name)].lower() == name and rest[len(name):len(name) + 1] in (',', ''):
+            tail = rest[len(name) + 1:]
+            return rest[:len(name)], (tail.split(',') if tail else [])
+    return None
+
+
+def parse_image_text(content, names):
+    """Fields of an embedded image text. Jw_cad 10.03.6 writes 9 fields (w,h,a,b,c,angle,R,G,B); real
+    drawings also have 6 (no transparent colour, an older Jw_cad). ``form`` is 9 or 6; others are refused."""
+    split = split_image_text(content, names)
+    if split is None:
+        return None
+    name, parts = split
+    if len(parts) not in (6, 9):
         raise ValueError('Image text has an unobserved field count')
     try:
-        values = [float(x) for x in parts[1:7]] + [int(x) for x in parts[7:]]
+        values = [float(x) for x in parts[:6]] + [int(x) for x in parts[6:]]
     except ValueError as exc:
         raise ValueError('Image text has an unobserved field value') from exc
-    return dict(name=parts[0], width=values[0], height=values[1], trimming=tuple(values[2:5]),
-                angle=values[5], color=tuple(values[6:9]))
+    return dict(name=name, form=len(parts), width=values[0], height=values[1], trimming=tuple(values[2:5]),
+                angle=values[5], color=tuple(values[6:9]) if len(parts) == 9 else None)
 
 
 def gzip_member(raw):
