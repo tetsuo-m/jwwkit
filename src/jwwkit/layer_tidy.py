@@ -33,7 +33,7 @@ from pathlib import Path
 from jwwkit.cad_model import CadDocument
 from jwwkit.drawing_comparison import _geometry, _rows, _scope, compare_drawings
 
-__all__ = ['analyze', 'write_plan']
+__all__ = ['analyze', 'write_plan', 'TidyRefused']
 
 # Floating-point noise allowed on top of position_tolerance when testing that a point lies on a line (real mm).
 # Jw_cad stores split points as computed doubles, so an exact zero cannot be asked for.
@@ -490,7 +490,7 @@ def write_plan(sample, target, output, plan_path, *, review_path=None, **options
         exc.review['plan_sha256'] = None
         with review_path.open('x', encoding='utf-8') as stream:
             json.dump(exc.review, stream, ensure_ascii=False, indent=2)
-        raise
+        raise TidyRefused(f'{exc}; no plan was written (review: {review_path})', exc.review) from exc
     review = result['review']
     by_slot = defaultdict(list)
     for t, slot in result['moves'].items():
