@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 29336,
-      "sha256": "0796b2d97f54f3ac74ef5eff2ef156a32854869c28377af8a7231c04bb02e001"
+      "size": 30207,
+      "sha256": "6da276e65c67e7d345470874b5b8b6790384ae3e8b1a8c94d891615efb36d7c5"
     },
     {
       "path": "CLAUDE.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 121111,
-      "sha256": "98796990612488c6ac1d76270259780d0ca9cb6888868e335ed857999e0a1cc5"
+      "size": 125120,
+      "sha256": "82204e945210e367bef6231d2264092e3d4b0ca5b7823e97e27bf56f375f2147"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 79201,
-      "sha256": "038fc45ae3001e823c28d804b98856b3035b3751d6ae16eafd5501f9dad3b1d0"
+      "size": 82447,
+      "sha256": "5d7512a9523da8ea81ccd70279add4acb7e92e1b5cda75082fa2c3ee488bd151"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "README.md",
-      "size": 15695,
-      "sha256": "c4565b0b5eeaac454ecff0ca102e6014f50d03063be40415dad249f6427570ef"
+      "size": 15981,
+      "sha256": "8a020561c42f8071cac617a930611809966585039a32c5b801c2d5c070aa5d78"
     },
     {
       "path": "requirements.txt",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 121111,
-      "sha256": "98796990612488c6ac1d76270259780d0ca9cb6888868e335ed857999e0a1cc5"
+      "size": 125120,
+      "sha256": "82204e945210e367bef6231d2264092e3d4b0ca5b7823e97e27bf56f375f2147"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 79201,
-      "sha256": "038fc45ae3001e823c28d804b98856b3035b3751d6ae16eafd5501f9dad3b1d0"
+      "size": 82447,
+      "sha256": "5d7512a9523da8ea81ccd70279add4acb7e92e1b5cda75082fa2c3ee488bd151"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -440,6 +440,11 @@
       "path": "src/jwwkit/jwf.py",
       "size": 12873,
       "sha256": "33117da1c87b6f34b0faf86aa9d9c480c6d040e77e46940eb46c64fe5c8ecac0"
+    },
+    {
+      "path": "src/jwwkit/layer_tidy.py",
+      "size": 23343,
+      "sha256": "e5dfbf6a039f852a4ab35af85fa8eb6f9cf36bf570132a14ab4df86e0bd6fe95"
     },
     {
       "path": "src/jwwkit/legacy_document.py",
@@ -1042,6 +1047,11 @@
       "sha256": "f6b087bd94c6bf3660f00b0901d5bc4f933ad843901ba372c7d19ef6c038cc67"
     },
     {
+      "path": "tests/test_layer_tidy.py",
+      "size": 17094,
+      "sha256": "5810d1f12e73eaeb0bb1c0e69db53f1145959f92276a56b04ee69e3351db1f10"
+    },
+    {
       "path": "tests/test_noncanonical_counts.py",
       "size": 16686,
       "sha256": "6d1d99d64fc1b4dabc3210db0f5a2201b779581b48169ccfdbe429d62ed44fd3"
@@ -1178,8 +1188,8 @@
     },
     {
       "path": "tools/release_files.txt",
-      "size": 3830,
-      "sha256": "4cc0989c63531e316ba31cd00f1747ed251602b929a7b030147cb2e9efdcc7c8"
+      "size": 3855,
+      "sha256": "ced7479d6137fbb958b5cfc9c891074093a67e8e11ae913c0829644d1ac9544a"
     },
     {
       "path": "tools/summarize_drawing.py",
