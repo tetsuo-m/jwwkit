@@ -353,6 +353,50 @@ class LayerTidyTests(TempDirTestCase):
         self.assertTrue(all(i not in result['moves'] for i in copies))
         self.assertEqual(result['review']['counts']['left_alone']['ambiguous'], 2)
 
+    def test_partial_overlap_far_from_the_start_and_reversed(self):
+        sample = self.build_sample()
+        doc = CadDocument.open(sample)
+        doc.add_line((900, 500), (2000, 500), layer_group=0, layer=1)            # a long wall
+        doc.save(self.folder / 'sample5.jww')
+        sample5 = self.folder / 'sample5.jww'
+
+        def extra(d):
+            d.add_line((0, 500), (1200, 500), layer_group=15, layer=1)           # overlaps far from its start
+            d.add_line((1200, 501), (0, 501), layer_group=15, layer=2)           # not on the wall
+        target = self.build_target(sample5, edit=extra)
+        reverse = self.build_target(sample5, edit=lambda d: d.add_line((1200, 500), (0, 500), layer_group=15, layer=1),
+                                    name='reverse.jww')
+        for path in (target, reverse):
+            result = layer_tidy.analyze(sample5, path, unmatched=('move', 10, 15))
+            t = CadDocument.open(path)
+            far = [i for i, e in enumerate(t.entities) if slot(e) == (15, 1)][0]
+            with self.subTest(path=path.name):
+                self.assertIn(far, [x['index'] for x in result['review']['left_alone'] if x['kind'] == 'partial_line'])
+                self.assertNotIn(far, result['moves'])
+
+    def test_a_very_long_line_stays_fast(self):
+        import time
+        sample = self.build_sample()
+        doc = CadDocument.open(sample)
+        doc.add_line((-200000, -100000), (200000, 100000), layer_group=0, layer=5)  # tens of km in real mm
+        doc.save(self.folder / 'sample6.jww')
+        target = self.build_target(self.folder / 'sample6.jww',
+                                   edit=lambda d: d.add_line((0, 0), (10, 5), layer_group=15, layer=3))
+        start = time.time()
+        layer_tidy.analyze(self.folder / 'sample6.jww', target)
+        self.assertLess(time.time() - start, 30)
+
+    def test_covered_pieces_do_not_use_the_tiebreak(self):
+        sample = self.build_sample()
+        doc = CadDocument.open(sample)
+        doc.add_line((0, 600), (50, 600), layer_group=0, layer=1)
+        doc.add_line((0, 600), (50, 600), layer_group=0, layer=2, linetype=2)
+        doc.save(self.folder / 'sample7.jww')
+        target = self.build_target(self.folder / 'sample7.jww',
+                                   edit=lambda d: d.add_line((10, 600), (20, 600), layer_group=15, layer=4, linetype=2))
+        result = layer_tidy.analyze(self.folder / 'sample7.jww', target)
+        self.assertEqual(result['review']['counts']['left_alone'].get('ambiguous'), 1)
+
     def test_strict_stops_only_for_editing_refusals(self):
         sample = self.build_sample()
         target = self.build_target(sample, edit=lambda d: d.set_text(6, 'other text'))
