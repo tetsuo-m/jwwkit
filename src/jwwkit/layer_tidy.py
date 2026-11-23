@@ -45,7 +45,7 @@ REASONS = {
 # Upper limit of element pairs tested (as compare_drawings' max_candidate_pairs).
 MAX_PAIRS = 2_000_000
 # Grid cell (real mm) for finding lines near a point.
-LINE_CELL = 5000.0
+LINE_CELL = 500.0
 TIEBREAK_ATTRIBUTES = ('pen_color', 'pen_style', 'pen_width', 'flag')
 
 
@@ -146,27 +146,33 @@ def _relation(sample_line, target_line, tolerance):
     return None
 
 
-def _cells(line, budget):
-    """Grid cells (LINE_CELL real mm) along a line, with the neighbouring ring (covers small tolerances)."""
+def _cells(line, budget, ring):
+    """Grid cells (LINE_CELL real mm) along a line, widened by ``ring`` cells on every side."""
     (ax, ay), (bx, by) = line
-    steps = max(1, math.ceil(math.dist(line[0], line[1]) / (LINE_CELL / 2)))
+    length = math.dist(line[0], line[1])
+    steps = max(1, math.ceil(length / (LINE_CELL / 2)))
+    if steps > MAX_PAIRS // 2:
+        raise ValueError(f'A line about {length / 1e6:.0f} km long (real) is too long to search; check the drawing '
+                         'for a line far away from the rest')
     budget.spend(steps)
     cells = set()
     for k in range(steps + 1):
         x, y = ax + (bx - ax) * k / steps, ay + (by - ay) * k / steps
         cx, cy = math.floor(x / LINE_CELL), math.floor(y / LINE_CELL)
-        cells.update((cx + dx, cy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
+        cells.update((cx + dx, cy + dy) for dx in range(-ring, ring + 1) for dy in range(-ring, ring + 1))
     return cells
 
 
-def _line_index(document, indices, budget):
-    """Grid of real-mm cells -> sample line indices passing near the cell (linear in the line length)."""
+def _line_index(document, indices, budget, tolerance):
+    """Grid of real-mm cells -> sample line indices passing within one cell (plus the tolerance) of the cell.
+    Only the sample side is widened, so a target line finds the sample lines along its own cells."""
+    ring = 1 + math.ceil((tolerance + COVER_EPSILON) / LINE_CELL)
     grid = defaultdict(list)
     lines = {}
     for i in indices:
         line = _real_line(document, document.entities[i])
         lines[i] = line
-        for cell in _cells(line, budget):
+        for cell in _cells(line, budget, ring):
             grid[cell].append(i)
     return grid, lines
 
@@ -277,14 +283,14 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
     # One-sided cover: a target line wholly on one sample line; partial overlaps are listed.
     remaining = [t for t in leftover if t not in destination]
     sample_lines = [r['index'] for r in s_ok if r['type'] == 'LINE']
-    grid, s_lines = _line_index(s_doc, sample_lines, budget)
+    grid, s_lines = _line_index(s_doc, sample_lines, budget, position_tolerance)
     unmatched_targets = []
     for t in remaining:
         if t_doc.entities[t].entity_type != 'LINE':
             unmatched_targets.append(t)
             continue
         line = _real_line(t_doc, t_doc.entities[t])
-        near = {i for cell in _cells(line, budget) for i in grid.get(cell, ())}
+        near = {i for cell in _cells(line, budget, 0) for i in grid.get(cell, ())}
         budget.spend(len(near))
         covering, partial = [], False
         for i in sorted(near):
