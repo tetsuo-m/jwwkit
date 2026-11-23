@@ -127,6 +127,31 @@ class LayerTidyTests(TempDirTestCase):
         dup = [i for i, e in enumerate(t.entities) if slot(e) == (8, 8)][0]
         self.assertEqual(result['moves'][dup], (0, 1))
 
+    def test_attribute_tiebreak_only_when_shape_leaves_it_open(self):
+        sample = self.build_sample()
+        doc = CadDocument.open(sample)
+        doc.add_line((0, 300), (50, 300), layer_group=0, layer=1)                 # solid line, layer 1
+        doc.add_line((0, 300), (50, 300), layer_group=0, layer=2, linetype=2)     # dashed, same place, layer 2
+        doc.save(self.folder / 'sample3.jww')
+        sample3 = self.folder / 'sample3.jww'
+
+        def extra(d):
+            d.add_line((0, 300), (50, 300), layer_group=8, layer=5, linetype=2)
+            d.add_line((0, 300), (50, 300), layer_group=8, layer=6)
+        target = self.build_target(sample3, edit=extra)
+        result = layer_tidy.analyze(sample3, target)
+        t = CadDocument.open(target)
+        dashed = [i for i, e in enumerate(t.entities) if slot(e) == (8, 5)][0]
+        solid = [i for i, e in enumerate(t.entities) if slot(e) == (8, 6)][0]
+        self.assertEqual(result['moves'][dashed], (0, 2))
+        self.assertEqual(result['moves'][solid], (0, 1))
+        self.assertEqual(result['review']['counts']['move_by_match'].get('attribute_tiebreak'), 2)
+        self.assertNotIn('ambiguous', result['review']['counts']['left_alone'])
+        # Elements decided by shape never use the attributes: a wall with another colour still matches.
+        recoloured = self.build_target(sample3, edit=lambda d: (extra(d), d.set_entity_attributes(1, color=5)),
+                                       name='recoloured.jww')
+        self.assertEqual(layer_tidy.analyze(sample3, recoloured)['moves'][1], (0, 1))
+
     def test_groups_of_other_scales_are_refused(self):
         sample = self.build_sample()
         def rescale(d):
