@@ -49,7 +49,7 @@
     {
       "path": "docs/api_list.md",
       "size": 125653,
-      "sha256": "6e34e72db33b6183ece4aca100a80f756231723cdcb9a997ab3606470eed7ff2"
+      "sha256": "0ba13e5d2ba990a582fd8ac2f4efebfbc6956d40fbc4683d0d9a616eef5fb22a"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -349,7 +349,7 @@
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
       "size": 125653,
-      "sha256": "6e34e72db33b6183ece4aca100a80f756231723cdcb9a997ab3606470eed7ff2"
+      "sha256": "0ba13e5d2ba990a582fd8ac2f4efebfbc6956d40fbc4683d0d9a616eef5fb22a"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -443,8 +443,8 @@
     },
     {
       "path": "src/jwwkit/layer_tidy.py",
-      "size": 25541,
-      "sha256": "4b65429722211a85bfe4e0902d257f5952e3531ed68db2c789569324351f5d27"
+      "size": 25802,
+      "sha256": "c34b850fe074731db5333046cb1194f735390b6252309d9ca11511f840f409ea"
     },
     {
       "path": "src/jwwkit/legacy_document.py",
