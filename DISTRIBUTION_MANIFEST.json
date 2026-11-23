@@ -38,18 +38,18 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 27798,
-      "sha256": "de1da6c909780425aa8fb2cf44b90305180ae42b49c0cf753b0aeb1a13079921"
+      "size": 27849,
+      "sha256": "da1e2bf90226665e7275f16f7d46646cbe8e51480d0f9dd96817f07d8e6bf365"
     },
     {
       "path": "CLAUDE.md",
-      "size": 8378,
-      "sha256": "250568ad2e182b24561e9eb93aea88f72237fdf2f601b07d6241ac8e41b9637f"
+      "size": 8429,
+      "sha256": "4cfd78e2a08aa842b378b788af941f4b92d3ac26edd4c1085be24345ac7149d9"
     },
     {
       "path": "docs/api_list.md",
-      "size": 115547,
-      "sha256": "976f11f10653896e80e8e9bf4e3af90ecf12946a691da00b1491817570f22d99"
+      "size": 115598,
+      "sha256": "b0bc0743984c5b03ab5b3f76efc00a3111ad3448776e976f1b22099bade0f923"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -98,8 +98,8 @@
     },
     {
       "path": "docs/ezjww_adapter_contract.md",
-      "size": 12409,
-      "sha256": "00109561906e22d75c6c09020ec8bf7ca6404dae4d8636bee9a751eeb7b8e88f"
+      "size": 12460,
+      "sha256": "5a2fe66ed8c24d4e0efc635be03bec0a441157490527020a48ea9f9a4c12d269"
     },
     {
       "path": "docs/geometry_view.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/schema_normalization.md",
-      "size": 8084,
-      "sha256": "381d430770aaae44e516d38a20f1a31976ae3f7ce53dd398b9f9fb9853a82dc7"
+      "size": 8135,
+      "sha256": "9f2659e5fe678c64e42502f80d0fa527b74d871c9560c3dfb222d6108644fbce"
     },
     {
       "path": "docs/search_queries.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 76054,
-      "sha256": "3eaddc1870094d8cf4b7181e4068c66d5b53a25f943d90fdc45807c15c067be8"
+      "size": 76105,
+      "sha256": "6f9b1a06c1bad0495ac8c8965203a236d5ad44db5565b06483cb33f68def6026"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "README.md",
-      "size": 15152,
-      "sha256": "aa5856457af04e679ac9729400b252c49325492e40276714114f302eb4e63f71"
+      "size": 15203,
+      "sha256": "ce46997a2e6edf0ee098f5ccf08b3f29b0ca0f37aa1cf15a46737d26b4f9514d"
     },
     {
       "path": "requirements.txt",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 115547,
-      "sha256": "976f11f10653896e80e8e9bf4e3af90ecf12946a691da00b1491817570f22d99"
+      "size": 115598,
+      "sha256": "b0bc0743984c5b03ab5b3f76efc00a3111ad3448776e976f1b22099bade0f923"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -398,8 +398,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/schema_normalization.md",
-      "size": 8084,
-      "sha256": "381d430770aaae44e516d38a20f1a31976ae3f7ce53dd398b9f9fb9853a82dc7"
+      "size": 8135,
+      "sha256": "9f2659e5fe678c64e42502f80d0fa527b74d871c9560c3dfb222d6108644fbce"
     },
     {
       "path": "src/jwwkit/guides/docs/search_queries.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 76054,
-      "sha256": "3eaddc1870094d8cf4b7181e4068c66d5b53a25f943d90fdc45807c15c067be8"
+      "size": 76105,
+      "sha256": "6f9b1a06c1bad0495ac8c8965203a236d5ad44db5565b06483cb33f68def6026"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -1148,8 +1148,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 78642,
-      "sha256": "363cbf257c1718ebb4522c30935ea814ee9f06239f0809e2ab9a70233c9f424e"
+      "size": 78693,
+      "sha256": "61969ba7d0d39d7a00df408e3a7ba99369d4bec15ae8e61c6b49726d3a496cfa"
     }
   ]
 }
