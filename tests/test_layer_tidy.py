@@ -309,6 +309,50 @@ class LayerTidyTests(TempDirTestCase):
         result = layer_tidy.analyze(sample, target, unmatched=('move', 10, 15), layer_settings='sample')
         self.assertFalse(any(a['kwargs'].get('layer_group') == 10 for a in result['settings_actions']))
 
+    def test_content_is_checked_for_every_candidate(self):
+        sample = self.build_sample()
+
+        def extra(d):
+            d.add_text((30, 30), None, ARCH, layer_group=12, layer=1)         # same text, other layer
+            d.add_text((30, 30), None, 'other', layer_group=12, layer=2)      # same place, other text
+            d.add_point((10, 10), layer_group=12, layer=3, is_temporary=True)
+        target = self.build_target(sample, edit=extra)
+        result = layer_tidy.analyze(sample, target)
+        t = CadDocument.open(target)
+        by_slot = {slot(e): i for i, e in enumerate(t.entities)}
+        self.assertEqual(result['moves'][by_slot[(12, 1)]], (0, 3))
+        self.assertNotIn(by_slot[(12, 2)], result['moves'])
+        self.assertNotIn(by_slot[(12, 3)], result['moves'])
+        self.assertEqual(result['review']['counts']['left_alone']['content_differs'], 2)
+
+    def test_many_unmatched_symbols_do_not_hit_the_limit(self):
+        sample = self.build_sample()
+
+        def symbols(d):
+            for k in range(1500):
+                d.add_circle((1000 + k * 3, 1000), 1, layer_group=13, layer=1)
+        target = self.build_target(sample, edit=symbols)
+        result = layer_tidy.analyze(sample, target)
+        self.assertEqual(result['review']['counts']['unmatched'], 1502)
+
+    def test_tiebreak_must_be_one_to_one(self):
+        sample = self.build_sample()
+        doc = CadDocument.open(sample)
+        doc.add_line((0, 400), (50, 400), layer_group=0, layer=1)
+        doc.add_line((0, 400), (50, 400), layer_group=0, layer=2, linetype=2)
+        doc.save(self.folder / 'sample4.jww')
+        sample4 = self.folder / 'sample4.jww'
+
+        def extra(d):
+            d.add_line((0, 400), (50, 400), layer_group=14, layer=1)                 # a second solid copy
+            d.add_line((0, 400), (50, 400), layer_group=14, layer=2)                 # and a third
+        target = self.build_target(sample4, edit=extra)
+        result = layer_tidy.analyze(sample4, target)
+        t = CadDocument.open(target)
+        copies = [i for i, e in enumerate(t.entities) if slot(e)[0] == 14]
+        self.assertTrue(all(i not in result['moves'] for i in copies))
+        self.assertEqual(result['review']['counts']['left_alone']['ambiguous'], 2)
+
     def test_strict_stops_only_for_editing_refusals(self):
         sample = self.build_sample()
         target = self.build_target(sample, edit=lambda d: d.set_text(6, 'other text'))
