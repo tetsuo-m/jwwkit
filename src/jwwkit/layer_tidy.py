@@ -34,7 +34,10 @@ REASONS = {
     'unsupported': 'compare_drawings does not support this element',
     'scale': 'The source group and the destination group have different scales',
     'edit_refused': 'The editing API refuses to change this element',
+    'content_differs': 'Same place as a sample element but a different text content or point kind',
 }
+# Upper limit of target-line x sample-line pairs tested for covering (as compare_drawings' candidate limit).
+MAX_COVER_PAIRS = 2_000_000
 
 
 def _slot(entity):
@@ -115,13 +118,37 @@ def _check_settings(value, what):
         raise ValueError(f"{what} must be 'keep' or 'sample'")
 
 
+def _content_differs(match, s_doc, t_doc):
+    """compare_drawings pairs texts by position and angle and reports a different content separately; a point
+    and a temporary point also pair. The plan requires the same content / the same kind of point."""
+    if match['category'] == 'text_changed' or match.get('content_changes'):
+        return True
+    for s, t in zip(match['left_indices'], match['right_indices']):
+        a, b = s_doc.entities[s], t_doc.entities[t]
+        if a.entity_type == 'POINT' and a.geometry.get('is_temporary') != b.geometry.get('is_temporary'):
+            return True
+    return False
+
+
+def _without_others(target_path, keep, folder):
+    """A copy of the target holding only the elements in ``keep`` (in order), for the second comparison."""
+    document = CadDocument.open(target_path)
+    drop = [i for i in range(len(document.entities)) if i not in set(keep)]
+    if drop:
+        document.delete_entities(drop)
+    path = Path(folder) / 'leftover.jww'
+    document.save(path)
+    return path
+
+
 def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_settings='keep',
             group_settings='keep', strict=False):
-    """Match the target against the sample and decide where each target element goes. No file is written.
+    """Match the target against the sample and decide where each target element goes. No file is kept.
 
     unmatched: 'keep', or ('move', layer_group, layer) for target elements with no counterpart in the sample.
     layer_settings / group_settings: 'keep' (report differences only) or 'sample' (make the destination
-    layers/groups take the sample's state and name; group scales are never changed).
+    layers/groups of matched elements take the sample's state and name; group scales are never changed).
+    strict: stop if the editing API refuses an element or a setting (other reasons are only listed).
     """
     _check_settings(layer_settings, 'layer_settings')
     _check_settings(group_settings, 'group_settings')
@@ -135,12 +162,9 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
         raise ValueError('position_tolerance must be a finite number of 0 or more (real mm)')
     sample_path, target_path = Path(sample).resolve(), Path(target).resolve()
     hashes = {p: hashlib.sha256(p.read_bytes()).hexdigest() for p in (sample_path, target_path)}
-    comparison = compare_drawings(sample_path, target_path, units='real', position_tolerance=position_tolerance,
-                                  line_coverage=True)
+    options = dict(units='real', position_tolerance=position_tolerance, line_coverage=True)
+    comparison = compare_drawings(sample_path, target_path, **options)
     s_doc, t_doc = CadDocument.open(sample_path), CadDocument.open(target_path)
-    for p, h in hashes.items():
-        if hashlib.sha256(p.read_bytes()).hexdigest() != h:
-            raise ValueError('An input drawing changed while it was being read')
     if len(s_doc.entities) != len(comparison['left_entities']) or len(t_doc.entities) != len(comparison['right_entities']):
         raise ValueError('Element numbering of compare_drawings and CadDocument differ')
 
@@ -148,12 +172,12 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
     how = {}              # target index -> how it was matched
     listed = defaultdict(list)  # reason -> target indices left alone
     sample_matched = set()
+    unsupported_sample = {u['index'] for u in comparison['unsupported'] if u['side'] == 'left'}
 
     def assign(target_indices, sample_indices, kind):
         slots = {_slot(s_doc.entities[i]) for i in sample_indices}
         if len(slots) != 1:
-            for t in target_indices:
-                listed['ambiguous'].append(t)
+            listed['ambiguous'].extend(target_indices)
             return
         slot = slots.pop()
         sample_matched.update(sample_indices)
@@ -161,28 +185,56 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
             destination[t] = slot
             how[t] = kind
 
-    for match in comparison['matches']:
-        kind = 'line_partition' if match['category'] == 'line_partition_equivalent' else 'shape'
-        if len(match['right_indices']) > 1 and kind == 'shape':
-            kind = 'overlap'
-        assign(match['right_indices'], match['left_indices'], kind)
-    for component in comparison['ambiguous']:
-        # Same shapes on both sides: move them only if every sample element of the group has one destination.
-        sample_indices, target_indices = component['left_indices'], component['right_indices']
-        if len({_slot(s_doc.entities[i]) for i in sample_indices}) == 1:
-            assign(target_indices, sample_indices, 'overlap')
-            continue
-        # Only here (shape and position leave the destination open): pair elements whose other attributes
-        # (pen colour, style, width and flags) are all equal, when that pairing is one-to-one (#56 decision).
-        paired = _attribute_tiebreak(s_doc, t_doc, sample_indices, target_indices, position_tolerance)
-        for t in target_indices:
-            if t in paired:
-                assign([t], [paired[t]], 'attribute_tiebreak')
+    def consume(result, to_target, repeat):
+        """Use one compare_drawings result; to_target maps its right indices to target indices."""
+        for match in result['matches']:
+            targets = [to_target[i] for i in match['right_indices']]
+            if _content_differs(dict(match, right_indices=targets), s_doc, t_doc):
+                listed['content_differs'].extend(targets)
+                continue
+            if match.get('correspondence') == 'line_partition_equivalent':
+                kind = 'line_partition'
+            elif repeat or len(targets) > 1:
+                kind = 'overlap'
             else:
-                listed['ambiguous'].append(t)
-    partial_targets = [t for c in comparison['partial_lines'] for t in c['right_indices']]
-    leftover = sorted(set(comparison['added']) | set(partial_targets))
-    sample_lines = [i for i, e in enumerate(s_doc.entities) if e.entity_type == 'LINE']
+                kind = 'shape'
+            assign(targets, match['left_indices'], kind)
+        for component in result['ambiguous']:
+            # Same shapes on both sides: move them only if every sample element has one destination.
+            sample_indices = component['left_indices']
+            targets = [to_target[i] for i in component['right_indices']]
+            if len({_slot(s_doc.entities[i]) for i in sample_indices}) == 1:
+                assign(targets, sample_indices, 'overlap')
+                continue
+            # Only here (shape and position leave the destination open): pair elements whose other
+            # attributes (pen colour, style, width and flags) are all equal, one-to-one (#56 decision).
+            paired = _attribute_tiebreak(s_doc, t_doc, sample_indices, targets, position_tolerance)
+            for t in targets:
+                if t in paired:
+                    assign([t], [paired[t]], 'attribute_tiebreak')
+                else:
+                    listed['ambiguous'].append(t)
+        partial = [to_target[t] for c in result['partial_lines'] for t in c['right_indices']]
+        added = [to_target[t] for t in result['added']]
+        unsupported = [to_target[u['index']] for u in result['unsupported'] if u['side'] == 'right']
+        return partial, added, unsupported
+
+    partial, added, unsupported = consume(comparison, list(range(len(t_doc.entities))), False)
+    # Second look at what is left: a target element may repeat a sample element that already found its pair
+    # (an overlap), or a line may partly overlap a sample line that is already paired.
+    if added:
+        import tempfile
+        with tempfile.TemporaryDirectory(prefix='jwwkit-layer-tidy-') as folder:
+            leftover_path = _without_others(target_path, added, folder)
+            second = compare_drawings(sample_path, leftover_path, **options)
+        partial2, added, unsupported2 = consume(second, added, True)
+        partial += partial2
+        unsupported += [t for t in unsupported2 if t not in unsupported]
+    sample_lines = [i for i, e in enumerate(s_doc.entities) if e.entity_type == 'LINE' and i not in unsupported_sample]
+    leftover = sorted(set(added) | set(partial))
+    if len(leftover) * len(sample_lines) > MAX_COVER_PAIRS:
+        raise ValueError(f'Too many line pairs to test for covering ({len(leftover)} x {len(sample_lines)}; '
+                         f'the limit is {MAX_COVER_PAIRS})')
     covered = _one_sided_cover(s_doc, t_doc, leftover, sample_lines, position_tolerance)
     open_targets, open_samples = [], set()
     for t, sample_indices in covered.items():
@@ -198,13 +250,12 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
             assign([t], [paired[t]], 'attribute_tiebreak')
         else:
             listed['ambiguous'].append(t)
-    for t in partial_targets:
+    for t in partial:
         if t not in destination and t not in listed['ambiguous']:
             listed['partial_line'].append(t)
-    unsupported_targets = [u['index'] for u in comparison['unsupported'] if u['side'] == 'right']
-    listed['unsupported'].extend(t for t in unsupported_targets if t not in destination)
+    listed['unsupported'].extend(t for t in unsupported if t not in destination)
     decided = set(destination) | {t for v in listed.values() for t in v}
-    unmatched_targets = [t for t in sorted(set(comparison['added'])) if t not in decided]
+    unmatched_targets = sorted(t for t in set(added) if t not in decided)
     sample_only = [i for i in comparison['deleted'] if i not in sample_matched]
 
     # (b) move the unmatched elements to an empty group/layer that the sample does not use.
@@ -231,28 +282,31 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
     already = sorted(t for t, slot in destination.items() if _slot(t_doc.entities[t]) == slot)
     moves = {t: slot for t, slot in destination.items() if _slot(t_doc.entities[t]) != slot}
 
-    # Ask the editing API on a staged copy; elements it refuses are listed (or the whole run stops).
+    # Ask the editing API on a staged copy; elements it refuses are listed (strict=True stops).
     staged = CadDocument.open(target_path)
     for t in sorted(moves):
         try:
             staged.set_entity_attributes(t, layer_group=moves[t][0], layer=moves[t][1])
-        except ValueError as exc:
+        except ValueError:
             listed['edit_refused'].append(t)
-            how[t] = f'edit_refused: {str(exc)[:160]}'
     for t in listed['edit_refused']:
         moves.pop(t, None)
-    if strict and any(listed.values()):
-        reasons = {k: len(v) for k, v in listed.items() if v}
-        raise ValueError(f'strict=True: some target elements cannot be moved {reasons}')
 
-    used = sorted(set(moves.values()))
+    # Layer/group settings: only the destinations of matched (architecture) elements, never (b)'s layer.
+    used = sorted({slot for t, slot in moves.items() if how[t] != 'unmatched'})
     settings = _settings_review(s_doc, t_doc, used, layer_settings, group_settings)
+    if strict and (listed['edit_refused'] or settings['refused']):
+        raise ValueError(f'strict=True: the editing API refuses {len(listed["edit_refused"])} element(s) and '
+                         f'{len(settings["refused"])} setting change(s)')
+    for p, h in hashes.items():
+        if hashlib.sha256(p.read_bytes()).hexdigest() != h:
+            raise ValueError('An input drawing changed while it was being read')
     attribute_counts = Counter(c['field'] for m in comparison['matches'] for c in m['attribute_changes']
-                               if c['field'] not in ('.layer_group', '.layer'))
+                               if not c['field'].endswith(('.layer_group', '.layer')))
     review = dict(
         schema='jwwkit.layer_tidy.review/1',
-        sample=dict(path=str(sample_path), sha256=hashes[sample_path], elements=len(s_doc.entities)),
-        target=dict(path=str(target_path), sha256=hashes[target_path], elements=len(t_doc.entities)),
+        sample=dict(sha256=hashes[sample_path], elements=len(s_doc.entities)),
+        target=dict(sha256=hashes[target_path], elements=len(t_doc.entities)),
         options=dict(position_tolerance=position_tolerance, units='real',
                      unmatched=list(unmatched) if unmatched != 'keep' else 'keep',
                      layer_settings=layer_settings, group_settings=group_settings, strict=strict),
@@ -269,10 +323,10 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
             sample_only_by_type=dict(Counter(s_doc.entities[i].entity_type for i in sample_only)),
             attribute_differences_in_matches=dict(attribute_counts),
         ),
-        left_alone=[dict(index=t, reason=REASONS[k] if not how.get(t, '').startswith('edit_refused') else how[t],
-                         kind=k, type=t_doc.entities[t].entity_type, slot=list(_slot(t_doc.entities[t])))
+        left_alone=[dict(index=t, kind=k, reason=REASONS[k], type=t_doc.entities[t].entity_type,
+                         slot=list(_slot(t_doc.entities[t])))
                     for k, v in listed.items() for t in sorted(v)],
-        settings=settings,
+        settings=settings['review'],
         compare_complete=comparison['complete'],
     )
     return dict(review=review, moves=moves, settings_actions=settings['actions'], target=target_path)
@@ -283,14 +337,16 @@ def _state_value(state):
 
 
 def _settings_review(s_doc, t_doc, slots, layer_settings, group_settings):
-    """Differences of the destination layers/groups (state and name) and, for 'sample', the actions."""
+    """Differences of the destination layers/groups (state, and whether the name differs) and, for 'sample',
+    the actions. The review holds no names (they may be private); the names are only in the plan's actions."""
     rows, actions = [], []
     groups = sorted({g for g, _ in slots})
     for g in groups:
         before = dict(state=_state_value(t_doc.get_group_state(g)), name=t_doc.get_group_name(g))
         sample = dict(state=_state_value(s_doc.get_group_state(g)), name=s_doc.get_group_name(g))
         if before != sample:
-            rows.append(dict(kind='group', layer_group=g, target=before, sample=sample))
+            rows.append(dict(kind='group', layer_group=g, target_state=before['state'], sample_state=sample['state'],
+                             name_differs=before['name'] != sample['name']))
             if group_settings == 'sample':
                 if before['name'] != sample['name']:
                     actions.append(dict(op='set_group_name', kwargs=dict(layer_group=g, name=sample['name'])))
@@ -300,7 +356,8 @@ def _settings_review(s_doc, t_doc, slots, layer_settings, group_settings):
         before = dict(state=_state_value(t_doc.get_layer_state(g, l)), name=t_doc.get_layer_name(g, l))
         sample = dict(state=_state_value(s_doc.get_layer_state(g, l)), name=s_doc.get_layer_name(g, l))
         if before != sample:
-            rows.append(dict(kind='layer', layer_group=g, layer=l, target=before, sample=sample))
+            rows.append(dict(kind='layer', layer_group=g, layer=l, target_state=before['state'],
+                             sample_state=sample['state'], name_differs=before['name'] != sample['name']))
             if layer_settings == 'sample':
                 if before['name'] != sample['name']:
                     actions.append(dict(op='set_layer_name', kwargs=dict(layer_group=g, layer=l, name=sample['name'])))
@@ -316,19 +373,32 @@ def _settings_review(s_doc, t_doc, slots, layer_settings, group_settings):
         try:
             getattr(staged, action['op'])(**action['kwargs'])
             accepted.append(action)
-        except ValueError as exc:
-            refused.append(dict(action=action, reason=str(exc)[:200]))
-    return dict(differences=rows, actions=accepted, refused=refused)
+        except ValueError:
+            where = {k: v for k, v in action['kwargs'].items() if k in ('layer_group', 'layer')}
+            refused.append(dict(op=action['op'], **where, reason='The editing API refuses this change '
+                                '(for example the writing state or a protected group/layer)'))
+    review = dict(differences=rows, changes=[dict(op=a['op'], **{k: v for k, v in a['kwargs'].items()
+                                                                 if k in ('layer_group', 'layer', 'state')})
+                                             for a in accepted], refused=refused)
+    return dict(review=review, actions=accepted, refused=refused)
 
 
 def write_plan(sample, target, output, plan_path, *, review_path=None, **options):
-    """Analyze, then write the safe_edit plan (approval needed to execute) and the review JSON.
+    """Analyze, then write the review JSON and the safe_edit plan (approval needed to execute).
 
-    One set_entity_attributes action per destination layer, then the layer/group setting actions.
+    One set_entity_attributes action per destination layer, then the layer/group setting actions. If there is
+    nothing to change, the review is still written and the error says why (counts of each reason).
     Returns dict(plan=<safe_edit receipt>, review=<review>, review_path=<path>).
     """
     from jwwkit import safe_edit
+    review_path = Path(review_path) if review_path is not None else Path(plan_path).with_suffix('.review.json')
+    resolved = review_path.resolve()
+    if resolved in {Path(p).resolve() for p in (sample, target, output, plan_path)}:
+        raise ValueError('The review path must differ from the drawings and the plan')
+    if review_path.exists():
+        raise FileExistsError(review_path)
     result = analyze(sample, target, **options)
+    review = result['review']
     by_slot = defaultdict(list)
     for t, slot in result['moves'].items():
         by_slot[slot].append(t)
@@ -336,13 +406,19 @@ def write_plan(sample, target, output, plan_path, *, review_path=None, **options
                for (g, l), indices in sorted(by_slot.items())]
     actions += copy.deepcopy(result['settings_actions'])
     if not actions:
-        raise ValueError('Nothing to change: every matched element is already in place')
+        review['plan_sha256'] = None
+        with review_path.open('x', encoding='utf-8') as stream:
+            json.dump(review, stream, ensure_ascii=False, indent=2)
+        counts = review['counts']
+        raise ValueError(f'Nothing to change; no plan was written (review: {review_path}). '
+                         f"already in place {counts['already_in_place']}, not in the sample {counts['unmatched']}, "
+                         f"left alone {counts['left_alone']}, refused for scale {counts['refused_for_scale']}")
     targets = sorted(result['moves'])
     document = CadDocument.open(result['target'])
     receipt = safe_edit.write_plan(document, targets, actions, output, plan_path)
-    review = result['review']
+    if receipt['plan']['source_sha256'] != review['target']['sha256']:
+        raise ValueError('The target drawing changed between the analysis and the plan')
     review['plan_sha256'] = receipt['sha256']
-    review_path = Path(review_path) if review_path is not None else Path(plan_path).with_suffix('.review.json')
     with review_path.open('x', encoding='utf-8') as stream:
         json.dump(review, stream, ensure_ascii=False, indent=2)
     return dict(plan=receipt, review=review, review_path=str(review_path))
