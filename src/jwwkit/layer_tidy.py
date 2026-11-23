@@ -328,11 +328,10 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
     sample_only = [r['index'] for r in s_ok if r['index'] not in sample_used and r['index'] not in seen]
     sample_unsupported = sum(r['status'] != 'supported' for r in s_rows)
 
-    # (b) move the unmatched elements to an empty group/layer that the sample does not use.
+    # (b) move the unmatched elements to a group/layer that the sample does not use. It need not be empty before;
+    # after tidying it must hold unmatched elements only (checked below, once every refusal is known).
     if unmatched != 'keep':
         slot = (unmatched[1], unmatched[2])
-        if any(_slot(e) == slot for e in t_doc.entities):
-            raise ValueError(f'The layer {slot} for unmatched elements is not empty in the target drawing')
         if any(_slot(e) == slot for e in s_doc.entities):
             raise ValueError(f'The layer {slot} for unmatched elements is used in the sample drawing')
         for t in unmatched_targets:
@@ -361,6 +360,14 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
             listed['edit_refused'].append(t)
     for t in listed['edit_refused']:
         moves.pop(t, None)
+    # (b): elements that would stay in the chosen layer without being unmatched elements refuse the whole run.
+    stay = Counter()
+    if unmatched != 'keep':
+        chosen_slot = (unmatched[1], unmatched[2])
+        for t, entity in enumerate(t_doc.entities):
+            if _slot(entity) != chosen_slot or t in moves or how.get(t) == 'unmatched':
+                continue
+            stay[next((k for k, v in listed.items() if t in v), 'matched_in_place')] += 1
 
     # Layer/group settings: only the destinations of matched (architecture) elements, never (b)'s layer.
     used = sorted({slot for t, slot in moves.items() if how[t] != 'unmatched'})
@@ -396,7 +403,20 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
                     for k, v in listed.items() for t in sorted(v)],
         settings=settings['review'],
     )
+    if unmatched != 'keep':
+        review['unmatched_layer'] = dict(refused=bool(stay), would_stay=dict(stay))
+    if stay:
+        raise TidyRefused(f'The layer {unmatched[1]}-{unmatched[2]} for unmatched elements would still hold elements '
+                          f'that are not unmatched after tidying ({dict(stay)}); choose another layer', review)
     return dict(review=review, moves=moves, settings_actions=settings['actions'], target=target_path)
+
+
+class TidyRefused(ValueError):
+    """The run is refused; ``review`` holds the counts (write_plan still writes it)."""
+
+    def __init__(self, message, review):
+        super().__init__(message)
+        self.review = review
 
 
 def _state_value(state):
@@ -464,7 +484,13 @@ def write_plan(sample, target, output, plan_path, *, review_path=None, **options
         raise ValueError('The review path must differ from the drawings and the plan')
     if review_path.exists():
         raise FileExistsError(review_path)
-    result = analyze(sample, target, **options)
+    try:
+        result = analyze(sample, target, **options)
+    except TidyRefused as exc:
+        exc.review['plan_sha256'] = None
+        with review_path.open('x', encoding='utf-8') as stream:
+            json.dump(exc.review, stream, ensure_ascii=False, indent=2)
+        raise
     review = result['review']
     by_slot = defaultdict(list)
     for t, slot in result['moves'].items():
