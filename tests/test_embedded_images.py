@@ -34,6 +34,9 @@ EXPECTED = {
     's_tif_a': [('TIFF', ('II', 5, 4))],
     's_png_palette': [('PNG', (3, 8))], 's_png_rgb': [('PNG', (2, 8))], 's_gif87a': [('GIF', ('GIF87a', 1))],
     's_tif_none': [('TIFF', ('II', 1, 3))],
+    # Issue #57: Jw_cad samples of inserting, deleting and replacing (relative-path names).
+    'p1_ireru': [('BMP', (40, 24, 0, False))], 'p2_kesu': [('BMP', (40, 24, 0, False))],
+    'p3_irekae': [('BMP', (40, 24, 0, False))] * 2, 'p4_jpg_png': [('JPEG', ('SOF0', 8, 3)), ('PNG', (2, 8))],
 }
 
 
