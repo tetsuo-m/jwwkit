@@ -372,8 +372,15 @@ def _document_bytes(document):
     if (checked['entities'] != entities or checked['block_defs'] != definitions
             or checked["raw_trailer"] != trailer):
         raise ValueError("保存前検証で本文が一致しません")
-    if expected_images is not None and [(i['identifier'], i['sha256']) for i in checked['images']] != expected_images:
-        raise ValueError('保存前検証で同梱の画像が予定と一致しません')
+    if expected_images is not None:
+        if [(i['identifier'], i['sha256']) for i in checked['images']] != expected_images:
+            raise ValueError('保存前検証で同梱の画像が予定と一致しません')
+        # No text of the candidate may still point to an image that was taken out (same name reading).
+        all_names = {i['identifier'].lower()[:-3] for i in original['images']} | {
+            name.lower()[:-3] for name, _ in expected_images}
+        removed = all_names - {name.lower()[:-3] for name, _ in expected_images}
+        if removed & image_reference_names(checked['entities'], checked['block_defs'], all_names):
+            raise ValueError(IMAGE_REFERENCE_MESSAGE)
     if checked.get('count_forms') != expected_count_forms(original, entities, definitions):
         raise ValueError('保存前検証で個数の書き方が保たれません')
     if document.version == 700:
@@ -384,9 +391,30 @@ def _document_bytes(document):
     return data
 
 
-def image_reference_names(entities, definitions):
-    """Lower-case names that ^@BM%temp% texts point to (drawing, block definitions, dimension texts)."""
-    return set(dangling_image_references(dict(entities=entities, block_defs=definitions, images=())))
+def image_reference_names(entities, definitions, names):
+    """Lower-case embedded names (from ``names``) that ^@BM%temp% texts point to, in the drawing, block
+    definitions and dimension texts. Names are matched against the embedded names, longest first, so a
+    comma inside a name is read the same way as delete_image reads it (#57)."""
+    from jwwkit.writer.images import split_image_text
+    found = set()
+
+    def walk(records):
+        for record in records:
+            if record['type'] == 'TEXT':
+                content = record['content']
+            elif record['type'] == 'DIMENSION':
+                content = record['text']['content']
+            else:
+                if record['type'] == 'BLOCK_DEF':
+                    walk(record['entities'])
+                continue
+            split = split_image_text(content, names)
+            if split is not None:
+                found.add(split[0].lower())
+    walk(entities)
+    walk(definitions)
+    del walk  # walk calls itself: drop the closure cycle (#29)
+    return found
 
 
 def _edited_trailer(document, entities, definitions):
@@ -397,7 +425,9 @@ def _edited_trailer(document, entities, definitions):
     if document.version != 700 or original['version'] != 700:
         raise ValueError('Embedded image edits are supported only for v700 drawings')
     edits = document._image_edits
-    referenced = image_reference_names(entities, definitions)
+    names = {i['identifier'].lower()[:-3] for i in original['images']} | {
+        i['identifier'].lower()[:-3] for i in edits['added']}
+    referenced = image_reference_names(entities, definitions, names)
     dropped = {name for name in edits['drop'] if name[:-3] not in referenced}
     keep = [i['identifier'] for i in original['images'] if i['identifier'].lower() not in dropped]
     added = [item for item in edits['added'] if item['identifier'].lower() not in dropped]

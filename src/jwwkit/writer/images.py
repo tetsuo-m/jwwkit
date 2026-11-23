@@ -47,7 +47,8 @@ def embedded_name(file_name):
     if extension not in NAME_EXTENSIONS:
         raise ValueError(f'Image name {file_name!r}: the extension .{extension} has not been seen in Jw_cad '
                          'output.' + NAME_HINT)
-    bad = sorted({c for c in stem if c in FORBIDDEN or ord(c) < 32 or 0x7f <= ord(c) < 0xa0})
+    # Private-use characters (CP932 user-defined area) were not tried in Jw_cad either: refused.
+    bad = sorted({c for c in stem if c in FORBIDDEN or ord(c) < 32 or 0x7f <= ord(c) < 0xa0 or 0xe000 <= ord(c) <= 0xf8ff})
     if not stem or bad or stem.startswith(EDGE_SPACES) or stem.endswith(EDGE_SPACES):
         raise ValueError(f'Image name {file_name!r} has characters or spaces that are not accepted '
                          f'({"".join(bad) or "space at an end or empty"}).' + NAME_HINT)
@@ -77,7 +78,7 @@ def image_text(name, width, height, angle, color):
             f'{number(angle, "angle")},{color[0]},{color[1]},{color[2]}')
 
 
-LEGACY_FORM_MESSAGE = (
+SIX_FIELD_FORM_MESSAGE = (
     'This drawing has image texts without the transparent-colour fields (6 fields after the name); adding or '
     'replacing images in a drawing with this form has not been checked yet, so it is refused. Deleting images '
     '(delete_image) is still possible. '
@@ -136,7 +137,12 @@ def check_new_image(raw, file_name):
         raise ValueError(f'Image is larger than {MAX_IMAGE_BYTES} bytes')
     name = embedded_name(file_name)
     extension = name.rsplit('.', 1)[1]
-    kind, shape, notes = check_image_content(raw, extension)
+    try:
+        kind, shape, notes = check_image_content(raw, extension)
+    except ValueError as exc:
+        if str(exc).startswith('Embedded image unverified:'):
+            raise ValueError(str(exc) + UNVERIFIED_SHAPE_HINT) from exc
+        raise
     if shape['key'] not in VERIFIED_SHAPES[kind]:
         raise ValueError(f'Embedded image unverified: this {kind} form ({shape["key"]}) has not been seen in '
                          'Jw_cad output.' + UNVERIFIED_SHAPE_HINT)

@@ -46,6 +46,7 @@ class CadDocument:
     _readonly_state: Mapping[str, Any] | None = field(default=None, repr=False, compare=False)
     # Embedded image edits (#57): images to add (in order) and names delete_image asked to drop.
     _image_edits: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    _imported_group: bool = field(default=False, repr=False, compare=False)
 
     @classmethod
     def open(cls, path: str | Path, *, include_metadata: bool = False, schema_profile: str = 'strict') -> "CadDocument":
@@ -603,6 +604,7 @@ class CadDocument:
             raise ValueError('Destination source changed before commit')
         for field in ('header','entities','block_definitions','_new_block_records','_name_edits','_group_scale_edits'):
             setattr(self,field,getattr(candidate,field))
+        self._imported_group=True  # image edits are refused after an import (#57)
         return receipt
 
     def add_image(self, path, position, width, *, height=None, angle=0, transparent_color=(255, 255, 255),

@@ -127,7 +127,7 @@ def _actions(actions,targets,*,common_result=False):
 
 def _resource_targets(cad,actions):
     """Review non-element targets separately, including stored coordinates at changed scales."""
-    before=snapshot(cad);rows=[]
+    before=snapshot(cad);rows=[];planned_images=None
     for action_index,a in enumerate(actions):
         op=a['op'];kw=a.get('kwargs',{})
         named=[]
@@ -187,12 +187,22 @@ def _resource_targets(cad,actions):
         elif op in _IMAGE_OPS:
             # Embedded images (#57): the trailer is not in snapshot(), so review it here. The image
             # file review holds format, size, SHA256, name, notes and EXIF presence flags only.
-            row=dict(action_index=action_index,kind=op,
-                     embedded_images_before=[dict(identifier=i['identifier'],sha256=i['sha256']) for i in cad.embedded_images])
+            # planned_images follows the earlier image actions of this plan: an image whose content is
+            # already there (or added earlier in the plan) is shared, not added. Deleted images leave the
+            # trailer on saving only if no text points to them any more, so they stay in this list.
+            if planned_images is None:
+                planned_images=[dict(identifier=i['identifier'],sha256=i['sha256']) for i in cad.embedded_images]
+            row=dict(action_index=action_index,kind=op,embedded_images_before=copy.deepcopy(planned_images))
             if op!='delete_image':
                 from jwwkit.writer.images import check_new_image
                 p=Path(kw['path']);review=check_new_image(p.read_bytes(),kw.get('name') or p.name)
+                same=[i for i in planned_images if i['sha256']==review['sha256']]
+                if same:review.update(shared_with=same[0]['identifier'],name=same[0]['identifier'][:-3],identifier=same[0]['identifier'])
+                else:
+                    review['shared_with']=None
+                    planned_images.append(dict(identifier=review['identifier'],sha256=review['sha256']))
                 row['image']=dict(path=str(p.resolve()),**review)
+                row['embedded_images_after_adding']=copy.deepcopy(planned_images)
         else:continue
         row=_json(row);row['sha256']=_hash(row);rows.append(row)
     return rows
@@ -325,7 +335,7 @@ def verify_plan(plan_path,*,approved_sha256):
     for dep in plan['dependencies']:_require(file_sha256(dep['path'])==dep['sha256'],'Dependency changed since planning: '+dep['path'])
     protected={dep['path'] for dep in plan['dependencies']}
     for a in plan['actions']:
-        if a['op'] in ('place_jws','import_group'):_require(a['kwargs']['path'] in protected,'Missing import/figure dependency')
+        if a['op'] in ('place_jws','import_group','add_image','replace_image'):_require(a['kwargs']['path'] in protected,'Missing import/figure dependency')
     output=Path(plan['output']).resolve();source=Path(plan['source']).resolve();plan_file=Path(plan_path).resolve()
     _require(output!=source and output!=plan_file and plan_file!=source,'Input, output and plan must be distinct')
     _require(output.with_suffix('.changes.json') not in {source,plan_file},'Changes report overlaps input or plan')

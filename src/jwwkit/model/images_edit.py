@@ -11,7 +11,8 @@ from pathlib import Path
 
 from jwwkit.model.common_entities import model_entity
 from jwwkit.model.text import Text
-from jwwkit.writer.images import (LEGACY_FORM_MESSAGE, TEXT_FONT, TEXT_SIZE, check_new_image, embedded_name,
+from jwwkit.reader.images import MAX_IMAGE_COUNT, MAX_TOTAL_IMAGE_BYTES
+from jwwkit.writer.images import (SIX_FIELD_FORM_MESSAGE, number, TEXT_FONT, TEXT_SIZE, check_new_image, embedded_name,
                                   image_text, parse_image_text, split_image_text)
 
 
@@ -25,6 +26,8 @@ def _require_image_document(document):
                          'other versions are refused')
     if document.includes_metadata:
         raise ValueError('Image edits need a drawing opened with include_metadata=False')
+    if document._imported_group:
+        raise ValueError('add_image/delete_image/replace_image cannot be combined with import_group')
     return records
 
 
@@ -55,7 +58,7 @@ def _texts(entities):
             yield (entity.geometry.get('text') or {}).get('content', '')
 
 
-def has_legacy_image_texts(document):
+def has_six_field_image_texts(document):
     """True if an embedded image text does not have Jw_cad 10.03.6's 9 fields (6 in some real drawings)."""
     names = _embedded_names(document)
     contents = list(_texts(document.entities))
@@ -68,9 +71,9 @@ def has_legacy_image_texts(document):
     return False
 
 
-def _refuse_legacy(document):
-    if has_legacy_image_texts(document):
-        raise ValueError(LEGACY_FORM_MESSAGE)
+def _refuse_six_field_form(document):
+    if has_six_field_image_texts(document):
+        raise ValueError(SIX_FIELD_FORM_MESSAGE)
 
 
 def _number_check(value, what, *, positive=False):
@@ -105,11 +108,15 @@ def prepare_image(document, path, *, name=None):
     if clash:
         raise ValueError(f'An embedded image named {review["name"]!r} with different content already exists; '
                          'give another name with name=...')
+    if len(images) + 1 > MAX_IMAGE_COUNT:
+        raise ValueError(f'More than {MAX_IMAGE_COUNT} embedded images')
+    if sum(i['raw_size'] for i in images) + len(raw) > MAX_TOTAL_IMAGE_BYTES:
+        raise ValueError(f'Embedded images would exceed {MAX_TOTAL_IMAGE_BYTES} bytes in one drawing')
     review['shared_with'] = None
     return review, raw, None
 
 
-def _text_entity(document, name, start, width, height, angle, color, layer_group, layer):
+def _text_entity(document, name, start, width, height, angle, color, layer_group, layer, pen_color=1, group=0):
     content = image_text(name, width, height, angle, color)
     # E080 rule, as in Jw_cad's image texts (#57, also with Japanese names): per UTF-16 unit, ASCII and
     # half-width katakana take half the text width, others the full width (CP932 names have no surrogates).
@@ -117,18 +124,24 @@ def _text_entity(document, name, start, width, height, angle, color, layer_group
     radians = math.radians(angle)
     end = (start[0] + advance * math.cos(radians), start[1] + advance * math.sin(radians))
     record = Text(tuple(start), end, content, size_x=TEXT_SIZE, size_y=TEXT_SIZE, spacing=0.0, angle=float(angle),
-                  font_name=TEXT_FONT, alignment=1, color=1, layer=layer, layer_group=layer_group).record()
-    document._validate_addition(record)
+                  font_name=TEXT_FONT, alignment=1, color=pen_color, layer=layer, layer_group=layer_group,
+                  group=group).record()
+    try:
+        document._validate_addition(record)
+    except ValueError as exc:
+        if 'short' in str(exc):
+            raise ValueError('Image name is too long for an image text; give a shorter name with name=...') from exc
+        raise
     return model_entity(record)
 
 
 def add_image(document, path, position, width, *, height=None, angle=0, transparent_color=(255, 255, 255),
               name=None, layer_group=0, layer=0, units='paper'):
     _require_image_document(document)
-    _refuse_legacy(document)
+    _refuse_six_field_form(document)
     width = _number_check(width, 'width', positive=True)
     angle = _number_check(angle, 'angle')
-    if not 0 <= angle < 360:
+    if not 0 <= angle < 360 or float(number(angle, 'angle')) >= 360:
         raise ValueError('Image angle must be 0 or more and less than 360 degrees')
     color = _color(transparent_color)
     for value, what in ((layer_group, 'layer_group'), (layer, 'layer')):
@@ -170,7 +183,7 @@ def replace_image(document, index, path, *, name=None, keep_height=False):
     _require_image_document(document)
     if type(keep_height) is not bool:
         raise ValueError('keep_height must be True or False')
-    _refuse_legacy(document)
+    _refuse_six_field_form(document)
     entity, fields = image_text_at(document, index)
     if fields['trimming'] != (0.0, 0.0, 1.0):
         raise ValueError('Replacing a trimmed image is not supported (the trimming rules are not known)')
@@ -183,8 +196,11 @@ def replace_image(document, index, path, *, name=None, keep_height=False):
     # Check everything before changing the document.
     review, raw, shared = prepare_image(document, path, name=name)
     height = fields['height'] if keep_height else fields['width'] * review['height'] / review['width']
+    # Kept from the old text: position, width, angle, transparent colour, layer group, layer, pen colour and
+    # group. Pen style, text size and font are the values Jw_cad writes for image texts.
     new = _text_entity(document, review['name'], start, fields['width'], height, fields['angle'],
-                       fields['color'], attributes['layer_group'], attributes['layer'])
+                       fields['color'], attributes['layer_group'], attributes['layer'],
+                       pen_color=attributes['pen_color'], group=attributes['group'])
     delete_image(document, index)
     if shared is None:
         _edits(document)['added'].append(dict(identifier=review['identifier'], raw=raw, sha256=review['sha256']))
