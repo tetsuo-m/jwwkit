@@ -49,7 +49,7 @@
     {
       "path": "docs/api_list.md",
       "size": 125653,
-      "sha256": "331365740a831d1ca4408f121b2d699550b1f3014994d091ca51d9b3305eba07"
+      "sha256": "6e34e72db33b6183ece4aca100a80f756231723cdcb9a997ab3606470eed7ff2"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -349,7 +349,7 @@
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
       "size": 125653,
-      "sha256": "331365740a831d1ca4408f121b2d699550b1f3014994d091ca51d9b3305eba07"
+      "sha256": "6e34e72db33b6183ece4aca100a80f756231723cdcb9a997ab3606470eed7ff2"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
