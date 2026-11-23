@@ -283,6 +283,46 @@ class ImageEditingTests(TempDirTestCase):
         with self.assertRaisesRegex(ValueError, 'import_group'):
             document.import_group(fixture('a1'), 0, 1)
 
+    # --- plan, approval and execution ---
+    def test_plan_reviews_and_executes_image_actions(self):
+        from jwwkit.safe_edit import execute_plan, write_plan
+        source = self.write('source.jww', fixture('a2').read_bytes())
+        document = CadDocument.open(source)
+        first, second = image_indices(document)
+        actions = [dict(op='replace_image', indices=[second], kwargs=dict(path=str(self.bmp))),
+                   dict(op='add_image', kwargs=dict(path=str(self.png), position=[0, 0], width=50), **{'as': 'new'})]
+        receipt = write_plan(document, [second], actions, self.folder / 'out.jww', self.folder / 'plan.json')
+        self.assertEqual(document._image_edits, {})
+        self.assertEqual(len(document.entities), len(CadDocument.open(source).entities))
+        rows = receipt['plan']['resource_targets']
+        self.assertEqual([r['kind'] for r in rows], ['replace_image', 'add_image'])
+        self.assertEqual(rows[0]['image']['name'], 'irekae_bmp.bmp')
+        self.assertEqual(rows[1]['image']['exif_location'], False)
+        self.assertEqual(sorted(d['path'] for d in receipt['plan']['dependencies']),
+                         sorted(str(p.resolve()) for p in (self.bmp, self.png)))
+        report = execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        self.assertEqual([i['identifier'] for i in report['embedded_images_after']],
+                         ['C__jwwkit_sample_bmp_a_bmp.bmp.gz', 'irekae_bmp.bmp.gz', 'zukei.png.gz'])
+        self.assertEqual(report['deleted_count'], 1)
+        self.assertEqual(report['added_count'], 2)
+
+    def test_plan_refuses_a_changed_image_file(self):
+        from jwwkit.safe_edit import execute_plan, write_plan
+        source = self.write('source.jww', fixture('a1').read_bytes())
+        document = CadDocument.open(source)
+        receipt = write_plan(document, [], [dict(op='add_image', kwargs=dict(path=str(self.png), position=[0, 0], width=50))],
+                             self.folder / 'out.jww', self.folder / 'plan.json')
+        self.png.write_bytes(png(6))
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        self.assertFalse((self.folder / 'out.jww').exists())
+
+    def test_embedded_images_shows_the_opened_drawing(self):
+        document = CadDocument.open(fixture('a1'))
+        before = document.embedded_images
+        document.add_image(self.png, (0, 0), 100)
+        self.assertEqual(document.embedded_images, before)
+
     def test_saves_without_image_edits_keep_the_trailer(self):
         document = CadDocument.open(fixture('a2'))
         document.add_line((0, 0), (1, 1))
