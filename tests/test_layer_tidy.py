@@ -169,10 +169,32 @@ class LayerTidyTests(TempDirTestCase):
         target = self.build_target(sample)
         receipt, out = self.run_plan(sample, target, unmatched=('move', 10, 15))
         self.assertEqual([slot(e) for e in out.entities[8:]], [(10, 15), (10, 15)])
-        with self.assertRaisesRegex(ValueError, 'not empty'):
-            layer_tidy.analyze(sample, target, unmatched=('move', 0, 1))
-        with self.assertRaisesRegex(ValueError, 'used in the sample'):
-            layer_tidy.analyze(sample, target, unmatched=('move', 0, 4))
+        for used in ((0, 1), (0, 4)):
+            with self.subTest(used=used), self.assertRaisesRegex(ValueError, 'used in the sample'):
+                layer_tidy.analyze(sample, target, unmatched=('move', *used))
+
+    def test_unmatched_layer_need_not_be_empty_before(self):
+        sample = self.build_sample()
+        # (3, 5) holds a scattered wall line (it leaves for the sample layer) and gets the symbols.
+        target = self.build_target(sample, edit=lambda d: d.add_circle((90, 90), 2, layer_group=3, layer=5))
+        receipt, out = self.run_plan(sample, target, unmatched=('move', 3, 5))
+        t = CadDocument.open(target)
+        in_slot = [i for i, e in enumerate(out.entities) if slot(e) == (3, 5)]
+        self.assertEqual(sorted(in_slot), sorted(i for i, e in enumerate(t.entities) if i >= 8))
+        self.assertEqual(slot(out.entities[0]), (0, 1))                     # the wall left (3, 5)
+        self.assertEqual(receipt['review']['unmatched_layer'], dict(refused=False, would_stay={}))
+
+    def test_unmatched_layer_refused_if_other_elements_would_stay(self):
+        sample = self.build_sample()
+        target = self.build_target(sample, edit=lambda d: d.add_text((30, 30), None, 'other', layer_group=3, layer=5))
+        with self.assertRaisesRegex(ValueError, r"would still hold.*content_differs': 1"):
+            layer_tidy.analyze(sample, target, unmatched=('move', 3, 5))
+        with self.assertRaises(layer_tidy.TidyRefused):
+            layer_tidy.write_plan(sample, target, self.folder / 'out.jww', self.folder / 'plan.json',
+                                  unmatched=('move', 3, 5))
+        review = json.loads((self.folder / 'plan.review.json').read_text(encoding='utf-8'))
+        self.assertEqual(review['unmatched_layer'], dict(refused=True, would_stay={'content_differs': 1}))
+        self.assertFalse((self.folder / 'plan.json').exists())
 
     def test_layer_and_group_settings(self):
         sample = self.build_sample()
