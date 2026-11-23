@@ -81,8 +81,9 @@ def prepare_image(document, path, *, name=None):
 
 def _text_entity(document, name, start, width, height, angle, color, layer_group, layer):
     content = image_text(name, width, height, angle, color)
-    # ASCII only (names are checked): every character takes half the text width (E080).
-    advance = TEXT_SIZE * 0.5 * len(content)
+    # E080 rule, as in Jw_cad's image texts (#57, also with Japanese names): per UTF-16 unit, ASCII and
+    # half-width katakana take half the text width, others the full width (CP932 names have no surrogates).
+    advance = TEXT_SIZE * sum(0.5 if ord(c) < 0x80 or 0xff61 <= ord(c) <= 0xff9f else 1.0 for c in content)
     radians = math.radians(angle)
     end = (start[0] + advance * math.cos(radians), start[1] + advance * math.sin(radians))
     record = Text(tuple(start), end, content, size_x=TEXT_SIZE, size_y=TEXT_SIZE, spacing=0.0, angle=float(angle),

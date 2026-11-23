@@ -5,7 +5,8 @@ image file in the drawing's folder (VERIFICATION.md section 16):
 
 - trailer: DWORD count, then per image a Unicode CString name, a DWORD size and one gzip member holding
   the original image file unchanged. Order: the order the images were inserted; a replaced image goes last.
-- name: BMP ``<stem>_bmp.bmp``, others ``<stem>.<ext>`` (seen: jpg, png, gif, tif), plus ``.gz``.
+- name: BMP ``<stem>_bmp.bmp``, others ``<stem>.<ext>`` (seen: jpg, png, gif, tif), plus ``.gz``; stored as
+  UTF-16, Japanese characters and spaces kept as they are.
 - gzip header: mtime 0, XFL 0, OS 10, no file name. Jw_cad's deflate body could not be reproduced with
   zlib, so jwwkit writes its own (zlib level 9); the inflated content is what is compared.
 - image text: ``^@BM%temp%<name>,width,height,0,0,1,angle,R,G,B`` (numbers like C ``%g``), at the lower
@@ -15,7 +16,6 @@ Anything not seen in those samples (other name characters, other extensions, tri
 """
 import hashlib
 import math
-import re
 import struct
 import zlib
 
@@ -25,13 +25,18 @@ from jwwkit.reader.images import (MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TOTAL_IM
 IMAGE_PREFIX = '^@BM%temp%'
 # Extensions seen in Jw_cad output names (#19, #57). .jpeg/.jpe/.tiff and upper case were not seen.
 NAME_EXTENSIONS = {'bmp', 'jpg', 'png', 'gif', 'tif'}
-STEM = re.compile(r'[A-Za-z0-9_-]+\Z')
+# Characters refused in a name: path and Windows file name characters, the image text field separator
+# ",", and "^" (special in Jw_cad text). Names are stored in UTF-16, but only CP932 characters were tried
+# in Jw_cad (#57: kanji, kana, ideographic and ASCII spaces, full-width punctuation), so others are refused.
+FORBIDDEN = set('\\/:*?"<>|,^.')
+EDGE_SPACES = (' ', '　')
 GZIP_HEADER = b'\x1f\x8b\x08\x00\x00\x00\x00\x00\x00\x0a'
 TEXT_SIZE = 2.0
 TEXT_FONT = 'ＭＳ ゴシック'
 UNVERIFIED_SHAPE_HINT = (' Re-save the image as a 24-bit BMP or a plain (baseline) JPEG and it can be inserted.')
-NAME_HINT = (' Only half-width letters, digits, "-" and "_" with the extension .bmp, .jpg, .png, .gif or .tif '
-             '(lower case) are accepted; pass another name with name=...')
+NAME_HINT = (' A name may use characters that CP932 (Japanese Windows) can write, except \\ / : * ? " < > | , ^ . '
+             'and control characters, with no space at either end, and the extension .bmp, .jpg, .png, .gif or .tif '
+             '(lower case); pass another name with name=...')
 
 
 def embedded_name(file_name):
@@ -39,8 +44,18 @@ def embedded_name(file_name):
     if not isinstance(file_name, str) or '.' not in file_name:
         raise ValueError('Image name needs an extension.' + NAME_HINT)
     stem, extension = file_name.rsplit('.', 1)
-    if extension not in NAME_EXTENSIONS or not STEM.match(stem):
-        raise ValueError(f'Image name {file_name!r} is not in a form seen in Jw_cad output.' + NAME_HINT)
+    if extension not in NAME_EXTENSIONS:
+        raise ValueError(f'Image name {file_name!r}: the extension .{extension} has not been seen in Jw_cad '
+                         'output.' + NAME_HINT)
+    bad = sorted({c for c in stem if c in FORBIDDEN or ord(c) < 32 or 0x7f <= ord(c) < 0xa0})
+    if not stem or bad or stem.startswith(EDGE_SPACES) or stem.endswith(EDGE_SPACES):
+        raise ValueError(f'Image name {file_name!r} has characters or spaces that are not accepted '
+                         f'({"".join(bad) or "space at an end or empty"}).' + NAME_HINT)
+    try:
+        stem.encode('cp932')
+    except UnicodeEncodeError as exc:
+        raise ValueError(f'Image name {file_name!r} has the character {stem[exc.start]!r}, which CP932 cannot '
+                         'write; such characters have not been tried in Jw_cad.' + NAME_HINT) from None
     name = f'{stem}_bmp.bmp' if extension == 'bmp' else f'{stem}.{extension}'
     if len(name) + 3 >= 255:
         raise ValueError('Image name is too long.' + NAME_HINT)
