@@ -1481,6 +1481,30 @@ safe_edit.execute_plan(plan_path, *, approved_sha256)
 report = execute_plan('plan.json', approved_sha256=approved_plan_hash)
 ```
 
+### `layer_tidy.analyze`
+
+```python
+layer_tidy.analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_settings='keep', group_settings='keep', strict=False)
+```
+
+見本の図面（建築だけを整理した図面）に合わせて、対象の図面の要素の行き先の群・層を決める（#56）。ファイルは書かない。戻り値は、review（数と理由。図面の中の文字は入れない）・moves（対象の要素の番号→行き先の群・層）・settings_actions。
+
+対応範囲・拒否条件：照合は実寸mmの形と位置だけで、表示の状態（非表示・表示のみ）に関係なく、対象の全部の要素で行う。土台はcompare_drawings（まったく同じ組、形と位置が1対1の組、分割の具合だけが違う線の組）で、さらに、対象の線が見本の線に完全に覆われ、行き先が1つに決まるものを一致とする。行き先が1つに決まらない組（見本の同じ形が別の層にある）、部分的に重なる線、compare_drawingsの対応外の要素、縮尺の違う群への移動（換算しない）、編集APIが拒否する要素は、移さずにreviewのleft_aloneに理由つきで出す（strict=Trueなら1つでもあれば止める）。position_toleranceは既定0で、自動では選ばない（点が線の上にあるかの判定には、ほかに1e-9 mmの計算の誤差だけを許す）。unmatched：見本に無い要素を'keep'（そのまま）か('move', 群, 層)へ。移し先は、対象の図面で空で、見本で使われていない層でなければ拒否。layer_settings・group_settings：'keep'は移した先の層・群の状態と名前の見本との違いを一覧に出すだけ、'sample'は見本と同じにする（群の縮尺は変えない。書込みの状態・保護のために編集APIが拒否するものは、変えずに一覧に出す）。色・線種などの違いは移さず、数だけ出す。
+
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/layer_tidy.py#L89)。
+
+### `layer_tidy.write_plan`
+
+```python
+layer_tidy.write_plan(sample, target, output, plan_path, *, review_path=None, **options)
+```
+
+analyzeの結果から、safe_editの計画（行き先の層ごとにset_entity_attributesを1つ、続けて層・群の状態と名前の操作）と、reviewのJSON（既定は計画の名前の拡張子を.review.jsonにしたもの）を書く。実行は、今までどおりチャットで承認したSHA256を付けてsafe_edit.execute_planで行い、原本は変えずに別名で保存する。
+
+対応範囲・拒否条件：optionsはanalyzeと同じ。変えるものが何もなければ拒否する。計画・出力・reviewが既にあれば拒否する（上書きしない）。
+
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/layer_tidy.py#L272)。
+
 ### `plan_building_replacement`
 
 ```python

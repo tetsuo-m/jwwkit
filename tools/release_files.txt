@@ -51,6 +51,7 @@ src/jwwkit/guides/docs/usage_guide.md
 src/jwwkit/guides/docs/workflow_settings.md
 src/jwwkit/hatch_geometry.py
 src/jwwkit/jwf.py
+src/jwwkit/layer_tidy.py
 src/jwwkit/legacy_document.py
 src/jwwkit/line_document.py
 src/jwwkit/model/__init__.py
