@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 27816,
-      "sha256": "d2a3fd160ae13945232de1c2e37e58c6746636d0376a021afe0d23c22cac1009"
+      "size": 27798,
+      "sha256": "de1da6c909780425aa8fb2cf44b90305180ae42b49c0cf753b0aeb1a13079921"
     },
     {
       "path": "CLAUDE.md",
@@ -578,8 +578,8 @@
     },
     {
       "path": "src/jwwkit/model/spatial.py",
-      "size": 4408,
-      "sha256": "5554dc2ddf249ad1c1c553b464981a621758def61f68b8cd3b169b2af6c6b7b8"
+      "size": 4411,
+      "sha256": "db05f5d14fdc7e0ae827ddf3bbfc3c92ad8dcf63f83436ea29534b87e707d06d"
     },
     {
       "path": "src/jwwkit/model/summary.py",
