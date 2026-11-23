@@ -288,6 +288,57 @@ class ImageEditingTests(TempDirTestCase):
         with self.assertRaisesRegex(ValueError, 'not an image text'):
             document.delete_image(other)
 
+    # --- the older 6-field image texts (real drawings; no transparent colour) ---
+    def legacy_drawing(self):
+        """a2 with both image texts rewritten in the 6-field form seen in real drawings."""
+        document = CadDocument.open(fixture('a2'))
+        for index in image_indices(document):
+            content = document.entities[index].geometry['content']
+            document.set_text(index, content.rsplit(',', 3)[0])
+        path = self.saved(document, 'legacy.jww')
+        self.assertTrue(all(t['content'].endswith(',100,48.062,0,0,1,0') for t in image_texts(path)))
+        return path
+
+    def test_delete_image_accepts_the_6_field_form(self):
+        document = CadDocument.open(self.legacy_drawing())
+        document.delete_image(image_indices(document)[1])
+        path = self.saved(document, 'legacy_deleted.jww')
+        self.assertEqual([i[0] for i in trailer_view(path)], ['C__jwwkit_sample_bmp_a_bmp.bmp.gz'])
+        self.assertTrue(image_texts(path)[0]['content'].endswith(',100,48.062,0,0,1,0'))
+
+    def test_add_and_replace_refuse_drawings_with_the_6_field_form(self):
+        document = CadDocument.open(self.legacy_drawing())
+        before = document.entities
+        with self.assertRaisesRegex(ValueError, 'older Jw_cad form'):
+            document.add_image(self.png, (0, 0), 100)
+        with self.assertRaisesRegex(ValueError, '古いJw_cadの形'):
+            document.replace_image(image_indices(document)[1], self.bmp)
+        self.assertEqual(document.entities, before)
+        self.assertEqual(document._image_edits, {})
+        # One 6-field text is enough, also after the other image text was deleted.
+        document = CadDocument.open(fixture('a2'))
+        first, second = image_indices(document)
+        document.set_text(first, document.entities[first].geometry['content'].rsplit(',', 3)[0])
+        document.delete_image(second)
+        with self.assertRaisesRegex(ValueError, 'older Jw_cad form'):
+            document.add_image(self.png, (0, 0), 100)
+
+    def test_plan_refuses_add_image_on_the_6_field_form(self):
+        from jwwkit.safe_edit import write_plan
+        source = self.legacy_drawing()
+        document = CadDocument.open(source)
+        with self.assertRaisesRegex(ValueError, 'older Jw_cad form'):
+            write_plan(document, [], [dict(op='add_image', kwargs=dict(path=str(self.png), position=[0, 0], width=50))],
+                       self.folder / 'out.jww', self.folder / 'plan.json')
+        self.assertFalse((self.folder / 'plan.json').exists())
+
+    def test_other_field_counts_are_refused(self):
+        document = CadDocument.open(fixture('a1'))
+        index = image_indices(document)[0]
+        document.set_text(index, '^@BM%temp%C__jwwkit_sample_bmp_a_bmp.bmp,100,48.062,0,0')
+        with self.assertRaisesRegex(ValueError, 'unobserved field count'):
+            document.delete_image(index)
+
     # --- refusals ---
     def test_replace_refuses_trimmed_and_flagged_images(self):
         document = CadDocument.open(fixture('a8'))
