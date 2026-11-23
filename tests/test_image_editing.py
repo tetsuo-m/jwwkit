@@ -288,26 +288,26 @@ class ImageEditingTests(TempDirTestCase):
         with self.assertRaisesRegex(ValueError, 'not an image text'):
             document.delete_image(other)
 
-    # --- the older 6-field image texts (real drawings; no transparent colour) ---
-    def legacy_drawing(self):
+    # --- image texts with 6 fields (no transparent-colour fields; seen in real drawings) ---
+    def six_field_drawing(self):
         """a2 with both image texts rewritten in the 6-field form seen in real drawings."""
         document = CadDocument.open(fixture('a2'))
         for index in image_indices(document):
             content = document.entities[index].geometry['content']
             document.set_text(index, content.rsplit(',', 3)[0])
-        path = self.saved(document, 'legacy.jww')
+        path = self.saved(document, 'six_fields.jww')
         self.assertTrue(all(t['content'].endswith(',100,48.062,0,0,1,0') for t in image_texts(path)))
         return path
 
     def test_delete_image_accepts_the_6_field_form(self):
-        document = CadDocument.open(self.legacy_drawing())
+        document = CadDocument.open(self.six_field_drawing())
         document.delete_image(image_indices(document)[1])
-        path = self.saved(document, 'legacy_deleted.jww')
+        path = self.saved(document, 'six_fields_deleted.jww')
         self.assertEqual([i[0] for i in trailer_view(path)], ['C__jwwkit_sample_bmp_a_bmp.bmp.gz'])
         self.assertTrue(image_texts(path)[0]['content'].endswith(',100,48.062,0,0,1,0'))
 
     def test_add_and_replace_refuse_drawings_with_the_6_field_form(self):
-        document = CadDocument.open(self.legacy_drawing())
+        document = CadDocument.open(self.six_field_drawing())
         before = document.entities
         with self.assertRaisesRegex(ValueError, 'without the transparent-colour fields'):
             document.add_image(self.png, (0, 0), 100)
@@ -325,7 +325,7 @@ class ImageEditingTests(TempDirTestCase):
 
     def test_plan_refuses_add_image_on_the_6_field_form(self):
         from jwwkit.safe_edit import write_plan
-        source = self.legacy_drawing()
+        source = self.six_field_drawing()
         document = CadDocument.open(source)
         with self.assertRaisesRegex(ValueError, 'without the transparent-colour fields'):
             write_plan(document, [], [dict(op='add_image', kwargs=dict(path=str(self.png), position=[0, 0], width=50))],
@@ -338,6 +338,90 @@ class ImageEditingTests(TempDirTestCase):
         document.set_text(index, '^@BM%temp%C__jwwkit_sample_bmp_a_bmp.bmp,100,48.062,0,0')
         with self.assertRaisesRegex(ValueError, 'unobserved field count'):
             document.delete_image(index)
+
+    # --- review follow-ups ---
+    def test_shared_image_with_a_comma_in_its_name_is_kept_while_pointed_to(self):
+        old, new = 'C__jwwkit_sample_bmp_a_bmp.bmp', 'C__jwwkit_sample_bmp,a_bmp.bmp'
+        data = fixture('a7').read_bytes().replace(old.encode('utf-16le'), new.encode('utf-16le'))
+        source = self.write('comma.jww', data)
+        document = CadDocument.open(source)
+        document.delete_image(image_indices(document)[0])
+        path = self.saved(document, 'comma_one.jww')
+        self.assertEqual([i[0] for i in trailer_view(path)], [new + '.gz'])
+        document.delete_image(image_indices(document)[0])
+        self.assertEqual(trailer_view(self.saved(document, 'comma_both.jww')), [])
+
+    def test_image_in_a_block_definition_keeps_a_shared_image(self):
+        document = CadDocument.open(fixture('a9'))
+        copy = self.write('same.bmp', raw_image('a9'))
+        document.add_image(copy, (0, 0), 100)
+        document.delete_image(image_indices(document)[0])
+        path = self.saved(document, 'block_kept.jww')
+        self.assertEqual([i[0] for i in trailer_view(path)], ['C__jwwkit_sample_bmp_a_bmp.bmp.gz'])
+
+    def test_replace_keeps_pen_colour_and_group(self):
+        document = CadDocument.open(fixture('a2'))
+        index = image_indices(document)[1]
+        document.set_entity_attributes(index, color=3)
+        new = document.replace_image(index, self.bmp, keep_height=True)
+        self.assertEqual(new.attributes['pen_color'], 3)
+        self.assertEqual(new.geometry['content'], '^@BM%temp%irekae_bmp.bmp,100,48.062,0,0,1,0,255,255,255')
+
+    def test_unverified_content_gets_the_resave_hint(self):
+        path = self.write('photo.jpg', b'RIFF\x10\x00\x00\x00WEBPVP8 ' + bytes(8))
+        with self.assertRaisesRegex(ValueError, 'unverified.*24-bit BMP'):
+            CadDocument.open(fixture('a1')).add_image(path, (0, 0), 100)
+
+    def test_limits_are_checked_when_adding(self):
+        from unittest.mock import patch
+        document = CadDocument.open(fixture('a2'))
+        with patch('jwwkit.model.images_edit.MAX_IMAGE_COUNT', 2), self.assertRaisesRegex(ValueError, 'More than 2'):
+            document.add_image(self.png, (0, 0), 100)
+        with patch('jwwkit.model.images_edit.MAX_TOTAL_IMAGE_BYTES', 193_000), self.assertRaisesRegex(ValueError, 'exceed'):
+            document.add_image(self.png, (0, 0), 100)
+        self.assertEqual(document._image_edits, {})
+
+    def test_more_refusals(self):
+        document = CadDocument.open(fixture('a1'))
+        with self.assertRaisesRegex(ValueError, 'angle'):
+            document.add_image(self.png, (0, 0), 100, angle=359.9999999)
+        with self.assertRaisesRegex(ValueError, 'name'):
+            document.add_image(self.png, (0, 0), 100, name='.png')
+        with self.assertRaisesRegex(ValueError, 'too long'):
+            document.add_image(self.png, (0, 0), 100, name='a' * 230 + '.png')
+        with self.assertRaisesRegex(ValueError, 'include_metadata'):
+            CadDocument.open(fixture('a1'), include_metadata=True).add_image(self.png, (0, 0), 100)
+
+    def test_image_edits_are_refused_after_import_group(self):
+        document = CadDocument.open(fixture('a1'))
+        document._imported_group = True  # as set by a successful import_group
+        for call in (lambda: document.add_image(self.png, (0, 0), 100),
+                     lambda: document.delete_image(image_indices(document)[0])):
+            with self.assertRaisesRegex(ValueError, 'import_group'):
+                call()
+
+    def test_png_exif_orientation(self):
+        tiff = b'II*\x00' + struct.pack('<I', 8) + struct.pack('<H', 1) + struct.pack('<HHIHH', 0x0112, 3, 1, 6, 0) + bytes(4)
+        body = b'eXIf'
+        chunk = struct.pack('>I', len(tiff)) + body + tiff + struct.pack('>I', zlib.crc32(body + tiff) & 0xffffffff)
+        plain = png(2)
+        tagged = plain[:33] + chunk + plain[33:]
+        review = check_new_image(tagged, 'x.png')
+        self.assertTrue(review['exif_orientation_not_1'])
+        self.assertFalse(review['exif_location'])
+
+    def test_plan_rows_show_sharing(self):
+        from jwwkit.safe_edit import write_plan
+        source = self.write('source.jww', fixture('a1').read_bytes())
+        other = self.write('other.png', self.png.read_bytes())
+        actions = [dict(op='add_image', kwargs=dict(path=str(self.png), position=[0, 0], width=50)),
+                   dict(op='add_image', kwargs=dict(path=str(other), position=[60, 0], width=50))]
+        rows = write_plan(CadDocument.open(source), [], actions, self.folder / 'out.jww',
+                          self.folder / 'plan.json')['plan']['resource_targets']
+        self.assertIsNone(rows[0]['image']['shared_with'])
+        self.assertEqual(rows[1]['image']['shared_with'], 'zukei.png.gz')
+        self.assertEqual([i['identifier'] for i in rows[1]['embedded_images_after_adding']],
+                         ['C__jwwkit_sample_bmp_a_bmp.bmp.gz', 'zukei.png.gz'])
 
     # --- refusals ---
     def test_replace_refuses_trimmed_and_flagged_images(self):
