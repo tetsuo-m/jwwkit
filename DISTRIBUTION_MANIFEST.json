@@ -443,8 +443,8 @@
     },
     {
       "path": "src/jwwkit/layer_tidy.py",
-      "size": 27044,
-      "sha256": "c0865f7d4d8e9d77e41ef0ccfe28b5f001184f9bf60de31bb7e3d3f66f73078d"
+      "size": 27147,
+      "sha256": "9e48ecd04943aad1beed7d09e11fcc2b4da04cc58327e22291687c435e4e7426"
     },
     {
       "path": "src/jwwkit/legacy_document.py",
@@ -1048,8 +1048,8 @@
     },
     {
       "path": "tests/test_layer_tidy.py",
-      "size": 24771,
-      "sha256": "a75120b455b88c5d4167cb98fe52d33dd17b43443e12692ff030de7cb00d9eb0"
+      "size": 25509,
+      "sha256": "7e5889e0ec79dff3669a01e1591cf545af915957bd126f41be9926b3545e7b2b"
     },
     {
       "path": "tests/test_noncanonical_counts.py",
