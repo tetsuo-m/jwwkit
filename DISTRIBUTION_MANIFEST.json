@@ -38,18 +38,18 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 27488,
-      "sha256": "e70a72a0f61792218f749cf1e103aec23ef6e1293f12f6b2e760bb9c5f64a705"
+      "size": 27816,
+      "sha256": "d2a3fd160ae13945232de1c2e37e58c6746636d0376a021afe0d23c22cac1009"
     },
     {
       "path": "CLAUDE.md",
-      "size": 8372,
-      "sha256": "8008649a92ef01028430bc89d8e677a690cb20fba6ab450506477cbdb61a1ec8"
+      "size": 8378,
+      "sha256": "250568ad2e182b24561e9eb93aea88f72237fdf2f601b07d6241ac8e41b9637f"
     },
     {
       "path": "docs/api_list.md",
-      "size": 115529,
-      "sha256": "25e8690673f0a024973fbdac0a7685564edfe4eb75c05f98d1b68d623c8225d6"
+      "size": 115547,
+      "sha256": "976f11f10653896e80e8e9bf4e3af90ecf12946a691da00b1491817570f22d99"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -98,8 +98,8 @@
     },
     {
       "path": "docs/ezjww_adapter_contract.md",
-      "size": 12397,
-      "sha256": "6464766aba106780aed1b482223d02ae36393e4f3b9f5230c5f75ba2355a00b6"
+      "size": 12409,
+      "sha256": "00109561906e22d75c6c09020ec8bf7ca6404dae4d8636bee9a751eeb7b8e88f"
     },
     {
       "path": "docs/geometry_view.md",
@@ -133,8 +133,8 @@
     },
     {
       "path": "docs/schema_normalization.md",
-      "size": 8081,
-      "sha256": "37bd82649a815c949fc24d481202722fe3a24ebc1fc02265282657b99efb2b84"
+      "size": 8084,
+      "sha256": "381d430770aaae44e516d38a20f1a31976ae3f7ce53dd398b9f9fb9853a82dc7"
     },
     {
       "path": "docs/search_queries.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 76048,
-      "sha256": "ea531caef6806365b72472fa5e9fc7e6fe658fa2bb6feffcc06c09cdc7f4f1c0"
+      "size": 76054,
+      "sha256": "3eaddc1870094d8cf4b7181e4068c66d5b53a25f943d90fdc45807c15c067be8"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "README.md",
-      "size": 15146,
-      "sha256": "1a199634549c58d79c25e18a275122be0a4e25b9eafb88cd8273c31f91cdcf78"
+      "size": 15152,
+      "sha256": "aa5856457af04e679ac9729400b252c49325492e40276714114f302eb4e63f71"
     },
     {
       "path": "requirements.txt",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 115529,
-      "sha256": "25e8690673f0a024973fbdac0a7685564edfe4eb75c05f98d1b68d623c8225d6"
+      "size": 115547,
+      "sha256": "976f11f10653896e80e8e9bf4e3af90ecf12946a691da00b1491817570f22d99"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -398,8 +398,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/schema_normalization.md",
-      "size": 8081,
-      "sha256": "37bd82649a815c949fc24d481202722fe3a24ebc1fc02265282657b99efb2b84"
+      "size": 8084,
+      "sha256": "381d430770aaae44e516d38a20f1a31976ae3f7ce53dd398b9f9fb9853a82dc7"
     },
     {
       "path": "src/jwwkit/guides/docs/search_queries.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 76048,
-      "sha256": "ea531caef6806365b72472fa5e9fc7e6fe658fa2bb6feffcc06c09cdc7f4f1c0"
+      "size": 76054,
+      "sha256": "3eaddc1870094d8cf4b7181e4068c66d5b53a25f943d90fdc45807c15c067be8"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -578,8 +578,8 @@
     },
     {
       "path": "src/jwwkit/model/spatial.py",
-      "size": 4405,
-      "sha256": "d42bcb7203f4a3bb78d1250430c2120eb2c042e6059679b0a7e35ce4e635e1c6"
+      "size": 4408,
+      "sha256": "5554dc2ddf249ad1c1c553b464981a621758def61f68b8cd3b169b2af6c6b7b8"
     },
     {
       "path": "src/jwwkit/model/summary.py",
@@ -808,8 +808,8 @@
     },
     {
       "path": "tests/fixtures/jwcad_images/README.md",
-      "size": 5947,
-      "sha256": "b6d67d5da7571d7e74ebd9d95c3f204e3adb772edb49d95a23f100aa91f9a5cc"
+      "size": 5980,
+      "sha256": "c539402bd9b843fc558a26d3be7e31d272c70664c62181fc5e5907f92f95a828"
     },
     {
       "path": "tests/fixtures/jwcad_images/s_bmp_16.jww",
@@ -943,8 +943,8 @@
     },
     {
       "path": "tests/fixtures/jwcad_saved/README.md",
-      "size": 3421,
-      "sha256": "1c22ab80200fb291eb3a6d02549274ed25653df26a1051f6156e909facf44aa8"
+      "size": 3457,
+      "sha256": "59661e65a722667a945ee103c6cf40692f848f79b9d820a82f8a1a5ec23a44dd"
     },
     {
       "path": "tests/test_block_definition_limit.py",
@@ -1148,8 +1148,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 78489,
-      "sha256": "9ccf93cadf89026715e74ca08c528e9e7360bfecab4da99b350cfedc6a3ca710"
+      "size": 78642,
+      "sha256": "363cbf257c1718ebb4522c30935ea814ee9f06239f0809e2ab9a70233c9f424e"
     }
   ]
 }
