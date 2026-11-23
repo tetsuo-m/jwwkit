@@ -81,6 +81,35 @@ def _one_sided_cover(sample, target, candidates, sample_lines, tolerance):
     return out
 
 
+TIEBREAK_ATTRIBUTES = ('pen_color', 'pen_style', 'pen_width', 'flag')
+
+
+def _same_line(a, b, tolerance):
+    limit = tolerance + COVER_EPSILON
+    close = lambda p, q: math.hypot(p[0] - q[0], p[1] - q[1]) <= limit
+    return (close(a[0], b[0]) and close(a[1], b[1])) or (close(a[0], b[1]) and close(a[1], b[0]))
+
+
+def _attribute_tiebreak(sample, target, sample_indices, target_indices, tolerance):
+    """Within one ambiguous component of lines: {target: sample} for pairs that are one-to-one when the other
+    attributes (TIEBREAK_ATTRIBUTES) must also be equal and the lines are the same in real mm."""
+    def key(document, i):
+        entity = document.entities[i]
+        return tuple(entity.attributes[k] for k in TIEBREAK_ATTRIBUTES)
+    if any(sample.entities[i].entity_type != 'LINE' for i in sample_indices) or any(
+            target.entities[i].entity_type != 'LINE' for i in target_indices):
+        return {}
+    s_lines = {i: _real_line(sample, sample.entities[i]) for i in sample_indices}
+    t_lines = {i: _real_line(target, target.entities[i]) for i in target_indices}
+    candidates = {t: [s for s in sample_indices if key(sample, s) == key(target, t)
+                      and _same_line(s_lines[s], t_lines[t], tolerance)] for t in target_indices}
+    reverse = defaultdict(list)
+    for t, ss in candidates.items():
+        for s in ss:
+            reverse[s].append(t)
+    return {t: ss[0] for t, ss in candidates.items() if len(ss) == 1 and len(reverse[ss[0]]) == 1}
+
+
 def _check_settings(value, what):
     if value not in ('keep', 'sample'):
         raise ValueError(f"{what} must be 'keep' or 'sample'")
@@ -139,13 +168,36 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
         assign(match['right_indices'], match['left_indices'], kind)
     for component in comparison['ambiguous']:
         # Same shapes on both sides: move them only if every sample element of the group has one destination.
-        assign(component['right_indices'], component['left_indices'], 'overlap')
+        sample_indices, target_indices = component['left_indices'], component['right_indices']
+        if len({_slot(s_doc.entities[i]) for i in sample_indices}) == 1:
+            assign(target_indices, sample_indices, 'overlap')
+            continue
+        # Only here (shape and position leave the destination open): pair elements whose other attributes
+        # (pen colour, style, width and flags) are all equal, when that pairing is one-to-one (#56 decision).
+        paired = _attribute_tiebreak(s_doc, t_doc, sample_indices, target_indices, position_tolerance)
+        for t in target_indices:
+            if t in paired:
+                assign([t], [paired[t]], 'attribute_tiebreak')
+            else:
+                listed['ambiguous'].append(t)
     partial_targets = [t for c in comparison['partial_lines'] for t in c['right_indices']]
     leftover = sorted(set(comparison['added']) | set(partial_targets))
     sample_lines = [i for i, e in enumerate(s_doc.entities) if e.entity_type == 'LINE']
     covered = _one_sided_cover(s_doc, t_doc, leftover, sample_lines, position_tolerance)
+    open_targets, open_samples = [], set()
     for t, sample_indices in covered.items():
-        assign([t], sample_indices, 'line_cover')
+        if len({_slot(s_doc.entities[i]) for i in sample_indices}) == 1:
+            assign([t], sample_indices, 'line_cover')
+        else:
+            open_targets.append(t)
+            open_samples.update(sample_indices)
+    # Covered by sample lines on different layers: the same attribute tie-break as for ambiguous components.
+    paired = _attribute_tiebreak(s_doc, t_doc, sorted(open_samples), open_targets, position_tolerance)
+    for t in open_targets:
+        if t in paired:
+            assign([t], [paired[t]], 'attribute_tiebreak')
+        else:
+            listed['ambiguous'].append(t)
     for t in partial_targets:
         if t not in destination and t not in listed['ambiguous']:
             listed['partial_line'].append(t)
