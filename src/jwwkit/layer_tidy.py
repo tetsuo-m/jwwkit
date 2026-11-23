@@ -16,6 +16,10 @@ Lines that are split differently use compare_drawings' line partitions, and a ta
 sample line is matched to it (one-sided cover). Nothing is guessed: ambiguous elements, lines that only partly
 overlap, unsupported elements, moves between groups of different scales and moves the editing API refuses are
 listed and left alone. The result is a review and a safe_edit plan; executing the plan needs the usual approval.
+
+This module uses internal parts of drawing_comparison (_rows, _geometry, _scope) and
+_comparison_composites.changes so that it judges shapes exactly as compare_drawings does. When the comparison
+changes, run this module's tests (tests/test_layer_tidy.py) too.
 """
 from __future__ import annotations
 
