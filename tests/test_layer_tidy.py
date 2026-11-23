@@ -184,6 +184,20 @@ class LayerTidyTests(TempDirTestCase):
         self.assertEqual(slot(out.entities[0]), (0, 1))                     # the wall left (3, 5)
         self.assertEqual(receipt['review']['unmatched_layer'], dict(refused=False, would_stay={}))
 
+    def test_unmatched_layer_when_every_layer_holds_something(self):
+        sample = self.build_sample()
+
+        def fill(d):
+            for g in range(16):
+                for l in range(16):
+                    d.add_point((500 + g * 10, 500 + l * 10), layer_group=g, layer=l)   # not in the sample
+        target = self.build_target(sample, edit=fill)
+        receipt, out = self.run_plan(sample, target, unmatched=('move', 15, 15))
+        t = CadDocument.open(target)
+        self.assertTrue(all(any(slot(e) == (g, l) for e in t.entities) for g in range(16) for l in range(16)))
+        self.assertEqual(receipt['review']['counts']['unmatched'], 258)
+        self.assertEqual(sum(slot(e) == (15, 15) for e in out.entities), 258)
+
     def test_unmatched_layer_refused_if_other_elements_would_stay(self):
         sample = self.build_sample()
         target = self.build_target(sample, edit=lambda d: d.add_text((30, 30), None, 'other', layer_group=3, layer=5))
