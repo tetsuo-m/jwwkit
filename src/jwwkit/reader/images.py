@@ -81,18 +81,7 @@ def read_image_trailer(cursor):
         if struct.unpack_from('<I', compressed, len(compressed) - 4)[0] != len(raw) & 0xffffffff:
             raise invalid('gzip size field does not match the inflated size')
         total += len(raw)
-        kind = detect_format(raw)
-        if kind is None:
-            raise unverified('an image format other than BMP, JPEG, PNG, GIF and TIFF')
-        if extension not in EXTENSIONS:
-            raise unverified(f'the image name extension .{extension}' if extension else 'an image name without an extension')
-        if EXTENSIONS[extension] != kind:
-            raise invalid(f'the name extension .{extension} does not match the {kind} content')
-        try:
-            notes = []
-            shape = CHECKS[kind](raw, notes)
-        except (IndexError, KeyError, struct.error) as exc:
-            raise invalid(f'{kind} structure is inconsistent') from exc
+        kind, shape, notes = check_image_content(raw, extension)
         images.append(dict(identifier=identifier, size_offset=size_offset, gzip_offset=gzip_offset,
                            compressed_size=compressed_size, format=kind, width=shape['width'],
                            height=shape['height'], bits=shape.get('bits'), raw_size=len(raw),
@@ -100,6 +89,26 @@ def read_image_trailer(cursor):
                            trailing_bytes=shape.get('trailing', 0), notes=tuple(notes),
                            verified=shape['key'] in VERIFIED_SHAPES[kind] and not notes))
     return images
+
+
+def check_image_content(raw, extension):
+    """Check one image file against its name extension and its format; return (format, shape, notes).
+
+    Shared by the trailer reader and by add_image (#57), so both refuse and note exactly the same things.
+    """
+    kind = detect_format(raw)
+    if kind is None:
+        raise unverified('an image format other than BMP, JPEG, PNG, GIF and TIFF')
+    if extension not in EXTENSIONS:
+        raise unverified(f'the image name extension .{extension}' if extension else 'an image name without an extension')
+    if EXTENSIONS[extension] != kind:
+        raise invalid(f'the name extension .{extension} does not match the {kind} content')
+    try:
+        notes = []
+        shape = CHECKS[kind](raw, notes)
+    except (IndexError, KeyError, struct.error) as exc:
+        raise invalid(f'{kind} structure is inconsistent') from exc
+    return kind, shape, notes
 
 
 def detect_format(raw):
