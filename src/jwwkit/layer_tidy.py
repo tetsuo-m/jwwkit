@@ -119,7 +119,7 @@ def _real_line(document, entity):
     return a, b
 
 
-def _on_line(line, point, limit):
+def _on_line(line, point):
     """(distance from the infinite line, position along the segment) of a point."""
     (ax, ay), (bx, by) = line
     dx, dy = bx - ax, by - ay
@@ -134,8 +134,8 @@ def _relation(sample_line, target_line, tolerance):
     limit = tolerance + COVER_EPSILON
     if math.dist(*sample_line) == 0 or math.dist(*target_line) == 0:
         return None
-    d1, t1, length = _on_line(sample_line, target_line[0], limit)
-    d2, t2, _ = _on_line(sample_line, target_line[1], limit)
+    d1, t1, length = _on_line(sample_line, target_line[0])
+    d2, t2, _ = _on_line(sample_line, target_line[1])
     if d1 > limit or d2 > limit:
         return None
     low, high = min(t1, t2), max(t1, t2)
@@ -146,20 +146,29 @@ def _relation(sample_line, target_line, tolerance):
     return None
 
 
-def _line_index(document, indices, tolerance):
-    """Grid of real-mm cells -> sample line indices whose (widened) box touches the cell."""
+def _cells(line, budget):
+    """Grid cells (LINE_CELL real mm) along a line, with the neighbouring ring (covers small tolerances)."""
+    (ax, ay), (bx, by) = line
+    steps = max(1, math.ceil(math.dist(line[0], line[1]) / (LINE_CELL / 2)))
+    budget.spend(steps)
+    cells = set()
+    for k in range(steps + 1):
+        x, y = ax + (bx - ax) * k / steps, ay + (by - ay) * k / steps
+        cx, cy = math.floor(x / LINE_CELL), math.floor(y / LINE_CELL)
+        cells.update((cx + dx, cy + dy) for dx in (-1, 0, 1) for dy in (-1, 0, 1))
+    return cells
+
+
+def _line_index(document, indices, budget):
+    """Grid of real-mm cells -> sample line indices passing near the cell (linear in the line length)."""
     grid = defaultdict(list)
     lines = {}
-    margin = tolerance + COVER_EPSILON
     for i in indices:
-        a, b = _real_line(document, document.entities[i])
-        lines[i] = (a, b)
-        x0, x1 = sorted((a[0], b[0])); y0, y1 = sorted((a[1], b[1]))
-        for cx in range(math.floor((x0 - margin) / LINE_CELL), math.floor((x1 + margin) / LINE_CELL) + 1):
-            for cy in range(math.floor((y0 - margin) / LINE_CELL), math.floor((y1 + margin) / LINE_CELL) + 1):
-                grid[(cx, cy)].append(i)
+        line = _real_line(document, document.entities[i])
+        lines[i] = line
+        for cell in _cells(line, budget):
+            grid[cell].append(i)
     return grid, lines
-
 
 def _check_settings(value, what):
     if value not in ('keep', 'sample'):
@@ -206,6 +215,10 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
     from jwwkit._comparison_composites import changes
     for row in t_ok:
         t = row['index']
+        if any(e.get('nested_ambiguous') for _, e in candidates[t]):
+            # The children of a block/dimension do not pair one-to-one, so their texts cannot be compared.
+            listed['ambiguous'].append(t)
+            continue
         same = [(s, e) for s, e in candidates[t] if _content_same(s, row, e)]
         if not same:
             if candidates[t]:
@@ -264,15 +277,14 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
     # One-sided cover: a target line wholly on one sample line; partial overlaps are listed.
     remaining = [t for t in leftover if t not in destination]
     sample_lines = [r['index'] for r in s_ok if r['type'] == 'LINE']
-    grid, s_lines = _line_index(s_doc, sample_lines, position_tolerance)
+    grid, s_lines = _line_index(s_doc, sample_lines, budget)
     unmatched_targets = []
     for t in remaining:
         if t_doc.entities[t].entity_type != 'LINE':
             unmatched_targets.append(t)
             continue
         line = _real_line(t_doc, t_doc.entities[t])
-        cell = (math.floor(line[0][0] / LINE_CELL), math.floor(line[0][1] / LINE_CELL))
-        near = {i for dx in (-1, 0, 1) for dy in (-1, 0, 1) for i in grid.get((cell[0] + dx, cell[1] + dy), ())}
+        near = {i for cell in _cells(line, budget) for i in grid.get(cell, ())}
         budget.spend(len(near))
         covering, partial = [], False
         for i in sorted(near):
@@ -284,16 +296,10 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
         if covering:
             rows = [s_rows[i] for i in covering]
             slots = {_row_slot(r) for r in rows}
-            kind = 'line_cover'
-            if len(slots) != 1:
-                rows = [r for r in rows if _key(r) == _key(t_rows[t])]
-                slots = {_row_slot(r) for r in rows} if len(rows) == 1 else set()
-                kind = 'attribute_tiebreak'
-                if rows and len(rows) == 1:
-                    tiebreak[t] = rows[0]['index']
+            # No attribute tie-break for covered pieces: it is approved for same-shape elements only.
             if len(slots) == 1:
                 destination[t] = slots.pop()
-                how[t] = kind
+                how[t] = 'line_cover'
                 sample_used.update(r['index'] for r in rows)
             else:
                 listed['ambiguous'].append(t)
