@@ -151,18 +151,56 @@ class ImageEditingTests(TempDirTestCase):
         self.assertEqual(member[:10], bytes.fromhex('1f8b080000000000000a'))
         self.assertEqual(gzip.decompress(member), b'abc')
 
+    def test_japanese_names_match_jwcad(self):
+        document = CadDocument.open(fixture('a1'))
+        document.delete_image(image_indices(document)[0])
+        jwcad = image_texts(fixture('p5b_nihongo'))
+        photo = self.write('写真.jpg', self.jpg.read_bytes())
+        picture = self.write('画像 1.bmp', self.bmp.read_bytes())
+        for path, text in zip((photo, picture), jwcad):
+            document.add_image(path, (text['start_x'], text['start_y']), 100)
+        path = self.saved(document, 'p5b.jww')
+        self.assertEqual(trailer_view(path), trailer_view(fixture('p5b_nihongo')))
+        # In this sample Jw_cad wrote flag 2 on the BMP text (meaning unknown, see VERIFICATION.md 16);
+        # jwwkit always writes 0, so the flag is left out of this comparison.
+        self.assertEqual([t['base'].pop('flag') for t in jwcad], [0, 2])
+        mine = image_texts(path)
+        self.assertEqual([t['base'].pop('flag') for t in mine], [0, 0])
+        self.assertEqual(mine, jwcad)
+        jwcad_ends = [(r['end_x'], r['end_y']) for r in read_records_bytes(fixture('p5b_nihongo').read_bytes())['entities']
+                      if r['type'] == 'TEXT' and r['content'].startswith('^@BM')]
+        mine_ends = [(r['end_x'], r['end_y']) for r in read_records_bytes(path.read_bytes())['entities']
+                     if r['type'] == 'TEXT' and r['content'].startswith('^@BM')]
+        for mine, theirs in zip(mine_ends, jwcad_ends):
+            self.assertAlmostEqual(mine[0], theirs[0], places=9)
+            self.assertAlmostEqual(mine[1], theirs[1], places=9)
+
     def test_names(self):
         self.assertEqual(embedded_name('a-b_1.bmp'), 'a-b_1_bmp.bmp')
         self.assertEqual(embedded_name('x.jpg'), 'x.jpg')
-        for bad in ('画像 1.bmp', 'a b.jpg', 'a.b.png', 'a.jpeg', 'a.JPG', 'a.tiff', 'noextension', 'a\\b.bmp'):
+        self.assertEqual(embedded_name('画像 1.bmp'), '画像 1_bmp.bmp')
+        self.assertEqual(embedded_name('案内図（１）.png'), '案内図（１）.png')
+        self.assertEqual(embedded_name('ｶﾀｶﾅ　写真。.jpg'), 'ｶﾀｶﾅ　写真。.jpg')
+        for bad in ('a.b.png', 'a.jpeg', 'a.JPG', 'a.tiff', 'noextension', 'a\\b.bmp', 'a/b.bmp', 'a:b.bmp',
+                    'a*b.png', 'a?b.png', 'a"b.png', 'a<b.png', 'a>b.png', 'a|b.png', 'a,b.png', 'a^b.png',
+                    ' a.png', 'a .png', '　a.png', 'a　.png', '.png', 'a\tb.png', 'a\x7fb.png',
+                    '\U0001F600.png', '☃.png'):
             with self.subTest(bad=bad), self.assertRaisesRegex(ValueError, 'name'):
                 embedded_name(bad)
+        with self.assertRaisesRegex(ValueError, 'CP932 cannot'):
+            embedded_name('\U0001F600.png')
         document = CadDocument.open(fixture('a1'))
-        spaced = self.write('a b.png', self.png.read_bytes())
+        spaced = self.write('a,b.png', self.png.read_bytes())
         with self.assertRaisesRegex(ValueError, 'name='):
             document.add_image(spaced, (0, 0), 100)
         text = document.add_image(spaced, (0, 0), 100, name='photo_1.png')
         self.assertTrue(text.geometry['content'].startswith('^@BM%temp%photo_1.png,'))
+
+    def test_name_clash_ignores_case(self):
+        document = CadDocument.open(fixture('a1'))
+        document.add_image(self.png, (0, 0), 100, name='Zukei.png')
+        with self.assertRaisesRegex(ValueError, 'give another name'):
+            document.add_image(self.write('other.png', png(6)), (0, 0), 100, name='zukei.png')
 
     # --- sharing and name clashes ---
     def test_same_content_is_shared(self):

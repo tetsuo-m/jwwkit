@@ -49,6 +49,7 @@
 | `p2_kesu.jww` | `a2` から 2 枚目の画像を消して保存した | BMP | 18,135 | `f87870d9e2877e449819021bd096756467a0b4f945e09eebab8703b10efa3d9a` |
 | `p3_irekae.jww` | `a2` の 2 枚目を消し、同じ位置に `irekae.bmp` を入れた | BMP、BMP（`irekae_bmp.bmp`） | 19,039 | `df925622a0c90c5027013199bf8f9143293af17f964f1757481fc45084c9d303` |
 | `p4_jpg_png.jww` | 空の図面に `shashin.jpg` と `zukei.png` を入れた | JPEG（`shashin.jpg`）、PNG（`zukei.png`） | 23,247 | `ad72d071e253edd10e4e763209c0a7fed0ab8a9bb1bef236960bcd6ab95c6edd` |
+| `p5b_nihongo.jww` | 空の図面に `写真.jpg`（`shashin.jpg` の写し）と `画像 1.bmp`（`irekae.bmp` の写し。半角の空白入り）を入れた | JPEG（`写真.jpg`）、BMP（`画像 1_bmp.bmp`） | 23,073 | `61c3dd790e3b596dd4456a746611303480f7c889b5f792fa7701b4c2189ef11f` |
 
 ## 分かったこと
 - Jw_cad 10.03.6 は、どの形式の画像も変換しないで、元のファイルのまま gzip で圧縮して同梱します（gzip の中身は元の画像ファイルとバイト単位で同じ）。

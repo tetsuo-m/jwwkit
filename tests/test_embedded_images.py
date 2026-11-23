@@ -37,6 +37,7 @@ EXPECTED = {
     # Issue #57: Jw_cad samples of inserting, deleting and replacing (relative-path names).
     'p1_ireru': [('BMP', (40, 24, 0, False))], 'p2_kesu': [('BMP', (40, 24, 0, False))],
     'p3_irekae': [('BMP', (40, 24, 0, False))] * 2, 'p4_jpg_png': [('JPEG', ('SOF0', 8, 3)), ('PNG', (2, 8))],
+    'p5b_nihongo': [('JPEG', ('SOF0', 8, 3)), ('BMP', (40, 24, 0, False))],
 }
 
 
