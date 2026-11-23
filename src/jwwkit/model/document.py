@@ -44,6 +44,9 @@ class CadDocument:
     _name_edits: dict[int, str] = field(default_factory=dict, repr=False, compare=False)
     _new_block_records: dict[int, Mapping[str, Any]] = field(default_factory=dict, repr=False, compare=False)
     _readonly_state: Mapping[str, Any] | None = field(default=None, repr=False, compare=False)
+    # Embedded image edits (#57): images to add (in order) and names delete_image asked to drop.
+    _image_edits: dict[str, Any] = field(default_factory=dict, repr=False, compare=False)
+    _imported_group: bool = field(default=False, repr=False, compare=False)
 
     @classmethod
     def open(cls, path: str | Path, *, include_metadata: bool = False, schema_profile: str = 'strict') -> "CadDocument":
@@ -580,6 +583,8 @@ class CadDocument:
                      settings_policy='strict'):
         """別JWWの指定群を全検証後に取込む。保持不能・衝突は全体を変更前拒否。"""
         self._require_editable()
+        if self._image_edits:
+            raise ValueError('import_group cannot be combined with add_image/delete_image/replace_image')
         from jwwkit.model.group_import import prepare,global_settings_bytes
         from jwwkit.writer.preserved import _document_bytes
         candidate,receipt=prepare(self,path,source_group,target_group,sync_scale=sync_scale,
@@ -599,4 +604,27 @@ class CadDocument:
             raise ValueError('Destination source changed before commit')
         for field in ('header','entities','block_definitions','_new_block_records','_name_edits','_group_scale_edits'):
             setattr(self,field,getattr(candidate,field))
+        self._imported_group=True  # image edits are refused after an import (#57)
         return receipt
+
+    def add_image(self, path, position, width, *, height=None, angle=0, transparent_color=(255, 255, 255),
+                  name=None, layer_group=0, layer=0, units='paper') -> CadEntity:
+        """v700に画像を同梱して入れる（#57）。positionは見えている画像の左下、幅・高さは紙面mm、角度は度。
+
+        The name is Jw_cad's relative-path form of the file name (or of name=), never the file's folder.
+        An image whose content is already embedded is shared. Returns the new image text.
+        """
+        from jwwkit.model.images_edit import add_image
+        return add_image(self, path, position, width, height=height, angle=angle,
+                         transparent_color=transparent_color, name=name, layer_group=layer_group,
+                         layer=layer, units=units)
+
+    def delete_image(self, index) -> None:
+        """画像を指す文字を消す。保存のとき、どの文字からも指されない画像を末尾から外す（#57）。"""
+        from jwwkit.model.images_edit import delete_image
+        delete_image(self, index)
+
+    def replace_image(self, index, path, *, name=None, keep_height=False) -> CadEntity:
+        """画像を入れ替える（消して最後に入れる。位置・幅・角度・透過色・層は元のまま。#57）。"""
+        from jwwkit.model.images_edit import replace_image
+        return replace_image(self, index, path, name=name, keep_height=keep_height)

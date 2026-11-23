@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 27849,
-      "sha256": "da1e2bf90226665e7275f16f7d46646cbe8e51480d0f9dd96817f07d8e6bf365"
+      "size": 29336,
+      "sha256": "0796b2d97f54f3ac74ef5eff2ef156a32854869c28377af8a7231c04bb02e001"
     },
     {
       "path": "CLAUDE.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 115598,
-      "sha256": "b0bc0743984c5b03ab5b3f76efc00a3111ad3448776e976f1b22099bade0f923"
+      "size": 121111,
+      "sha256": "98796990612488c6ac1d76270259780d0ca9cb6888868e335ed857999e0a1cc5"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 76105,
-      "sha256": "6f9b1a06c1bad0495ac8c8965203a236d5ad44db5565b06483cb33f68def6026"
+      "size": 79201,
+      "sha256": "038fc45ae3001e823c28d804b98856b3035b3751d6ae16eafd5501f9dad3b1d0"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "README.md",
-      "size": 15203,
-      "sha256": "ce46997a2e6edf0ee098f5ccf08b3f29b0ca0f37aa1cf15a46737d26b4f9514d"
+      "size": 15695,
+      "sha256": "c4565b0b5eeaac454ecff0ca102e6014f50d03063be40415dad249f6427570ef"
     },
     {
       "path": "requirements.txt",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 115598,
-      "sha256": "b0bc0743984c5b03ab5b3f76efc00a3111ad3448776e976f1b22099bade0f923"
+      "size": 121111,
+      "sha256": "98796990612488c6ac1d76270259780d0ca9cb6888868e335ed857999e0a1cc5"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 76105,
-      "sha256": "6f9b1a06c1bad0495ac8c8965203a236d5ad44db5565b06483cb33f68def6026"
+      "size": 79201,
+      "sha256": "038fc45ae3001e823c28d804b98856b3035b3751d6ae16eafd5501f9dad3b1d0"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -508,8 +508,8 @@
     },
     {
       "path": "src/jwwkit/model/document.py",
-      "size": 36756,
-      "sha256": "9d4426d8c58a81b28ba8e6fb54bab81cd4410f53e4cf7e02084c070c3764b962"
+      "size": 38743,
+      "sha256": "dd28e0bb6da8a783d9e2d0c98b4ff965a45d028d7b6b1fa17e25e7d2bf166901"
     },
     {
       "path": "src/jwwkit/model/editing.py",
@@ -525,6 +525,11 @@
       "path": "src/jwwkit/model/group_import.py",
       "size": 18004,
       "sha256": "5094749cdbd5db02f2cfc4455182c50ebf8ee4f321d668d5e58a89fe990511a3"
+    },
+    {
+      "path": "src/jwwkit/model/images_edit.py",
+      "size": 10432,
+      "sha256": "a427ad5ebb6bff9746cd81bb90770bff97e9426db7fa2a3e1e37557cf0957c6b"
     },
     {
       "path": "src/jwwkit/model/line.py",
@@ -623,8 +628,8 @@
     },
     {
       "path": "src/jwwkit/reader/images.py",
-      "size": 21774,
-      "sha256": "4b8f4686bb996b358fd6e8178cabaa00d6b9ab56506598baaa2e4a40580adcca"
+      "size": 22090,
+      "sha256": "a3ff3447d805071490afb82a71a452877d33597ca84a999ca5531f63070451be"
     },
     {
       "path": "src/jwwkit/reader/jws.py",
@@ -698,8 +703,8 @@
     },
     {
       "path": "src/jwwkit/safe_edit.py",
-      "size": 34232,
-      "sha256": "4e631f0020f8ab510611ae8dbdd73c4b0224fb3a5f671de11a00bc9f60704209"
+      "size": 36948,
+      "sha256": "67d75d189defea9c371718dd93081ac87d0bfecc8fc5bd8fe103b248f799815a"
     },
     {
       "path": "src/jwwkit/spatial_search.py",
@@ -727,6 +732,11 @@
       "sha256": "04c162d90f32ac74cd709c65f7222fe857e5697419489dd1fc07875c4e3c4573"
     },
     {
+      "path": "src/jwwkit/writer/images.py",
+      "size": 12341,
+      "sha256": "bae1acc95f51a9dec4b8ad1178097bd2c7ccca6989c8621e95962390d0c37395"
+    },
+    {
       "path": "src/jwwkit/writer/legacy_document.py",
       "size": 3491,
       "sha256": "cf4a6e7a00e75bebdc409e65bc1b4ffa8d279a345fbc5f0f8545b7ddcdc850c6"
@@ -738,8 +748,8 @@
     },
     {
       "path": "src/jwwkit/writer/preserved.py",
-      "size": 25594,
-      "sha256": "eaff6ee624a61297c8a43a6e076918ac0f5eea71c3e2e92e88605c91cb6f2285"
+      "size": 29051,
+      "sha256": "88fcc298a24e7c7e40ed6bd4222f947899186daea022e8c723807f6e9548941c"
     },
     {
       "path": "src/jwwkit/writer/strings.py",
@@ -807,9 +817,34 @@
       "sha256": "65f1267d21759de67f3369c3f70c5f15a88140e5d787192e7816707ba07be9a3"
     },
     {
+      "path": "tests/fixtures/jwcad_images/p1_ireru.jww",
+      "size": 18339,
+      "sha256": "e4337494b44f1a0ee6ec448806b019deb4dfa7b06bc8f908e59125e92716cb8b"
+    },
+    {
+      "path": "tests/fixtures/jwcad_images/p2_kesu.jww",
+      "size": 18135,
+      "sha256": "f87870d9e2877e449819021bd096756467a0b4f945e09eebab8703b10efa3d9a"
+    },
+    {
+      "path": "tests/fixtures/jwcad_images/p3_irekae.jww",
+      "size": 19039,
+      "sha256": "df925622a0c90c5027013199bf8f9143293af17f964f1757481fc45084c9d303"
+    },
+    {
+      "path": "tests/fixtures/jwcad_images/p4_jpg_png.jww",
+      "size": 23247,
+      "sha256": "ad72d071e253edd10e4e763209c0a7fed0ab8a9bb1bef236960bcd6ab95c6edd"
+    },
+    {
+      "path": "tests/fixtures/jwcad_images/p5b_nihongo.jww",
+      "size": 23073,
+      "sha256": "61c3dd790e3b596dd4456a746611303480f7c889b5f792fa7701b4c2189ef11f"
+    },
+    {
       "path": "tests/fixtures/jwcad_images/README.md",
-      "size": 5980,
-      "sha256": "c539402bd9b843fc558a26d3be7e31d272c70664c62181fc5e5907f92f95a828"
+      "size": 8242,
+      "sha256": "17362966a611e61fa9072243949d7150f8e3c03b2f6f9f79f2e6d25b7c7683ad"
     },
     {
       "path": "tests/fixtures/jwcad_images/s_bmp_16.jww",
@@ -983,8 +1018,8 @@
     },
     {
       "path": "tests/test_embedded_images.py",
-      "size": 29053,
-      "sha256": "59ed4eab87477a41408b533a4664790804067029c1a5560239019594a6612991"
+      "size": 29425,
+      "sha256": "6ca503ad902f3670d0159571b2d67c9cf3c7fafa63a5b89bed9f7ab49a1455da"
     },
     {
       "path": "tests/test_extended_counts.py",
@@ -1000,6 +1035,11 @@
       "path": "tests/test_geometry_guide.py",
       "size": 1250,
       "sha256": "55c555fdf7073073d8fe3c6f6755fe053fce9c208ff85059aa86010fc59cf327"
+    },
+    {
+      "path": "tests/test_image_editing.py",
+      "size": 28143,
+      "sha256": "f6b087bd94c6bf3660f00b0901d5bc4f933ad843901ba372c7d19ef6c038cc67"
     },
     {
       "path": "tests/test_noncanonical_counts.py",
@@ -1138,8 +1178,8 @@
     },
     {
       "path": "tools/release_files.txt",
-      "size": 3770,
-      "sha256": "42b37fa3cbe9c3c5b49f0abf33ceaf1a0748a9c8bacd1747516595de18b2090a"
+      "size": 3830,
+      "sha256": "4cc0989c63531e316ba31cd00f1747ed251602b929a7b030147cb2e9efdcc7c8"
     },
     {
       "path": "tools/summarize_drawing.py",
@@ -1148,8 +1188,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 78693,
-      "sha256": "61969ba7d0d39d7a00df408e3a7ba99369d4bec15ae8e61c6b49726d3a496cfa"
+      "size": 89571,
+      "sha256": "940660a53f03b7e97c894a38a0c908bb32f86b832dc04ab38298a61346ceac16"
     }
   ]
 }

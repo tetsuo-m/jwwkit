@@ -39,9 +39,23 @@
 | `s_tif_none.jww` | 形式ごと：`tif_none` を 1 枚 | TIFF | 18,282 | `bc3bd84a54274c9b424b0c26fe3f626d25ccfa210f5ac889d63ab0e3557fdc00` |
 | `s_gif87a.jww` | 形式ごと：`gif87a` を 1 枚 | GIF | 18,597 | `1f9c2e17b7a0eb95a0808067c0ab81b386b78b04c89a1cd3eef07f40a6318a10` |
 
+## 入れる・消す・入れ替えの見本（Issue #57）
+
+次の 5 件も、所有者が Jw_cad 10.03.6 で作った架空の図面です。図面と画像を同じフォルダ（利用者名を含まない場所）に置き、画像同梱の「相対パス」にチェックを入れて作りました。画像は、指揮役が試験のために作った 258×124 画素の画像（緑に丸の BMP、白地に赤い矢印の JPEG、黄色に三角の PNG）です。ファイル全体を ASCII と UTF-16 で走査し、利用者名やほかのフォルダの場所がないことを確かめました。所有者は、試験用のデータとして公開することを了承しています。
+
+| ファイル | 中身 | 同梱された画像 | 大きさ（バイト） | SHA256 |
+|---|---|---|---:|---|
+| `p1_ireru.jww` | 空の図面に、同じフォルダの `irekae.bmp` を入れた | BMP（`irekae_bmp.bmp`） | 18,339 | `e4337494b44f1a0ee6ec448806b019deb4dfa7b06bc8f908e59125e92716cb8b` |
+| `p2_kesu.jww` | `a2` から 2 枚目の画像を消して保存した | BMP | 18,135 | `f87870d9e2877e449819021bd096756467a0b4f945e09eebab8703b10efa3d9a` |
+| `p3_irekae.jww` | `a2` の 2 枚目を消し、同じ位置に `irekae.bmp` を入れた | BMP、BMP（`irekae_bmp.bmp`） | 19,039 | `df925622a0c90c5027013199bf8f9143293af17f964f1757481fc45084c9d303` |
+| `p4_jpg_png.jww` | 空の図面に `shashin.jpg` と `zukei.png` を入れた | JPEG（`shashin.jpg`）、PNG（`zukei.png`） | 23,247 | `ad72d071e253edd10e4e763209c0a7fed0ab8a9bb1bef236960bcd6ab95c6edd` |
+| `p5b_nihongo.jww` | 空の図面に `写真.jpg`（`shashin.jpg` の写し）と `画像 1.bmp`（`irekae.bmp` の写し。半角の空白入り）を入れた | JPEG（`写真.jpg`）、BMP（`画像 1_bmp.bmp`） | 23,073 | `61c3dd790e3b596dd4456a746611303480f7c889b5f792fa7701b4c2189ef11f` |
+
 ## 分かったこと
 - Jw_cad 10.03.6 は、どの形式の画像も変換しないで、元のファイルのまま gzip で圧縮して同梱します（gzip の中身は元の画像ファイルとバイト単位で同じ）。
 - 同梱の名前は、元の拡張子に `.gz` を足した形です。画像を指す文字は `^@BM%temp%` に、同梱の名前から `.gz` を外したものが続きます。
 
+- 「相対パス」で同梱すると、名前は図面のフォルダからの場所で作られます（同じフォルダの画像はファイル名だけ。BMP は `<名前>_bmp.bmp`、ほかは `<名前>.<拡張子>`）。消した画像は同梱から外れ、入れ替えた画像は末尾の最後に付きます（Issue #57）。
+
 ## 使っている試験
-`tests/test_embedded_images.py`
+`tests/test_embedded_images.py`、`tests/test_image_editing.py`

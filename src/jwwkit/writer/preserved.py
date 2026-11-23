@@ -334,7 +334,11 @@ def _document_bytes(document):
                          f'block_defs[{definition["number"]}].entities', set(numbers))
     # (600, 700): Jw_cad 10.03.6 v6 output. Write every declaration with the source class schema.
     class_schema = original.get('class_schema', document.version)
-    body = serialize_body(entities, definitions, document.version, encoding=original["body_encoding"], raw_trailer=original["raw_trailer"],
+    # Embedded image edits (#57) rebuild the trailer; every other save keeps it byte for byte.
+    trailer, expected_images = original['raw_trailer'], None
+    if document._image_edits:
+        trailer, expected_images = _edited_trailer(document, entities, definitions)
+    body = serialize_body(entities, definitions, document.version, encoding=original["body_encoding"], raw_trailer=trailer,
                           class_schema=class_schema if class_schema != document.version else None,
                           count_forms=save_count_forms(original, entities, definitions))
     from jwwkit.writer.header import patch_scales
@@ -366,8 +370,17 @@ def _document_bytes(document):
         if checked['class_declarations'] and checked['class_schema'] != class_schema:
             raise ValueError('保存前検証でクラスの版が保たれません')
     if (checked['entities'] != entities or checked['block_defs'] != definitions
-            or checked["raw_trailer"] != original["raw_trailer"]):
+            or checked["raw_trailer"] != trailer):
         raise ValueError("保存前検証で本文が一致しません")
+    if expected_images is not None:
+        if [(i['identifier'], i['sha256']) for i in checked['images']] != expected_images:
+            raise ValueError('保存前検証で同梱の画像が予定と一致しません')
+        # No text of the candidate may still point to an image that was taken out (same name reading).
+        all_names = {i['identifier'].lower()[:-3] for i in original['images']} | {
+            name.lower()[:-3] for name, _ in expected_images}
+        removed = all_names - {name.lower()[:-3] for name, _ in expected_images}
+        if removed & image_reference_names(checked['entities'], checked['block_defs'], all_names):
+            raise ValueError(IMAGE_REFERENCE_MESSAGE)
     if checked.get('count_forms') != expected_count_forms(original, entities, definitions):
         raise ValueError('保存前検証で個数の書き方が保たれません')
     if document.version == 700:
@@ -376,6 +389,55 @@ def _document_bytes(document):
         if any(count > before.get(name, 0) for name, count in dangling_image_references(checked).items()):
             raise ValueError(IMAGE_REFERENCE_MESSAGE)
     return data
+
+
+def image_reference_names(entities, definitions, names):
+    """Lower-case embedded names (from ``names``) that ^@BM%temp% texts point to, in the drawing, block
+    definitions and dimension texts. Names are matched against the embedded names, longest first, so a
+    comma inside a name is read the same way as delete_image reads it (#57)."""
+    from jwwkit.writer.images import split_image_text
+    found = set()
+
+    def walk(records):
+        for record in records:
+            if record['type'] == 'TEXT':
+                content = record['content']
+            elif record['type'] == 'DIMENSION':
+                content = record['text']['content']
+            else:
+                if record['type'] == 'BLOCK_DEF':
+                    walk(record['entities'])
+                continue
+            split = split_image_text(content, names)
+            if split is not None:
+                found.add(split[0].lower())
+    walk(entities)
+    walk(definitions)
+    del walk  # walk calls itself: drop the closure cycle (#29)
+    return found
+
+
+def _edited_trailer(document, entities, definitions):
+    """Trailer after add_image/delete_image/replace_image (#57) and the expected (name, SHA256) list."""
+    import hashlib
+    from jwwkit.writer.images import compose_trailer
+    original = document._source_records
+    if document.version != 700 or original['version'] != 700:
+        raise ValueError('Embedded image edits are supported only for v700 drawings')
+    edits = document._image_edits
+    names = {i['identifier'].lower()[:-3] for i in original['images']} | {
+        i['identifier'].lower()[:-3] for i in edits['added']}
+    referenced = image_reference_names(entities, definitions, names)
+    dropped = {name for name in edits['drop'] if name[:-3] not in referenced}
+    keep = [i['identifier'] for i in original['images'] if i['identifier'].lower() not in dropped]
+    added = [item for item in edits['added'] if item['identifier'].lower() not in dropped]
+    for item in added:
+        if hashlib.sha256(item['raw']).hexdigest() != item['sha256']:
+            raise ValueError('An image to add changed in memory')
+    trailer = compose_trailer(document._source_bytes, original, set(keep), added)
+    by_name = {i['identifier']: i['sha256'] for i in original['images']}
+    expected = [(name, by_name[name]) for name in keep] + [(i['identifier'], i['sha256']) for i in added]
+    return trailer, expected
 
 
 def _readonly_bytes(document):
@@ -407,7 +469,7 @@ def _readonly_bytes(document):
             or document.entities != expected
             or tuple(e.source_index for e in document.entities) != tuple(e.source_index for e in expected)
             or document.block_definitions != expected_blocks or document._name_edits or document._group_scale_edits
-            or document._state_edits or document._new_block_records):
+            or document._state_edits or document._new_block_records or document._image_edits):
         raise ValueError(f'{label} is read-only; edited documents cannot be saved'
                          + (OLD_VERSION_HINT if is_read_only_version(original['version']) else ''))
     # The source records (including CString bytes and declaration metadata) must also stay intact.
