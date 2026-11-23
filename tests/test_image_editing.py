@@ -309,9 +309,9 @@ class ImageEditingTests(TempDirTestCase):
     def test_add_and_replace_refuse_drawings_with_the_6_field_form(self):
         document = CadDocument.open(self.legacy_drawing())
         before = document.entities
-        with self.assertRaisesRegex(ValueError, 'older Jw_cad form'):
+        with self.assertRaisesRegex(ValueError, 'without the transparent-colour fields'):
             document.add_image(self.png, (0, 0), 100)
-        with self.assertRaisesRegex(ValueError, '古いJw_cadの形'):
+        with self.assertRaisesRegex(ValueError, '透過色の欄がない形'):
             document.replace_image(image_indices(document)[1], self.bmp)
         self.assertEqual(document.entities, before)
         self.assertEqual(document._image_edits, {})
@@ -320,14 +320,14 @@ class ImageEditingTests(TempDirTestCase):
         first, second = image_indices(document)
         document.set_text(first, document.entities[first].geometry['content'].rsplit(',', 3)[0])
         document.delete_image(second)
-        with self.assertRaisesRegex(ValueError, 'older Jw_cad form'):
+        with self.assertRaisesRegex(ValueError, 'without the transparent-colour fields'):
             document.add_image(self.png, (0, 0), 100)
 
     def test_plan_refuses_add_image_on_the_6_field_form(self):
         from jwwkit.safe_edit import write_plan
         source = self.legacy_drawing()
         document = CadDocument.open(source)
-        with self.assertRaisesRegex(ValueError, 'older Jw_cad form'):
+        with self.assertRaisesRegex(ValueError, 'without the transparent-colour fields'):
             write_plan(document, [], [dict(op='add_image', kwargs=dict(path=str(self.png), position=[0, 0], width=50))],
                        self.folder / 'out.jww', self.folder / 'plan.json')
         self.assertFalse((self.folder / 'plan.json').exists())
