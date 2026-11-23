@@ -56,7 +56,7 @@ def _texts(entities):
 
 
 def has_legacy_image_texts(document):
-    """True if an embedded image text does not have Jw_cad 10.03.6's 9 fields (6 in older drawings)."""
+    """True if an embedded image text does not have Jw_cad 10.03.6's 9 fields (6 in some real drawings)."""
     names = _embedded_names(document)
     contents = list(_texts(document.entities))
     for definition in document.block_definitions:

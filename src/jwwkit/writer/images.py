@@ -78,10 +78,10 @@ def image_text(name, width, height, angle, color):
 
 
 LEGACY_FORM_MESSAGE = (
-    'This drawing has image texts in an older Jw_cad form without the transparent-colour fields '
-    '(6 fields after the name), so images cannot be added or replaced in it; mixing the two forms has not '
-    'been checked in Jw_cad. Deleting images (delete_image) is still possible. '
-    '(この図面の画像は古いJw_cadの形（透過色の欄がない形）なので、画像の追加と入れ替えはできません)')
+    'This drawing has image texts without the transparent-colour fields (6 fields after the name); adding or '
+    'replacing images in a drawing with this form has not been checked yet, so it is refused. Deleting images '
+    '(delete_image) is still possible. '
+    '(この図面には、透過色の欄がない形の画像があります。この形の図面への画像の追加と入れ替えは、まだ確かめていないのでできません)')
 
 
 def split_image_text(content, names):
@@ -102,7 +102,7 @@ def split_image_text(content, names):
 
 def parse_image_text(content, names):
     """Fields of an embedded image text. Jw_cad 10.03.6 writes 9 fields (w,h,a,b,c,angle,R,G,B); real
-    drawings also have 6 (no transparent colour, an older Jw_cad). ``form`` is 9 or 6; others are refused."""
+    drawings also have 6 (no transparent-colour fields; which Jw_cad wrote them is not known). ``form`` is 9 or 6; others are refused."""
     split = split_image_text(content, names)
     if split is None:
         return None
