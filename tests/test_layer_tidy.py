@@ -184,9 +184,11 @@ class LayerTidyTests(TempDirTestCase):
         named = self.folder / 'named.jww'
         target = self.build_target(named, edit=lambda d: (d.set_layer_name(0, 1, 'x'), d.set_group_name(0, 'y'),
                                                            d.set_layer_state(0, 2, 'editable')))
-        keep = layer_tidy.analyze(named, target)['review']['settings']
-        self.assertEqual(keep['actions'], [])
-        self.assertTrue(any(r['kind'] == 'layer' and r['layer'] == 1 for r in keep['differences']))
+        keep = layer_tidy.analyze(named, target)
+        self.assertEqual(keep['settings_actions'], [])
+        rows = keep['review']['settings']['differences']
+        self.assertTrue(any(r['kind'] == 'layer' and r['layer'] == 1 and r['name_differs'] for r in rows))
+        self.assertNotIn('wall', json.dumps(keep['review']))
         receipt, out = self.run_plan(named, target, layer_settings='sample', group_settings='sample')
         self.assertEqual(out.get_layer_name(0, 1), 'wall')
         self.assertEqual(out.get_group_name(0), 'arch')
@@ -234,7 +236,84 @@ class LayerTidyTests(TempDirTestCase):
         receipt = layer_tidy.write_plan(sample, target, self.folder / 'out.jww', self.folder / 'plan.json')
         text = Path(receipt['review_path']).read_text(encoding='utf-8')
         self.assertNotIn(ARCH, text)
+        self.assertNotIn('target.jww', text)
+        self.assertNotIn('sample.jww', text)
         self.assertEqual(json.loads(text)['plan_sha256'], receipt['plan']['sha256'])
+
+    # --- review follow-ups ---
+    def test_different_text_or_point_kind_is_not_a_match(self):
+        sample = self.build_sample()
+
+        def change(d):
+            d.set_text(6, 'other text')                                # same place, other content
+            d.delete_entity(5)
+            d.add_point((10, 10), layer_group=6, layer=2, is_temporary=True)
+        target = self.build_target(sample, edit=change)
+        result = layer_tidy.analyze(sample, target)
+        self.assertEqual(result['review']['counts']['left_alone']['content_differs'], 2)
+        t = CadDocument.open(target)
+        text = [i for i, e in enumerate(t.entities) if e.entity_type == 'TEXT' and e.geometry['content'] == 'other text'][0]
+        self.assertNotIn(text, result['moves'])
+
+    def test_repeats_of_an_already_paired_sample_element(self):
+        sample = self.build_sample()
+
+        def extra(d):
+            d.add_circle((50, 40), 5, layer_group=10, layer=3)        # second copy of the sample circle
+            d.add_line((90, 80), (130, 80), layer_group=10, layer=4)  # partly over a paired wall line
+        target = self.build_target(sample, edit=extra)
+        result = layer_tidy.analyze(sample, target)
+        t = CadDocument.open(target)
+        copy_index = [i for i, e in enumerate(t.entities) if slot(e) == (10, 3)][0]
+        partial_index = [i for i, e in enumerate(t.entities) if slot(e) == (10, 4)][0]
+        self.assertEqual(result['moves'][copy_index], (0, 2))
+        self.assertEqual(result['review']['counts']['move_by_match'].get('overlap'), 2)   # the circle and its copy
+        self.assertNotIn(partial_index, result['moves'])
+        self.assertIn(partial_index, [x['index'] for x in result['review']['left_alone'] if x['kind'] == 'partial_line'])
+        self.assertEqual(result['review']['counts']['unmatched'], 2)
+
+    def test_line_partition_is_counted_as_such(self):
+        sample = self.build_sample()
+
+        def split(d):
+            d.delete_entity(0)
+            d.add_line((0, 0), (60, 0), layer_group=9, layer=9)
+            d.add_line((60, 0), (100, 0), layer_group=9, layer=9)
+        result = layer_tidy.analyze(sample, self.build_target(sample, edit=split))
+        self.assertEqual(result['review']['counts']['move_by_match'].get('line_partition'), 2)
+
+    def test_nothing_to_move_writes_the_review_and_says_why(self):
+        sample = self.build_sample()
+
+        def rescale(d):
+            for g in range(16):
+                d.set_group_scale(g, 2 * d.get_group_scale(g))
+        target = self.build_target(sample, edit=rescale)
+        review_path = self.folder / 'plan.review.json'
+        with self.assertRaisesRegex(ValueError, 'Nothing to change.*not in the sample'):
+            layer_tidy.write_plan(sample, target, self.folder / 'out.jww', self.folder / 'plan.json')
+        self.assertTrue(review_path.exists())
+        self.assertFalse((self.folder / 'plan.json').exists())
+
+    def test_an_existing_review_stops_before_the_plan(self):
+        sample = self.build_sample()
+        target = self.build_target(sample)
+        (self.folder / 'plan.review.json').write_text('{}', encoding='utf-8')
+        with self.assertRaises(FileExistsError):
+            layer_tidy.write_plan(sample, target, self.folder / 'out.jww', self.folder / 'plan.json')
+        self.assertFalse((self.folder / 'plan.json').exists())
+
+    def test_settings_are_not_applied_to_the_unmatched_layer(self):
+        sample = self.build_sample()
+        target = self.build_target(sample, edit=lambda d: d.set_layer_name(10, 15, 'symbols'))
+        result = layer_tidy.analyze(sample, target, unmatched=('move', 10, 15), layer_settings='sample')
+        self.assertFalse(any(a['kwargs'].get('layer_group') == 10 for a in result['settings_actions']))
+
+    def test_strict_stops_only_for_editing_refusals(self):
+        sample = self.build_sample()
+        target = self.build_target(sample, edit=lambda d: d.set_text(6, 'other text'))
+        result = layer_tidy.analyze(sample, target, strict=True)
+        self.assertEqual(result['review']['counts']['left_alone']['content_differs'], 1)
 
 
 if __name__ == '__main__':
