@@ -33,7 +33,7 @@ def ellipse_matches(geometry, rect, mode):
     full = geometry.get('is_full_circle', False)
     start = geometry['start_angle']
     sweep = TAU if full else geometry['arc_angle']
-    # E074手元の図面の真円負角11件は、DXFの始終角入替と一致。
+    # E074の手元の図面の真円負角11件は、DXFの始終角入替と一致。
     if sweep < 0 and flatness == 1:
         start += sweep
         sweep = -sweep
