@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 import jwwkit
 from jwwkit import CadDocument, layer_tidy
+from jwwkit.line_document import JwwDocument, Line, Text
 from jwwkit.safe_edit import execute_plan
 
 from test_v600_schema700 import TempDirTestCase
@@ -458,6 +459,48 @@ class LayerTidyTests(TempDirTestCase):
         result = layer_tidy.analyze(sample, target, strict=True)
         self.assertEqual(result['review']['counts']['left_alone']['content_differs'], 1)
 
+
+    def build_dimension_drawing(self, name, slots):
+        """A line and two dimensions whose text has text type 3; groups 0 and 1 have the same scale."""
+        doc = JwwDocument()
+        doc.set_group_scale(0, 100)
+        doc.set_group_scale(1, 100)
+        doc.add_line((0, 0), (100, 0), layer_group=slots[0][0], layer=slots[0][1])
+        doc.add_dimension(Line((0, 10), (40, 10)), Text((10, 11), (20, 11), '40', text_type=3),
+                          layer_group=slots[1][0], layer=slots[1][1])
+        doc.add_dimension(Line((0, 30), (60, 30)), Text((20, 31), (30, 31), '60', text_type=3),
+                          layer_group=slots[2][0], layer=slots[2][1])
+        path = self.folder / name
+        doc.save(path)
+        return path
+
+    def test_text_type_dimension_moves_its_layer_inside_the_same_group(self):
+        sample = self.build_dimension_drawing('sample.jww', [(1, 1), (0, 2), (1, 2)])
+        # The first dimension stays in group 0 (layer only); the second would change group 0 -> 1.
+        target = self.build_dimension_drawing('target.jww', [(0, 3), (0, 5), (0, 4)])
+        t = CadDocument.open(target)
+        with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+            CadDocument.open(target).set_entity_attributes(1, layer_group=0, layer=2)
+        result = layer_tidy.analyze(sample, target)
+        self.assertEqual(result['moves'], {0: (1, 1), 1: (0, 2)})
+        self.assertEqual(result['review']['counts']['left_alone']['edit_refused'], 1)   # across groups
+        receipt, out = self.run_plan(sample, target)
+        actions = [a for a in receipt['plan']['plan']['actions'] if a['op'] == 'set_entity_attributes']
+        self.assertEqual([(a['indices'], a['kwargs']) for a in actions],
+                         [([1], {'layer': 2}), ([0], {'layer_group': 1, 'layer': 1})])
+        self.assertEqual([slot(e) for e in out.entities], [(1, 1), (0, 2), (0, 4)])
+        self.assertEqual([e.entity_type for e in out.entities], [e.entity_type for e in t.entities])
+        self.assertEqual([e.attributes['pen_color'] for e in out.entities],
+                         [e.attributes['pen_color'] for e in t.entities])
+
+    def test_text_type_dimension_across_groups_is_refused(self):
+        sample = self.build_dimension_drawing('sample.jww', [(1, 1), (1, 2), (1, 2)])
+        target = self.build_dimension_drawing('target.jww', [(1, 1), (0, 2), (0, 2)])
+        result = layer_tidy.analyze(sample, target)
+        self.assertEqual(result['moves'], {})
+        self.assertEqual(result['review']['counts']['left_alone']['edit_refused'], 2)
+        with self.assertRaisesRegex(ValueError, 'strict=True'):
+            layer_tidy.analyze(sample, target, strict=True)
 
 if __name__ == '__main__':
     unittest.main()

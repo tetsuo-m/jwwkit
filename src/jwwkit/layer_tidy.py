@@ -57,6 +57,17 @@ def _slot(entity):
     return (entity.attributes['layer_group'], entity.attributes['layer'])
 
 
+def _move_kwargs(entity, slot):
+    """The set_entity_attributes arguments for one move: the layer alone when the group stays the same.
+
+    The editing API refuses any group argument for dimensions with a text type (even the same group), but
+    accepts a layer-only change, so a move inside one group must not name the group.
+    """
+    if entity.attributes['layer_group'] == slot[0]:
+        return dict(layer=slot[1])
+    return dict(layer_group=slot[0], layer=slot[1])
+
+
 def _row_slot(row):
     return (row['attributes']['layer_group'], row['attributes']['layer'])
 
@@ -355,7 +366,7 @@ def analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', layer_s
     staged = CadDocument.open(target_path)
     for t in sorted(moves):
         try:
-            staged.set_entity_attributes(t, layer_group=moves[t][0], layer=moves[t][1])
+            staged.set_entity_attributes(t, **_move_kwargs(t_doc.entities[t], moves[t]))
         except ValueError:
             listed['edit_refused'].append(t)
     for t in listed['edit_refused']:
@@ -473,7 +484,8 @@ def _settings_review(s_doc, t_doc, slots, layer_settings, group_settings):
 def write_plan(sample, target, output, plan_path, *, review_path=None, **options):
     """Analyze, then write the review JSON and the safe_edit plan (approval needed to execute).
 
-    One set_entity_attributes action per destination layer, then the layer/group setting actions. If there is
+    One set_entity_attributes action per destination layer (two when some of its elements are already in the
+    destination group: those get the layer alone), then the layer/group setting actions. If there is
     nothing to change, the review is still written and the error says why (counts of each reason).
     Returns dict(plan=<safe_edit receipt>, review=<review>, review_path=<path>).
     """
@@ -492,11 +504,14 @@ def write_plan(sample, target, output, plan_path, *, review_path=None, **options
             json.dump(exc.review, stream, ensure_ascii=False, indent=2)
         raise TidyRefused(f'{exc}; no plan was written (review: {review_path})', exc.review) from exc
     review = result['review']
+    document = CadDocument.open(result['target'])
     by_slot = defaultdict(list)
     for t, slot in result['moves'].items():
-        by_slot[slot].append(t)
-    actions = [dict(op='set_entity_attributes', indices=sorted(indices), kwargs=dict(layer_group=g, layer=l))
-               for (g, l), indices in sorted(by_slot.items())]
+        kwargs = _move_kwargs(document.entities[t], slot)
+        by_slot[slot, 'layer_group' in kwargs].append(t)
+    actions = [dict(op='set_entity_attributes', indices=sorted(indices),
+                    kwargs=dict(layer_group=g, layer=l) if group else dict(layer=l))
+               for ((g, l), group), indices in sorted(by_slot.items())]
     actions += copy.deepcopy(result['settings_actions'])
     if not actions:
         review['plan_sha256'] = None
@@ -507,7 +522,6 @@ def write_plan(sample, target, output, plan_path, *, review_path=None, **options
                          f"already in place {counts['already_in_place']}, not in the sample {counts['unmatched']}, "
                          f"left alone {counts['left_alone']}, refused for scale {counts['refused_for_scale']}")
     targets = sorted(result['moves'])
-    document = CadDocument.open(result['target'])
     receipt = safe_edit.write_plan(document, targets, actions, output, plan_path)
     if receipt['plan']['source_sha256'] != review['target']['sha256']:
         raise ValueError('The target drawing changed between the analysis and the plan')
