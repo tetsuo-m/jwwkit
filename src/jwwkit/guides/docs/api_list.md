@@ -1491,7 +1491,7 @@ layer_tidy.analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', 
 
 対応範囲・拒否条件：照合は実寸mmの形と位置だけで、表示の状態（非表示・表示のみ）に関係なく、対象の全部の要素で行う。形の表し方と形の判定は、compare_drawingsと同じもの（同じ単位・許容・対応する種類）を使い、対象の要素ごとに、同じ形・位置の見本の要素を全部集める。文字の中身（ブロック・寸法の中も。中の要素が1対1に組にならないものは「あいまい」）と点の種類（仮点かどうか、記号）が同じものだけを一致とし、その行き先が1つなら移す（対象の写しが重なっていれば、全部を同じ行き先へ）。分割の具合だけが違う線はcompare_drawingsの線の組を使い、対象の線が見本の1本の線に完全に覆われるものも一致とする。行き先が1つに決まらないとき（見本の同じ形の要素が別の層にある。覆われる線の切れ端は除く）に限って、群・層のほかの属性（線色・線種・線幅・属性の印）がまったく同じものどうしで組み直し、1対1に決まるものだけ移す。すでに同じ属性の見本の要素と同じ層にある対象の要素は、そのまま（決め手に使わない）（reviewのmove_by_matchのattribute_tiebreak。形と位置で決まる要素には使わない）。それでも決まらない組、部分的に重なる線、見本の要素と同じ場所で文字の中身や点の種類（仮点かどうか）が違う要素、compare_drawingsの対応外の要素、縮尺の違う群への移動（換算しない）、編集APIが拒否する要素は、移さずにreviewのleft_aloneに理由つきで出す（strict=Trueなら、編集APIが要素か層・群の設定の変更を1つでも拒否するときに止める）。見本の線と同じ直線の上で一部だけ重なる対象の線は、部分的として一覧に出す。調べる組の数が200万を超えると止める。position_toleranceは既定0で、自動では選ばない（点が線の上にあるかの判定には、ほかに1e-9 mmの計算の誤差だけを許す）。unmatched：見本に無い要素を'keep'（そのまま）か('move', 群, 層)へ。移し先は、見本で使われていない層で、整理した後に残る要素がすべて見本に無い要素でなければならない（整理する前に空である必要はない。見本に一致して出ていく要素はかまわない）。移さずに残る要素（あいまい・部分的・中身の違い・対応外・縮尺・編集APIの拒否）が1つでもあれば、理由ごとの数を入れた文で拒否し（TidyRefused）、reviewのunmatched_layerにも数を出す。比べられないブロックなどの対応外の要素は、見本に無いと言い切れないので、移さない。layer_settings・group_settings：'keep'は移した先の層・群の状態と名前の見本との違いを一覧に出すだけ、'sample'は見本と同じにする（対象は、見本に一致した要素を移した先の層・群だけで、見本に無い要素の移し先には当てない。群の縮尺は変えない。書込みの状態・保護のために編集APIが拒否するものは、変えずに一覧に出す）。色・線種などの違いは移さず、数だけ出す。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/layer_tidy.py#L199)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/layer_tidy.py#L214)。
 
 ### `layer_tidy.write_plan`
 
@@ -1499,11 +1499,11 @@ layer_tidy.analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', 
 layer_tidy.write_plan(sample, target, output, plan_path, *, review_path=None, **options)
 ```
 
-analyzeの結果から、safe_editの計画（行き先の層ごとにset_entity_attributesを1つ、続けて層・群の状態と名前の操作。群が変わらない要素には層だけを渡すので、同じ層へ行く要素に群が変わるものと変わらないものがあれば、その層の操作は2つになる）と、reviewのJSON（既定は計画の名前の拡張子を.review.jsonにしたもの）を書く。実行は、今までどおりチャットで承認したSHA256を付けてsafe_edit.execute_planで行い、原本は変えずに別名で保存する。
+analyzeの結果から、safe_editの計画（行き先の層ごとにset_entity_attributesを1つ、続けて層・群の状態と名前の操作。群が変わらない要素には層だけを渡すので、同じ層へ行く要素に群が変わるものと変わらないものがあれば、その層の操作は2つになる。ただし、中の部品が別の群に保存された寸法は、今までどおり群も渡す（群を渡すと中の部品の群もそろうため。文字種付きなら拒否のまま）と、reviewのJSON（既定は計画の名前の拡張子を.review.jsonにしたもの）を書く。実行は、今までどおりチャットで承認したSHA256を付けてsafe_edit.execute_planで行い、原本は変えずに別名で保存する。
 
 対応範囲・拒否条件：optionsはanalyzeと同じ。変えるものが何もなければ、reviewだけを書いて、理由ごとの数を入れた文で拒否する（計画は書かない）。計画・出力・reviewが既にあれば、計画を書く前に拒否する（上書きしない）。
 
-根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/layer_tidy.py#L484)。
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/layer_tidy.py#L499)。
 
 ### `plan_building_replacement`
 

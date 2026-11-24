@@ -57,13 +57,28 @@ def _slot(entity):
     return (entity.attributes['layer_group'], entity.attributes['layer'])
 
 
+def _inner_groups(value):
+    """The groups saved on the parts inside a dimension (or any nested record)."""
+    if isinstance(value, dict):
+        if 'layer_group' in value:
+            yield value['layer_group']
+        for v in value.values():
+            yield from _inner_groups(v)
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            yield from _inner_groups(v)
+
+
 def _move_kwargs(entity, slot):
     """The set_entity_attributes arguments for one move: the layer alone when the group stays the same.
 
     The editing API refuses any group argument for dimensions with a text type (even the same group), but
-    accepts a layer-only change, so a move inside one group must not name the group.
+    accepts a layer-only change, so a move inside one group must not name the group. Naming the same group
+    also writes it on a dimension's inner parts, so a dimension whose parts are saved in another group still
+    names it (the result stays as before this change; text-type ones stay refused).
     """
-    if entity.attributes['layer_group'] == slot[0]:
+    group = entity.attributes['layer_group']
+    if group == slot[0] and all(g == group for g in _inner_groups(entity.geometry)):
         return dict(layer=slot[1])
     return dict(layer_group=slot[0], layer=slot[1])
 
