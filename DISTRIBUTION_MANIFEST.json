@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 30305,
-      "sha256": "9d961518016c0bab16f87f5a4843268f7dbb2a241b3ddc1aa0c914b4859c91d5"
+      "size": 30434,
+      "sha256": "8d9d8ad7671322c6f87adac0b95a7d3f2bb0fa40d4f9fcf01d3cc554b5183674"
     },
     {
       "path": "CLAUDE.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 126184,
-      "sha256": "f4342310702cfd6b20fef1c4c6ada5676e10ed3308f42ca374590eb9c8411683"
+      "size": 126368,
+      "sha256": "9ffbb44a48a12cae1977e0c37896d499468b80e3d5a9a906b9b980fe9cf037dd"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 126184,
-      "sha256": "f4342310702cfd6b20fef1c4c6ada5676e10ed3308f42ca374590eb9c8411683"
+      "size": 126368,
+      "sha256": "9ffbb44a48a12cae1977e0c37896d499468b80e3d5a9a906b9b980fe9cf037dd"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -443,8 +443,8 @@
     },
     {
       "path": "src/jwwkit/layer_tidy.py",
-      "size": 27147,
-      "sha256": "9e48ecd04943aad1beed7d09e11fcc2b4da04cc58327e22291687c435e4e7426"
+      "size": 27865,
+      "sha256": "9d0c6e9ecb1c99bba7aacbe543aa17ec9a31cf64b5845a67cd1b4ccf5b57d507"
     },
     {
       "path": "src/jwwkit/legacy_document.py",
@@ -1048,8 +1048,8 @@
     },
     {
       "path": "tests/test_layer_tidy.py",
-      "size": 25509,
-      "sha256": "7e5889e0ec79dff3669a01e1591cf545af915957bd126f41be9926b3545e7b2b"
+      "size": 28282,
+      "sha256": "a73267b5b1b87e0ce63c45d67437b4a69efa64dd9ea6437081e9f5eb7b2171c9"
     },
     {
       "path": "tests/test_noncanonical_counts.py",
