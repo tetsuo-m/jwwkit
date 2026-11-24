@@ -1499,7 +1499,7 @@ layer_tidy.analyze(sample, target, *, position_tolerance=0.0, unmatched='keep', 
 layer_tidy.write_plan(sample, target, output, plan_path, *, review_path=None, **options)
 ```
 
-analyzeの結果から、safe_editの計画（行き先の層ごとにset_entity_attributesを1つ、続けて層・群の状態と名前の操作。群が変わらない要素には層だけを渡すので、同じ層へ行く要素に群が変わるものと変わらないものがあれば、その層の操作は2つになる。ただし、中の部品が別の群に保存された寸法は、今までどおり群も渡す（群を渡すと中の部品の群もそろうため。文字種付きなら拒否のまま）と、reviewのJSON（既定は計画の名前の拡張子を.review.jsonにしたもの）を書く。実行は、今までどおりチャットで承認したSHA256を付けてsafe_edit.execute_planで行い、原本は変えずに別名で保存する。
+analyzeの結果から、safe_editの計画（行き先の層ごとにset_entity_attributesを1つ、続けて層・群の状態と名前の操作。群が変わらない要素には層だけを渡すので、同じ層へ行く要素に群が変わるものと変わらないものがあれば、その層の操作は2つになる。ただし、中の部品が別の群に保存された寸法は、今までどおり群も渡す（群を渡すと中の部品の群もそろうため。文字種付きなら拒否のまま））と、reviewのJSON（既定は計画の名前の拡張子を.review.jsonにしたもの）を書く。実行は、今までどおりチャットで承認したSHA256を付けてsafe_edit.execute_planで行い、原本は変えずに別名で保存する。
 
 対応範囲・拒否条件：optionsはanalyzeと同じ。変えるものが何もなければ、reviewだけを書いて、理由ごとの数を入れた文で拒否する（計画は書かない）。計画・出力・reviewが既にあれば、計画を書く前に拒否する（上書きしない）。
 
