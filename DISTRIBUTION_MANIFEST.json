@@ -838,8 +838,8 @@
     },
     {
       "path": "tests/fixtures/jwcad_dimensions/README.md",
-      "size": 6614,
-      "sha256": "4fcc164608deaa772aaedb93ebe6512938fe09fd2aa3517ed5e3685d43a07d7e"
+      "size": 6674,
+      "sha256": "38c2fb216b17de17a9ac68d4df4b37bd4501dc6743eff84865263ba3d86d5234"
     },
     {
       "path": "tests/fixtures/jwcad_images/a1.jww",
@@ -1113,8 +1113,8 @@
     },
     {
       "path": "tests/test_jwcad_dimensions.py",
-      "size": 18749,
-      "sha256": "7919ba9f16b4a1ca8c7fa8f4b258a222eb2093c9b88a5805c1ce741c394ffff2"
+      "size": 18947,
+      "sha256": "2cc43260b4698176af3bea1572143442192edb695ecb63fa4add9ae5a85c8e59"
     },
     {
       "path": "tests/test_layer_tidy.py",
@@ -1268,8 +1268,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 100932,
-      "sha256": "95cc70f7570ac06c126ac52ae2e2a7cb1786ffa3919198db26dd0a95c21bcad5"
+      "size": 100915,
+      "sha256": "92703ad17df534b1f519a564b8e89aea3dbb9e0bc43164ec4c251a6a512c215a"
     }
   ]
 }
