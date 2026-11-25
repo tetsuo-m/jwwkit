@@ -1083,8 +1083,8 @@
     },
     {
       "path": "tests/test_jwcad_dimensions.py",
-      "size": 14916,
-      "sha256": "af9fff21e13ffae3c1feee2947f247781ad30f35353fe5de5de752b9f723f0aa"
+      "size": 15009,
+      "sha256": "2f7ca3bbc631ca660ddc5b952db8237b415758dfa96c1ba2a17c4cb269ffc844"
     },
     {
       "path": "tests/test_layer_tidy.py",
@@ -1238,8 +1238,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 94320,
-      "sha256": "362188a3639e2ace6d7fa5c0be763a0bfaaf0172d7023cceadb921c0953b2824"
+      "size": 94613,
+      "sha256": "237b654421a8464d51af55ea403b3134561d83619b7daf41e5a84b23441d15cc"
     }
   ]
 }
