@@ -27,6 +27,8 @@ dist/
 !/tests/fixtures/jwcad_dimensions/d3.jww
 !/tests/fixtures/jwcad_dimensions/d5.jww
 !/tests/fixtures/jwcad_dimensions/d6.jww
+!/tests/fixtures/jwcad_dimensions/d7j.jww
+!/tests/fixtures/jwcad_dimensions/d7.jww
 !/tests/fixtures/jwcad_dimensions/d8.jww
 !/tests/fixtures/jwcad_dimensions/d9.jww
 !/tests/fixtures/jwcad_dimensions/d10.jww

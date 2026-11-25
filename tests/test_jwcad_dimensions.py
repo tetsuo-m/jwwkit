@@ -21,6 +21,8 @@ SHA256 = {
     'd3.jww': '96fb14567e2f908f8b2586ea6ed5612de1efa772c82b8d851b36012345eaafd9',
     'd5.jww': '5d4042d53f9e24c16cadf6ff80c2c8a91a6452bea39decf373bfb77f3472b1da',
     'd6.jww': 'd1d2886e20c3831fddc65f542b05fbe7a812834659393f268852b3cd03d3ef89',
+    'd7j.jww': '0a1fbb6f420deaccf743f0867b949663de005ec4a1b2bf9b511e664c73cd690b',
+    'd7.jww': 'd93f828ff014a2fa0a844aded371bb94a7565269de90bc3ca3d6286ce1c61c56',
     'd8.jww': '7648415a3b82526cb86efea949c0e3775277afec2bff9e6688e8e0c16e5995bd',
     'd9.jww': '072de0e8a82c0a81df14f9723933d00a293b9fa53d5bb4be9d80955823a28a78',
     'd10.jww': '0d2f17741ef975771b54c96a71fcf7a445a304ca145a88acfbcdbd72ec9b1c6d',
@@ -99,6 +101,30 @@ class JwcadDimensionTests(TempDirTestCase):
                                      (jw['base']['layer_group'], jw['base']['layer']))
                     self.assertEqual(members(mine), members(orig))
                     self.assertEqual(members(mine), members(jw))
+
+    def test_jwwkit_move_is_d7j_and_jwcad_moves_it_like_its_own(self):
+        """d7j: d1 moved to group 1, layer 2 by jwwkit. d7: d7j moved again by Jw_cad (to group 2, layer 3)."""
+        # jwwkit changes no per-save value, so the same API move gives d7j byte for byte.
+        got = self.move_all('d1.jww', 'moved_d1_d7j', layer_group=1, layer=2)
+        self.assertEqual(got, (FIXTURES / 'd7j.jww').read_bytes())
+        # Jw_cad then moved jwwkit's dimensions as it moves its own: every record of d7 equals d5's
+        # (d1 -> d2 -> d5 in Jw_cad only); only the header differs.
+        d5 = (FIXTURES / 'd5.jww').read_bytes(); d7 = (FIXTURES / 'd7.jww').read_bytes()
+        self.assertEqual(len(d7), len(d5))
+        rec5, rec7 = read_records_bytes(d5), read_records_bytes(d7)
+        self.assertEqual(rec7['header_end'], rec5['header_end'])
+        end = rec7['header_end']
+        self.assertEqual(d7[end:], d5[end:])
+        self.assertEqual(rec7['entities'], rec5['entities'])
+        _, records = tops(d7)
+        dims = [r for _, r in records if r['type'] == 'DIMENSION']
+        self.assertEqual(len(dims), 10)
+        for r in dims:
+            self.assertEqual((r['base']['layer_group'], r['base']['layer'], r['base']['flag']), (2, 3, 8194))
+            self.assertEqual({(m['base']['layer_group'], m['base']['layer']) for m in members(r)}, {(0, 0)})
+        # The header differs in Jw_cad's per-save values and in three group/layer state values kept from the
+        # header of the drawing each move started from (d1's in d7j, Jw_cad's d2 for d5).
+        self.assertEqual(len([i for i in range(end) if d7[i] != d5[i]]), 7)
 
     def test_layer_only_and_a_second_move_write_only_the_outer_record(self):
         doc = CadDocument.open(FIXTURES / 'd1.jww')
