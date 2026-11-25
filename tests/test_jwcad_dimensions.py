@@ -114,9 +114,9 @@ class JwcadDimensionTests(TempDirTestCase):
         return doc, next(i for i, e in enumerate(doc.entities)
                          if e.entity_type == 'DIMENSION' and e.geometry['text']['text_type'] == text_type)
 
-    def changed(self, edit, source='d1.jww'):
-        """The source document with its first dimension's stored record changed by edit (in memory only)."""
-        doc, index = self.dimension(source)
+    def changed(self, edit, source='d1.jww', text_type=3):
+        """The source document with one dimension's stored record changed by edit (in memory only)."""
+        doc, index = self.dimension(source, text_type)
         record = entity_record(doc.entities[index])
         edit(record)
         from jwwkit.model.editing import commit
@@ -129,7 +129,11 @@ class JwcadDimensionTests(TempDirTestCase):
         def line_flag(r): r['line']['base']['flag'] = 0
         def mixed(r): r['text']['base']['layer'] = 4
         def outer_flag(r): r['base']['flag'] = 0
-        cases = dict(aux=aux, text_flag=text_flag, line_flag=line_flag, mixed=mixed, outer_flag=outer_flag)
+        def aux_flag(r): r['aux_points'][1]['base']['flag'] = 1
+        def aux_point(r): r['aux_points'][2]['y'] = -1.0
+        def sxf(r): r['sxf_mode'] = 1
+        cases = dict(aux=aux, text_flag=text_flag, line_flag=line_flag, mixed=mixed, outer_flag=outer_flag,
+                     aux_flag=aux_flag, aux_point=aux_point, sxf=sxf)
         for name, edit in cases.items():
             for kwargs in (dict(layer=2), dict(layer_group=1), dict(layer_group=1, layer=2)):
                 with self.subTest(shape=name, **kwargs):
@@ -138,11 +142,89 @@ class JwcadDimensionTests(TempDirTestCase):
                     with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
                         doc.set_entity_attributes(index, **kwargs)
                     self.assertEqual(entity_record(doc.entities[index]), before)
-        # Moved once by Jw_cad (outer flag 8194, form B): refused until the samples D5/D6 are reviewed.
+        # Moved once by Jw_cad (outer flag 8194, form B): refused until the commander decides on it (#62).
         doc, index = self.dimension('d2.jww')
+        before = entity_record(doc.entities[index])
         for kwargs in (dict(layer=3), dict(layer_group=2), dict(layer_group=0, layer=0)):
-            with self.subTest(shape='form B', **kwargs), self.assertRaisesRegex(ValueError, '文字種付き寸法'):
-                doc.set_entity_attributes(index, **kwargs)
+            with self.subTest(shape='form B', **kwargs):
+                with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+                    doc.set_entity_attributes(index, **kwargs)
+                self.assertEqual(entity_record(doc.entities[index]), before)
+
+    def test_only_v700_drawings(self):
+        """The same Jw_cad dimensions (text type 2) saved as v700 and as v600: only the v700 ones move."""
+        saved = FIXTURES.parent / 'jwcad_saved'
+        for version, accepted in ((700, True), (600, False)):
+            doc = CadDocument.open(saved / f'jwcad10036_save_v{version}.jww')
+            dims = [i for i, e in enumerate(doc.entities) if e.entity_type == 'DIMENSION']
+            self.assertEqual(len(dims), 3)
+            for i in dims:
+                with self.subTest(version=version, index=i):
+                    before = entity_record(doc.entities[i])
+                    self.assertEqual(before['text']['text_type'], 2)
+                    if accepted:
+                        doc.set_entity_attributes(i, layer=3)
+                        after = entity_record(doc.entities[i])
+                        self.assertEqual(after['base']['layer'], 3)
+                        self.assertEqual(members(after), members(before))
+                    else:
+                        with self.assertRaisesRegex(ValueError, '文字種付き寸法の層変更'):
+                            doc.set_entity_attributes(i, layer=3)
+
+    def test_building_replacement_archives_only_the_outer_record(self):
+        """plan_building_replacement names the archive group: a Jw_cad dimension moves by its outer record."""
+        from jwwkit.line_document import JwwDocument, Line, Text
+        from jwwkit.model.point import Point
+        from jwwkit.replacement_workflow import plan_building_replacement, replacement_reference_points
+        from jwwkit.safe_edit import execute_plan
+        paths = {}
+        for name in ('source', 'incoming'):
+            built = JwwDocument()
+            for group in (1, 2, 3):
+                built.set_group_scale(group, 100)
+            built.set_group_scale(8, 50)
+            if name == 'source':
+                built.add_dimension(Line((0, 10), (4, 10), flag=8192, layer_group=1),
+                                    Text((1, 11), (2, 11), '400', text_type=3, flag=16400, layer_group=1),
+                                    aux_lines=[Line((0, 0), (0, 0), layer_group=1) for _ in range(2)],
+                                    aux_points=[Point((0, 0), layer_group=1) for _ in range(4)], layer_group=1)
+            built.save(self.folder / f'base_{name}.jww')
+            doc = CadDocument.open(self.folder / f'base_{name}.jww')
+            doc.add_line((0, 0), (1000, 100 if name == 'incoming' else 0), layer_group=1, units='real')
+            doc.add_line((50, 50), (60, 60), layer_group=2, units='real')
+            for point in ((0, 0), (1000, 0)):
+                doc.add_point(point, layer_group=3, layer=0, units='real', is_temporary=True)
+            paths[name] = self.folder / f'{name}.jww'
+            doc.save(paths[name])
+        result = plan_building_replacement(
+            paths['source'], paths['incoming'], self.folder / 'replaced.jww', self.folder / 'replaced.plan.json',
+            work_dir=self.folder, building_group=1, settings_policy='destination', archive_group=8,
+            source_reference_indices=[r['index'] for r in replacement_reference_points(paths['incoming'])],
+            target_reference_indices=[r['index'] for r in replacement_reference_points(paths['source'])],
+            distance_tolerance=0, angle_tolerance=0)
+        report = execute_plan(result['path'], approved_sha256=result['sha256'])
+        self.assertTrue(report['workflow_audit']['passed'])
+        before = next(e for e in CadDocument.open(paths['source']).entities if e.entity_type == 'DIMENSION')
+        after = [e for e in CadDocument.open(self.folder / 'replaced.jww').entities if e.entity_type == 'DIMENSION']
+        self.assertEqual(len(after), 1)
+        self.assertEqual((after[0].attributes['layer_group'], after[0].attributes['layer']), (8, 0))
+        self.assertEqual(after[0].geometry, before.geometry)   # the inner parts stay in group 1
+
+    def test_e111_shape_keeps_group_only_and_refuses_a_layer_change(self):
+        """Text type 1 with outer flag 0: the group alone changes, on the outer record only (as before #62);
+        a layer change is refused (before #62 a layer-only change was accepted and written on the inner parts)."""
+        def e111(r): r['base']['flag'] = 0
+        doc, index = self.changed(e111, text_type=1)
+        before = entity_record(doc.entities[index])
+        for kwargs in (dict(layer=2), dict(layer_group=1, layer=2)):
+            with self.subTest(**kwargs):
+                with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+                    doc.set_entity_attributes(index, **kwargs)
+                self.assertEqual(entity_record(doc.entities[index]), before)
+        doc.set_entity_attributes(index, layer_group=1)
+        after = entity_record(doc.entities[index])
+        self.assertEqual((after['base']['layer_group'], after['base']['layer'], after['base']['flag']), (1, 0, 0))
+        self.assertEqual(members(after), members(before))
 
     def test_other_scales_and_colors_stay_refused(self):
         doc, index = self.dimension()

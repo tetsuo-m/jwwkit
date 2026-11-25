@@ -21,7 +21,12 @@ dist/
 !/tests/fixtures/jwcad_images/a[1-9].jww
 !/tests/fixtures/jwcad_images/s_*.jww
 # Fictional dimension drawings saved by the owner in Jw_cad 10.03.6 (contents reviewed in Issue #62).
-!/tests/fixtures/jwcad_dimensions/d[0-9].jww
+!/tests/fixtures/jwcad_dimensions/d0.jww
+!/tests/fixtures/jwcad_dimensions/d1.jww
+!/tests/fixtures/jwcad_dimensions/d2.jww
+!/tests/fixtures/jwcad_dimensions/d3.jww
+!/tests/fixtures/jwcad_dimensions/d8.jww
+!/tests/fixtures/jwcad_dimensions/d9.jww
 *.[jJ][wW][sS]
 *.[jJ][wW][cC]
 *.[jJ][wW][kK]

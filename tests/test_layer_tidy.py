@@ -486,7 +486,7 @@ class LayerTidyTests(TempDirTestCase):
         g = dimension.geometry
         return [g['line']['base'], g['text']['base']] + [x['base'] for x in g['aux_lines'] + g['aux_points']]
 
-    def test_text_type_dimension_moves_its_layer_inside_the_same_group(self):
+    def test_text_type_dimensions_move_by_their_outer_record(self):
         # The line goes from group 1 to the same layer (0, 2) as the first dimension, which stays in group 0.
         sample = self.build_dimension_drawing('sample.jww', [(0, 2), (0, 2), (1, 2)])
         target = self.build_dimension_drawing('target.jww', [(1, 3), (0, 5), (0, 4)])
@@ -514,6 +514,30 @@ class LayerTidyTests(TempDirTestCase):
             self.assertEqual(moved.geometry, t.entities[i].geometry)
             self.assertEqual({k: v for k, v in moved.attributes.items() if k not in ('layer', 'layer_group')},
                              {k: v for k, v in t.entities[i].attributes.items() if k not in ('layer', 'layer_group')})
+
+    def test_jwcad_saved_dimensions_take_the_sample_slots(self):
+        """The Jw_cad sample d1 (form A) against a copy whose dimensions were moved to group 1, layer 2."""
+        fixture = Path(__file__).resolve().parent / 'fixtures' / 'jwcad_dimensions' / 'd1.jww'
+        moved = CadDocument.open(fixture)
+        dims = [i for i, e in enumerate(moved.entities) if e.entity_type == 'DIMENSION']
+        for i in dims:
+            moved.set_entity_attributes(i, layer_group=1, layer=2)
+        sample = self.folder / 'sample.jww'
+        moved.save(sample)
+        result = layer_tidy.analyze(sample, fixture)
+        self.assertEqual(result['moves'], {i: (1, 2) for i in dims})
+        receipt, out = self.run_plan(sample, fixture)
+        t = CadDocument.open(fixture)
+        for i in dims:
+            self.assertEqual(slot(out.entities[i]), (1, 2))
+            self.assertEqual(out.entities[i].geometry, t.entities[i].geometry)   # inner parts stay in (0, 0)
+        (self.folder / 'out.jww').unlink()
+        # Inside one group, an unobserved text-type dimension (flags 0) is refused by the edit and reported.
+        sample = self.build_dimension_drawing('flat_sample.jww', [(0, 1), (0, 2), (0, 3)], jwcad=False)
+        target = self.build_dimension_drawing('flat_target.jww', [(0, 1), (0, 5), (0, 6)], jwcad=False)
+        result = layer_tidy.analyze(sample, target)
+        self.assertEqual(result['moves'], {})
+        self.assertEqual(result['review']['counts']['left_alone']['edit_refused'], 2)
 
     def test_text_type_dimension_of_an_unobserved_shape_is_refused(self):
         sample = self.build_dimension_drawing('sample.jww', [(1, 1), (1, 2), (1, 2)], jwcad=False)
@@ -544,7 +568,8 @@ class LayerTidyTests(TempDirTestCase):
         old.set_entity_attributes(2, layer_group=0, layer=3)
         self.assertEqual([(e.geometry, e.attributes) for e in out.entities],
                          [(e.geometry, e.attributes) for e in old.entities])
-        # A text-type dimension whose parts are in another group stays refused inside its group.
+        # A text-type dimension whose parts are spread over two places (line in group 1, the rest in group 0)
+        # is not a shape seen in Jw_cad (#62), so it stays refused even inside its group.
         typed = self.build_dimension_drawing('typed.jww', [(0, 1), (0, 5), (0, 6)], inner_group=1)
         result = layer_tidy.analyze(self.build_dimension_drawing('typed_sample.jww', [(0, 1), (0, 2), (0, 3)]), typed)
         self.assertEqual(result['moves'], {2: (0, 3)})

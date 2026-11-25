@@ -73,8 +73,8 @@ def _move_kwargs(entity, slot):
     """The set_entity_attributes arguments for one move: the layer alone when the group stays the same.
 
     For a dimension with a text type, the editing API changes only the outer group/layer, as Jw_cad does, and
-    only for the Jw_cad shapes it has seen (#62); a layer-only change also keeps the E111 shape's group-only
-    rule from refusing a move inside one group. For a text-type-0 dimension the API still writes the group on
+    only for the Jw_cad shapes it has seen (#62); other text-type dimensions (the E111 shape included: it
+    accepts the group alone) are refused and left alone. For a text-type-0 dimension the API still writes the group on
     the inner parts too, so one whose parts are saved in another group still names its group (the result
     stays as before; for a text-type dimension naming the group changes only the outer record).
     """
