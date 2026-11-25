@@ -63,10 +63,13 @@ class JwcadDimensionTests(TempDirTestCase):
                                        ('d8.jww', 'd9.jww', dict(layer_group=1, layer=2)),
                                        # Moved once by Jw_cad (outer flag 8194, form B): again, and back.
                                        ('d2.jww', 'd5.jww', dict(layer_group=2, layer=3)),
-                                       ('d2.jww', 'd6.jww', dict(layer_group=0, layer=0))):
+                                       ('d2.jww', 'd6.jww', dict(layer_group=0, layer=0)),
+                                       # From the d6 shape (outer flag 8194, inner parts in the same place):
+                                       # no Jw_cad sample moves it further; d2 has the same records.
+                                       ('d6.jww', 'd2.jww', dict(layer_group=1, layer=2))):
             with self.subTest(target=target):
                 src = (FIXTURES / source).read_bytes(); want = (FIXTURES / target).read_bytes()
-                got = self.move_all(source, f'moved_{target}', **kwargs)
+                got = self.move_all(source, f'moved_{source}_{target}', **kwargs)
                 self.assertEqual(len(got), len(want))
                 rec, records = tops(got)
                 end = rec['header_end']
