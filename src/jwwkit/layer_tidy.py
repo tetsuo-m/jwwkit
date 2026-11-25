@@ -72,10 +72,11 @@ def _inner_groups(value):
 def _move_kwargs(entity, slot):
     """The set_entity_attributes arguments for one move: the layer alone when the group stays the same.
 
-    The editing API refuses any group argument for dimensions with a text type (even the same group), but
-    accepts a layer-only change, so a move inside one group must not name the group. Naming the same group
-    also writes it on a dimension's inner parts, so a dimension whose parts are saved in another group still
-    names it (the result stays as before this change; text-type ones stay refused).
+    For a dimension with a text type, the editing API changes only the outer group/layer, as Jw_cad does, and
+    only for the Jw_cad shapes it has seen (#62); other text-type dimensions (the E111 shape included: it
+    accepts the group alone) are refused and left alone. For a text-type-0 dimension the API still writes the group on
+    the inner parts too, so one whose parts are saved in another group still names its group (the result
+    stays as before; for a text-type dimension naming the group changes only the outer record).
     """
     group = entity.attributes['layer_group']
     if group == slot[0] and all(g == group for g in _inner_groups(entity.geometry)):
