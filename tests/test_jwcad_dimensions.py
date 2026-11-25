@@ -19,8 +19,12 @@ SHA256 = {
     'd1.jww': '016433e27a652b49eab96c85ac3062626ad7d20d6a2d0e1afbc608efc8d2dec8',
     'd2.jww': '6559e17a8b67be3884a173c9608fe91fc37b3ce8dab8a9e37936e2c3a5c3897d',
     'd3.jww': '96fb14567e2f908f8b2586ea6ed5612de1efa772c82b8d851b36012345eaafd9',
+    'd5.jww': '5d4042d53f9e24c16cadf6ff80c2c8a91a6452bea39decf373bfb77f3472b1da',
+    'd6.jww': 'd1d2886e20c3831fddc65f542b05fbe7a812834659393f268852b3cd03d3ef89',
     'd8.jww': '7648415a3b82526cb86efea949c0e3775277afec2bff9e6688e8e0c16e5995bd',
     'd9.jww': '072de0e8a82c0a81df14f9723933d00a293b9fa53d5bb4be9d80955823a28a78',
+    'd10.jww': '0d2f17741ef975771b54c96a71fcf7a445a304ca145a88acfbcdbd72ec9b1c6d',
+    'd11.jww': '0121665eb99017473c3c04072b78a6f015b399a4207c7793a9b767eb9df4e0f2',
 }
 
 
@@ -56,7 +60,10 @@ class JwcadDimensionTests(TempDirTestCase):
     def test_moving_like_jwcad_gives_jwcad_bytes_except_its_flag_and_state(self):
         for source, target, kwargs in (('d1.jww', 'd2.jww', dict(layer_group=1, layer=2)),
                                        ('d1.jww', 'd3.jww', dict(layer_group=1)),
-                                       ('d8.jww', 'd9.jww', dict(layer_group=1, layer=2))):
+                                       ('d8.jww', 'd9.jww', dict(layer_group=1, layer=2)),
+                                       # Moved once by Jw_cad (outer flag 8194, form B): again, and back.
+                                       ('d2.jww', 'd5.jww', dict(layer_group=2, layer=3)),
+                                       ('d2.jww', 'd6.jww', dict(layer_group=0, layer=0))):
             with self.subTest(target=target):
                 src = (FIXTURES / source).read_bytes(); want = (FIXTURES / target).read_bytes()
                 got = self.move_all(source, f'moved_{target}', **kwargs)
@@ -83,7 +90,7 @@ class JwcadDimensionTests(TempDirTestCase):
                 # Every dimension: outer group/layer as Jw_cad's, inner parts unchanged (as in the source).
                 _, theirs = tops(want); _, before = tops(src)
                 dims = [(a, b, c) for (_, a), (_, b), (_, c) in zip(records, theirs, before) if a['type'] == 'DIMENSION']
-                self.assertEqual(len(dims), 10 if source == 'd1.jww' else 2)
+                self.assertEqual(len(dims), 2 if source == 'd8.jww' else 10)
                 for mine, jw, orig in dims:
                     self.assertEqual((mine['base']['layer_group'], mine['base']['layer']),
                                      (jw['base']['layer_group'], jw['base']['layer']))
@@ -142,14 +149,29 @@ class JwcadDimensionTests(TempDirTestCase):
                     with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
                         doc.set_entity_attributes(index, **kwargs)
                     self.assertEqual(entity_record(doc.entities[index]), before)
-        # Moved once by Jw_cad (outer flag 8194, form B): refused until the commander decides on it (#62).
-        doc, index = self.dimension('d2.jww')
-        before = entity_record(doc.entities[index])
-        for kwargs in (dict(layer=3), dict(layer_group=2), dict(layer_group=0, layer=0)):
-            with self.subTest(shape='form B', **kwargs):
+        # Outer flags other than 8192 and 8194 (8194 = moved once by Jw_cad) stay refused.
+        for flag in (8196, 8195):
+            def other(r): r['base']['flag'] = flag
+            with self.subTest(outer_flag=flag):
+                doc, index = self.changed(other)
+                before = entity_record(doc.entities[index])
                 with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
-                    doc.set_entity_attributes(index, **kwargs)
+                    doc.set_entity_attributes(index, layer=2)
                 self.assertEqual(entity_record(doc.entities[index]), before)
+
+    def test_text_type_0_still_moves_its_inner_parts_unlike_jwcad(self):
+        """Text type 0 keeps its behaviour (#62 decision): the inner parts move too, where Jw_cad leaves them
+        (d10 -> d11). d10 is an input with edited text fields that Jw_cad opened and saved (see the README)."""
+        got = self.move_all('d10.jww', 'moved_d11.jww', layer_group=1, layer=2)
+        _, mine = tops(got)
+        _, theirs = tops((FIXTURES / 'd11.jww').read_bytes())
+        dims = [(a, b) for (_, a), (_, b) in zip(mine, theirs) if a['type'] == 'DIMENSION']
+        self.assertEqual(len(dims), 2)
+        for a, b in dims:
+            self.assertEqual(a['text']['text_type'], 0)
+            self.assertEqual((a['base']['layer_group'], a['base']['layer']), (b['base']['layer_group'], b['base']['layer']))
+            self.assertEqual({(m['base']['layer_group'], m['base']['layer']) for m in members(a)}, {(1, 2)})
+            self.assertEqual({(m['base']['layer_group'], m['base']['layer']) for m in members(b)}, {(0, 0)})
 
     def test_only_v700_drawings(self):
         """The same Jw_cad dimensions (text type 2) saved as v700 and as v600: only the v700 ones move."""

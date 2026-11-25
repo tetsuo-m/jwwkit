@@ -71,13 +71,14 @@ def jwcad_dimension_move(document, record, layer_group=None):
     """Jw_cadの寸法図形で、群・層の変更が外側の記録だけを書き換えると確かめた形か（#62）。
 
     Jw_cad 10.03.6 の見本（文字種1～10、v700）では、範囲選択の属性変更は寸法の外側の群・層だけを変え、
-    寸法線・文字・補助線・補助点の群・層・印は変えなかった。確かめた形は、外側の印8192、
+    寸法線・文字・補助線・補助点の群・層・印は変えなかった。確かめた形は、外側の印8192か8194
+    （8194はJw_cadで一度移した寸法。もう一度移しても、元の場所へ戻しても同じ決まりだった）、
     寸法線8192・文字16400・補助0の印、補助線・補助点の座標が全部0、中の部品が全部同じ1つの群・層
-    （外側と同じか、jwwkitで一度移して外側と別になったもの）、関わる群の縮尺が全部同じ、のものに限る。
-    外側の印8194（Jw_cadで一度移した形）は、見本で確かめるまで含めない。
+    （外側と同じか、移して外側と別になったもの）、関わる群の縮尺が全部同じ、のものに限る。
+    Jw_cadが移すときに足す外側の印の2は、jwwkitは書かない（印はそのまま残す）。
     """
     if (document.version != 700 or record['type'] != 'DIMENSION' or record['sxf_mode'] != 0
-            or not 1 <= record['text']['text_type'] <= 10 or record['base']['flag'] != 8192):
+            or not 1 <= record['text']['text_type'] <= 10 or record['base']['flag'] not in (8192, 8194)):
         return False
     aux = [*record['aux_lines'], *record['aux_points']]
     if (record['line']['base']['flag'] != 8192 or record['text']['base']['flag'] != 16400
@@ -200,7 +201,7 @@ def set_entity_attributes(document, index, *, color=None, linetype=None,
         and all(c['x']==c['y']==0 for c in record['aux_points'])
         and all(record[k]['base']['layer_group']==record['base']['layer_group'] for k in ('line','text')))
     # #62: a Jw_cad dimension figure of the observed shapes moves by its outer group/layer only, as Jw_cad does.
-    # Other shapes (aux coordinates, other member flags, outer flag 8194, unequal scales, ...) stay refused.
+    # Other shapes (aux coordinates, other member flags, other outer flags, unequal scales, ...) stay refused.
     outer_move = (record['type'] == 'DIMENSION' and record['text']['text_type'] != 0 and not preset_group_only
                   and (layer is not None or layer_group is not None)
                   and jwcad_dimension_move(document, record, layer_group))
