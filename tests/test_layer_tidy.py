@@ -459,9 +459,11 @@ class LayerTidyTests(TempDirTestCase):
         result = layer_tidy.analyze(sample, target, strict=True)
         self.assertEqual(result['review']['counts']['left_alone']['content_differs'], 1)
 
-    def build_dimension_drawing(self, name, slots, *, text_type=3, inner_group=None):
+    def build_dimension_drawing(self, name, slots, *, text_type=3, inner_group=None, jwcad=True):
         """A line and two dimensions whose text has a text type; groups 0 and 1 have the same scale.
 
+        The dimensions have the member flags of a Jw_cad dimension figure (line 8192, text 16400), the shape
+        whose group/layer change writes only the outer record (#62); jwcad=False gives them flag 0 (not observed).
         inner_group: save the first dimension's line in this group (its outer group stays slots[1][0]).
         """
         doc = JwwDocument()
@@ -469,9 +471,12 @@ class LayerTidyTests(TempDirTestCase):
         doc.set_group_scale(1, 100)
         doc.add_line((0, 0), (100, 0), layer_group=slots[0][0], layer=slots[0][1])
         inner = {} if inner_group is None else dict(layer_group=inner_group, layer=slots[1][1])
-        doc.add_dimension(Line((0, 10), (40, 10), **inner), Text((10, 11), (20, 11), '40', text_type=text_type),
+        line_flag, text_flag = (8192, 16400) if jwcad else (0, 0)
+        doc.add_dimension(Line((0, 10), (40, 10), flag=line_flag, **inner),
+                          Text((10, 11), (20, 11), '40', text_type=text_type, flag=text_flag),
                           layer_group=slots[1][0], layer=slots[1][1])
-        doc.add_dimension(Line((0, 30), (60, 30)), Text((20, 31), (30, 31), '60', text_type=text_type),
+        doc.add_dimension(Line((0, 30), (60, 30), flag=line_flag),
+                          Text((20, 31), (30, 31), '60', text_type=text_type, flag=text_flag),
                           layer_group=slots[2][0], layer=slots[2][1])
         path = self.folder / name
         doc.save(path)
@@ -487,39 +492,34 @@ class LayerTidyTests(TempDirTestCase):
         target = self.build_dimension_drawing('target.jww', [(1, 3), (0, 5), (0, 4)])
         before = target.read_bytes()
         t = CadDocument.open(target)
-        with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
-            CadDocument.open(target).set_entity_attributes(1, layer_group=0, layer=2)
         result = layer_tidy.analyze(sample, target)
-        self.assertEqual(result['moves'], {0: (0, 2), 1: (0, 2)})
-        self.assertEqual(result['review']['counts']['left_alone']['edit_refused'], 1)   # across groups
+        # The second dimension goes to group 1 (same scale): only its outer group and layer change (#62).
+        self.assertEqual(result['moves'], {0: (0, 2), 1: (0, 2), 2: (1, 2)})
+        self.assertNotIn('edit_refused', result['review']['counts']['left_alone'])
         receipt, out = self.run_plan(sample, target)
         self.assertEqual(target.read_bytes(), before)
         actions = [a for a in receipt['plan']['plan']['actions'] if a['op'] == 'set_entity_attributes']
         # Two actions for the same layer: the layer alone for the dimension, group and layer for the line.
         self.assertEqual([(a['indices'], a['kwargs']) for a in actions],
-                         [([1], {'layer': 2}), ([0], {'layer_group': 0, 'layer': 2})])
-        self.assertEqual([slot(e) for e in out.entities], [(0, 2), (0, 2), (0, 4)])
+                         [([1], {'layer': 2}), ([0], {'layer_group': 0, 'layer': 2}),
+                          ([2], {'layer_group': 1, 'layer': 2})])
+        self.assertEqual([slot(e) for e in out.entities], [(0, 2), (0, 2), (1, 2)])
         self.assertEqual([e.entity_type for e in out.entities], [e.entity_type for e in t.entities])
-        moved, kept = out.entities[1], out.entities[2]
-        self.assertEqual(moved.geometry['text']['text_type'], 3)
-        self.assertEqual({(b['layer_group'], b['layer']) for b in self.parts(moved)}, {(0, 2)})
-        self.assertEqual(kept.geometry, t.entities[2].geometry)
-        # Only the layers changed: the dimension equals the target's with every layer set to 2.
-        self.assertEqual(moved.geometry, self.with_layer(t.entities[1].geometry, 2))
-        self.assertEqual({k: v for k, v in moved.attributes.items() if k != 'layer'},
-                         {k: v for k, v in t.entities[1].attributes.items() if k != 'layer'})
+        # Only the outer group/layer changed (#62): the inner parts keep the target's places, as Jw_cad does.
+        # (The builder saves the inner parts in group 0, layer 0: the shape jwwkit leaves after a move.)
+        for i in (1, 2):
+            moved = out.entities[i]
+            self.assertEqual(moved.geometry['text']['text_type'], 3)
+            self.assertEqual({(b['layer_group'], b['layer']) for b in self.parts(moved)}, {(0, 0)})
+            self.assertEqual(moved.geometry, t.entities[i].geometry)
+            self.assertEqual({k: v for k, v in moved.attributes.items() if k not in ('layer', 'layer_group')},
+                             {k: v for k, v in t.entities[i].attributes.items() if k not in ('layer', 'layer_group')})
 
-    def with_layer(self, value, layer):
-        if isinstance(value, dict):
-            return {k: (layer if k == 'layer' and 'layer_group' in value else self.with_layer(v, layer))
-                    for k, v in value.items()}
-        if isinstance(value, list):
-            return [self.with_layer(v, layer) for v in value]
-        return value
-
-    def test_text_type_dimension_across_groups_is_refused(self):
-        sample = self.build_dimension_drawing('sample.jww', [(1, 1), (1, 2), (1, 2)])
-        target = self.build_dimension_drawing('target.jww', [(1, 1), (0, 2), (0, 2)])
+    def test_text_type_dimension_of_an_unobserved_shape_is_refused(self):
+        sample = self.build_dimension_drawing('sample.jww', [(1, 1), (1, 2), (1, 2)], jwcad=False)
+        target = self.build_dimension_drawing('target.jww', [(1, 1), (0, 2), (0, 3)], jwcad=False)
+        with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+            CadDocument.open(target).set_entity_attributes(1, layer=4)
         result = layer_tidy.analyze(sample, target)
         self.assertEqual(result['moves'], {})
         self.assertEqual(result['review']['counts']['left_alone']['edit_refused'], 2)
