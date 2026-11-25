@@ -213,18 +213,19 @@ class JwcadDimensionTests(TempDirTestCase):
     def test_e111_shape_keeps_group_only_and_refuses_a_layer_change(self):
         """Text type 1 with outer flag 0: the group alone changes, on the outer record only (as before #62);
         a layer change is refused (before #62 a layer-only change was accepted and written on the inner parts)."""
-        def e111(r): r['base']['flag'] = 0
-        doc, index = self.changed(e111, text_type=1)
-        before = entity_record(doc.entities[index])
-        for kwargs in (dict(layer=2), dict(layer_group=1, layer=2)):
-            with self.subTest(**kwargs):
-                with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
-                    doc.set_entity_attributes(index, **kwargs)
-                self.assertEqual(entity_record(doc.entities[index]), before)
-        doc.set_entity_attributes(index, layer_group=1)
-        after = entity_record(doc.entities[index])
-        self.assertEqual((after['base']['layer_group'], after['base']['layer'], after['base']['flag']), (1, 0, 0))
-        self.assertEqual(members(after), members(before))
+        for flag in (0, 2):
+            def e111(r): r['base']['flag'] = flag
+            doc, index = self.changed(e111, text_type=1)
+            before = entity_record(doc.entities[index])
+            for kwargs in (dict(layer=2), dict(layer_group=1, layer=2)):
+                with self.subTest(flag=flag, **kwargs):
+                    with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+                        doc.set_entity_attributes(index, **kwargs)
+                    self.assertEqual(entity_record(doc.entities[index]), before)
+            doc.set_entity_attributes(index, layer_group=1)
+            after = entity_record(doc.entities[index])
+            self.assertEqual((after['base']['layer_group'], after['base']['layer'], after['base']['flag']), (1, 0, flag))
+            self.assertEqual(members(after), members(before))
 
     def test_other_scales_and_colors_stay_refused(self):
         doc, index = self.dimension()
