@@ -122,9 +122,12 @@ class JwcadDimensionTests(TempDirTestCase):
         for r in dims:
             self.assertEqual((r['base']['layer_group'], r['base']['layer'], r['base']['flag']), (2, 3, 8194))
             self.assertEqual({(m['base']['layer_group'], m['base']['layer']) for m in members(r)}, {(0, 0)})
-        # The header differs in Jw_cad's per-save values and in three group/layer state values kept from the
-        # header of the drawing each move started from (d1's in d7j, Jw_cad's d2 for d5).
-        self.assertEqual(len([i for i in range(end) if d7[i] != d5[i]]), 7)
+        # The header differs in 4 bytes of Jw_cad's per-save values and in 3 bytes kept from the header of the
+        # drawing each move started from (d1's in d7j, Jw_cad's d2 for d5).
+        d1, d2 = (FIXTURES / 'd1.jww').read_bytes(), (FIXTURES / 'd2.jww').read_bytes()
+        self.assertEqual({i for i in range(end) if d7[i] != d5[i]}, {32, 48, 56, 2396, 2397, 2472, 4680})
+        for i in (32, 48, 56):
+            self.assertEqual((d7[i], d5[i]), (d1[i], d2[i]))
 
     def test_layer_only_and_a_second_move_write_only_the_outer_record(self):
         doc = CadDocument.open(FIXTURES / 'd1.jww')
