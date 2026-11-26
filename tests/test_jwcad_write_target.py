@@ -4,8 +4,10 @@ The samples in tests/fixtures/jwcad_write were saved by the owner in Jw_cad 10.0
 d0.jww is the #62 sample they start from.
 """
 import hashlib
+import json
 import struct
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from jwwkit import CadDocument
@@ -242,6 +244,50 @@ class JwcadWriteTargetTests(TempDirTestCase):
         self.assertEqual(saved.get_layer_state(1, 2)['state'], 'writing')
         self.assertEqual(path.read_bytes(), D0.read_bytes())
 
+
+    def test_settings_text_count_must_be_0_or_6(self):
+        # A drawing with 5 settings texts cannot be saved by jwwkit (metadata-inclusive editing is
+        # refused) and Jw_cad writes all 6, so the opened list is shortened in memory instead.
+        document = CadDocument.open(D0)
+        document._source_metadata_indices = document._source_metadata_indices[1:]
+        with self.assertRaisesRegex(ValueError, r'0 or 6'):
+            document.set_write_target(1, 2)
+        document = CadDocument.open(D0)
+        document._source_metadata_indices = ()
+        document.set_write_target(1, 2)
+        self.assertEqual(document.header['write_layer_group'], 1)
+
+    def plan(self, actions, name='edited.jww'):
+        path = self.folder / 'src.jww'
+        if not path.exists():
+            path.write_bytes(D0.read_bytes())
+        receipt = write_plan(CadDocument.open(path), [], actions, self.folder / name, self.folder / f'{name}.plan.json')
+        return receipt
+
+    def test_changes_report_has_the_write_target_before_and_after(self):
+        receipt = self.plan([dict(op='set_write_target', kwargs=dict(layer_group=1, layer=2))])
+        report = execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        written = json.loads((self.folder / 'edited.changes.json').read_text(encoding='utf-8'))
+        for r in (report, written):
+            self.assertEqual(r['write_target_before'], dict(layer_group=0, layer=0))
+            self.assertEqual(r['write_target_after'], dict(layer_group=1, layer=2))
+        receipt = self.plan([dict(op='set_group_state', kwargs=dict(layer_group=3, state='hidden'))], 'plain.jww')
+        report = execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        self.assertNotIn('write_target_before', report)
+        self.assertNotIn('write_target_after', json.loads((self.folder / 'plain.changes.json').read_text(encoding='utf-8')))
+
+    def test_audit_refuses_a_move_the_plan_does_not_list(self):
+        receipt = self.plan([dict(op='set_write_target', kwargs=dict(layer_group=1, layer=2))])
+        real = CadDocument.set_write_target
+
+        def moves_twice(document, layer_group, layer):
+            real(document, layer_group, layer)
+            real(document, 2, 3)
+
+        with mock.patch.object(CadDocument, 'set_write_target', moves_twice):
+            with self.assertRaisesRegex(Exception, 'Unapproved write group/layer change'):
+                execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        self.assertFalse((self.folder / 'edited.jww').exists())
 
 if __name__ == '__main__':
     unittest.main()

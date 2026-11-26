@@ -80,6 +80,11 @@ def save_checked(cad,before,source_sha256,output,*,approved_plan_sha256=None,ali
         report['workflow_sha256']=workflow_plan['workflow_sha256']
         report['workflow_audit']=workflow_audit
     _require(file_sha256(cad.source)==source_sha256,'Source changed during save')
+    if cad._write_moves:
+        from jwwkit.model.write_target import current
+        b,a=current(cad._source_header),current(reloaded.header)
+        _require(a==tuple(cad._write_moves[-1]),'Saved write group/layer differs from the expected one')
+        report.update(write_target_before=dict(layer_group=b[0],layer=b[1]),write_target_after=dict(layer_group=a[0],layer=a[1]))
     report.update(source_sha256=source_sha256,output_sha256=file_sha256(output),saved_all_fields_match=True,approved_plan_sha256=approved_plan_sha256)
     with report_path.open('x',encoding='utf-8') as stream:json.dump(report,stream,ensure_ascii=True,indent=2,allow_nan=False)
     return report
@@ -481,7 +486,10 @@ def _execute_plan(plan_path,*,approved_sha256,operation_results=None,execution_c
     _require(cad.header['write_layer_group']==replayed['write_layer_group']
              and all(a['write_layer']==b['write_layer'] for a,b in zip(cad.header['layer_groups'],replayed['layer_groups'])),
              'Unapproved write group/layer change')
-    _require(not cad._write_moves or any(a['op']=='set_write_target' for a in plan['actions']),'Unapproved write group/layer change')
+    from jwwkit.model.write_target import planned_moves
+    from jwwkit.writer.header import group_index
+    planned=planned_moves(start_header,[(group_index(a['kwargs']['layer_group']),group_index(a['kwargs']['layer'])) for a in plan['actions'] if a['op']=='set_write_target'])
+    _require(tuple(cad._write_moves)==planned,'Unapproved write group/layer change')
     for g,(old,new) in enumerate(zip(start_header['layer_groups'],replayed['layer_groups'])):
         if old['state']!=new['state']:group_fields.add((g,'state',None))
         group_fields.update((g,'layer_states',l) for l,(a,b) in enumerate(zip(old['layers'],new['layers'])) if a['state']!=b['state'])

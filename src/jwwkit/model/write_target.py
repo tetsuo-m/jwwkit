@@ -59,6 +59,8 @@ def set_write_target(document, layer_group, layer):
         if (gi, li) in document._state_edits:
             raise ValueError('A display state of this group/layer was already changed; move the write '
                              'group/layer first, then change the states')
+    if len(document._source_metadata_indices) not in (0, 6):
+        raise ValueError('The number of Jw_cad settings texts is not a verified layout (0 or 6); this layout is unverified')
     source_target = current_write_target(document._source_header)
     for index in document._source_metadata_indices:
         base = document._source_records['entities'][index]['base']
@@ -87,6 +89,23 @@ def _move(header, g, l):
         groups[g]['layers'][old_l]['state'] = 2
         groups[g]['layers'][l]['state'] = 3
         groups[g]['write_layer'] = l
+
+
+def current(header):
+    ""The write group and its write layer as stored, without checking the layout.""
+    g = header['write_layer_group']
+    return g, header['layer_groups'][g]['write_layer']
+
+
+def planned_moves(header, targets):
+    ""The moves the approved set_write_target actions make from this header, in order (same target skipped).""
+    header = copy.deepcopy(header)
+    moves = []
+    for g, l in targets:
+        if current(header) != (g, l):
+            _move(header, g, l)
+            moves.append((g, l))
+    return tuple(moves)
 
 
 def apply_to_header(expected, moves):
