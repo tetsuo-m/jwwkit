@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 33060,
-      "sha256": "0beb3b9e012f93eaecc9e01b563d981a2f6e7193f5e7575abbc982bfdcc9cf0c"
+      "size": 33494,
+      "sha256": "4b75014c9c0270defbe7b30837b9c40e0e35574d5d602470418a763b0b7c6ae5"
     },
     {
       "path": "CLAUDE.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 129458,
-      "sha256": "39f1a58fa6a7855a15b767b447aea78f66dea01f6f407f50ae88e49a3081a81a"
+      "size": 129701,
+      "sha256": "661e66fbb395a7751393531664b53f64dea51b45bf7aeb1d92dc68efd3a27b65"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 129458,
-      "sha256": "39f1a58fa6a7855a15b767b447aea78f66dea01f6f407f50ae88e49a3081a81a"
+      "size": 129701,
+      "sha256": "661e66fbb395a7751393531664b53f64dea51b45bf7aeb1d92dc68efd3a27b65"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -613,8 +613,8 @@
     },
     {
       "path": "src/jwwkit/model/write_target.py",
-      "size": 4692,
-      "sha256": "1219c1c8bcdbfa3ea71fa1adf6ed44f471ee0edf934cf16c2ac56e9a43230401"
+      "size": 5446,
+      "sha256": "d9a0e5f7ee0e97b5197310c48349e956627a9f11ac09a91734a54113cf823f3d"
     },
     {
       "path": "src/jwwkit/normalization.py",
@@ -713,8 +713,8 @@
     },
     {
       "path": "src/jwwkit/safe_edit.py",
-      "size": 38500,
-      "sha256": "64028af9239b4a5d6a7d77df85d1f8e0a298f118db828ffac6fd0e1242549567"
+      "size": 39117,
+      "sha256": "1e24c8c20a19b86ee79e10e70cf53a05fd334b947a6ecb06975ed226b8e2f9f0"
     },
     {
       "path": "src/jwwkit/spatial_search.py",
@@ -1163,8 +1163,8 @@
     },
     {
       "path": "tests/test_jwcad_write_target.py",
-      "size": 12913,
-      "sha256": "08791c92ab022b01e6c35f542f5e4775ad66c3cf8af9519e830ec555c2805b7c"
+      "size": 15561,
+      "sha256": "4999e1a143b1c203d9558a6e43257ff4231a39ef5dc4678d498251a123d5bbfd"
     },
     {
       "path": "tests/test_layer_tidy.py",
