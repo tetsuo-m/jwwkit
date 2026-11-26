@@ -374,6 +374,16 @@ def _document_bytes(document):
     data = header + body
     # 作成前に再読取で確かめる。メモリ読取を使用し中間ファイルを作らない。
     checked = read_records_bytes(data)
+    if document._write_moves:
+        # #63: read the written write fields back and check the settings texts moved with them.
+        import struct
+        from jwwkit.writer.header import scale_offsets
+        offsets = scale_offsets(data, expected_header['layer_groups'])
+        target = document._write_moves[-1]
+        if (struct.unpack_from('<I', data, offsets[0] - 12)[0] != expected_header['write_layer_group']
+                or any((checked['entities'][i]['base']['layer_group'], checked['entities'][i]['base']['layer']) != target
+                       for i in document._source_metadata_indices)):
+            raise ValueError('Saved write group/layer differs from the expected one')
     if class_schema != document.version:
         # Only classes the source already declared may be written (no new declarations).
         declared = {d['name'] for d in original['class_declarations']}

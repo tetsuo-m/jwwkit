@@ -1361,6 +1361,18 @@ CadDocument.set_layer_state(layer_group, layer, state)
 
 根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L422)。
 
+### `CadDocument.set_write_target`
+
+```python
+CadDocument.set_write_target(layer_group, layer)
+```
+
+書込みの群と、その群の書込みの層を、指定した群・層へ移す（Issue #63）。移した後は、元の群・層の状態を set_group_state・set_layer_state で変えられる。
+
+対応範囲・拒否条件：v700だけ。Jw_cad 10.03.6で書込みを切り替えたときと同じに、移す先の群・層を状態3（書込み）、元の書込みの群・層を2（編集可能）にする。移す先が表示のみ・非表示でも3になり、前の状態は残さない。ほかの群・層の状態と、書込みの群でない群の書込みの層は変えない。Jw_cadは保存のたびに設定の文字6件を書込みの群・層へ移す。jwwkitはset_write_targetのときだけ同じことをする（ほかの保存では変えない）。状態3の群が1つで図面の書込みの群と同じ、元の群と移す先の群の中で状態3の層が1つでその群の書込みの層と同じ、設定の文字が元の書込みの群・層にある図面だけを受け付ける。決まりどおりでない図面、保護の欄が0でない群・層、同じ群・層の状態を先に変えた場合、v700以外（v600は「Jw_cadでVer.7.00形式に保存し直せば使える」と案内）を拒否する。同じ群・層への指定は無変更。要素・縮尺・名称は保持。独立メモリで全保存/読戻し検証後だけ確定し、safe_editの計画にも対応（共通の結果の計画schema5は、画像の編集と同じく対象外）。
+
+根拠：[ソース](https://github.com/tetsuo-m/jwwkit/blob/main/src/jwwkit/model/document.py#L632)。
+
 ### `CadDocument.set_layer_name`
 
 ```python

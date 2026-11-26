@@ -167,7 +167,7 @@ def plan_display_states(source, output, plan_path, group=1, layer=1):
     return write_plan(cad, [], actions, output, plan_path)
 ```
 
-表示状態の依頼例：「層群1を表示のみにして、その中のレイヤ1を非表示にしてください。」read_display_statesで現在値を読み、plan_display_statesで計画を作って終了する。対象群/層の現在状態と変更内容はresource_targetsに入り、チャット承認後にrun_approvedを別に呼ぶ。保存後の状態とgroup_changesを確認する。要素の変更数は0のまま。状態は0/hidden、1/display_only、2/editable、3/writing。層の3は各群内の書込み層選択で、必ずしも現在の全図面書込み先ではない。親群と層の状態は独立し、有効な表示・編集は両方の状態で決まる。保護設定等の追加制限を解消するAPIではない。書込み選択3への切替え/3からの変更と保護欄が非0の変更は拒否する。書込み先の切替えは今回の範囲外。状態を含まない古いresource_targetsを持つ計画は、現在版で再計画し、新しいSHAで承認を得る。
+表示状態の依頼例：「層群1を表示のみにして、その中のレイヤ1を非表示にしてください。」read_display_statesで現在値を読み、plan_display_statesで計画を作って終了する。対象群/層の現在状態と変更内容はresource_targetsに入り、チャット承認後にrun_approvedを別に呼ぶ。保存後の状態とgroup_changesを確認する。要素の変更数は0のまま。状態は0/hidden、1/display_only、2/editable、3/writing。層の3は各群内の書込み層選択で、必ずしも現在の全図面書込み先ではない。親群と層の状態は独立し、有効な表示・編集は両方の状態で決まる。保護設定等の追加制限を解消するAPIではない。書込み選択3への切替え/3からの変更と保護欄が非0の変更は拒否する。書込み先の切替えはset_write_target（v700だけ）で行い、元の書込みの群・層はその後に状態を変えられる（Issue #63）。状態を含まない古いresource_targetsを持つ計画は、現在版で再計画し、新しいSHAで承認を得る。
 
 ### 基本図形・SXFソリッド・円環を追加する
 

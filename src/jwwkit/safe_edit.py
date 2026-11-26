@@ -152,7 +152,7 @@ def _resource_targets(cad,actions):
             if op in ('set_layer_name','set_layer_state','set_write_target'):row['layer']=group_index(kw['layer'])
             if op=='set_write_target':
                 header=cad.header
-                row['write_target_before']=dict(layer_group=header['write_layer_group'],
+                row['write_target_at_plan_start']=dict(layer_group=header['write_layer_group'],
                     layer=header['layer_groups'][header['write_layer_group']]['write_layer'])
                 row['coordinate_effect']=('No entity, scale, name or protection changes. The new write group/layer '
                     'becomes writing (3), the old one editable (2); the Jw_cad settings texts move with it.')

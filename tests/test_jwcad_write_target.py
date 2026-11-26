@@ -141,6 +141,45 @@ class JwcadWriteTargetTests(TempDirTestCase):
                 self.assertEqual(document.header, document._source_header)
                 path.unlink()
 
+    def test_group_and_layer_in_one_call_give_w3(self):
+        document = CadDocument.open(D0)
+        document.set_write_target(1, 2)
+        data = self.saved(document)
+        self.assertEqual(differing(data, (FIXTURES / 'w3.jww').read_bytes()) - PER_SAVE, set())
+
+    def test_more_unobserved_layouts_are_refused(self):
+        cases = {
+            'protected old group': lambda d, s: struct.pack_into('<I', d, s[0] + 16, 1),
+            'protected old layer': lambda d, s: struct.pack_into('<I', d, s[0] + 20 + 4, 1),
+            'protected old write layer of the target group': lambda d, s: struct.pack_into('<I', d, s[1] + 20 + 4, 1),
+            'two writing layers in the target group': lambda d, s: struct.pack_into('<I', d, s[1] + 20 + 8 * 5, 3),
+            'no writing group': lambda d, s: struct.pack_into('<I', d, s[0], 2),
+        }
+        for label, edit in cases.items():
+            with self.subTest(label):
+                path = self.patched(edit)
+                with self.assertRaises(ValueError):
+                    CadDocument.open(path).set_write_target(1, 2)
+                path.unlink()
+
+    def test_settings_texts_elsewhere_are_refused(self):
+        document = CadDocument.open(D0)
+        data = bytearray(D0.read_bytes())
+        # The layer field (+9) of one of the 6 Jw_cad settings texts (W1 changes exactly these bytes).
+        positions = sorted(differing(D0.read_bytes(), (FIXTURES / 'w1.jww').read_bytes()) - PER_SAVE
+                           - set(range(0, 2396)))
+        self.assertEqual(len(positions), len(document._source_metadata_indices))
+        data[positions[0]] = 1
+        path = self.write('settings.jww', bytes(data))
+        with self.assertRaisesRegex(ValueError, 'settings texts'):
+            CadDocument.open(path).set_write_target(1, 2)
+
+    def test_metadata_inclusive_documents_are_refused(self):
+        document = CadDocument.open(D0, include_metadata=True)
+        with self.assertRaises(ValueError):
+            document.set_write_target(1, 2)
+            self.saved(document)
+
     def test_state_change_first_is_refused(self):
         document = CadDocument.open(D0)
         document.set_group_state(1, 'hidden')
@@ -165,7 +204,7 @@ class JwcadWriteTargetTests(TempDirTestCase):
                    dict(op='set_group_state', kwargs=dict(layer_group=0, state='hidden'))]
         receipt = write_plan(document, [], actions, self.folder / 'edited.jww', self.folder / 'plan.json')
         rows = [r for r in receipt['plan']['resource_targets'] if r['kind'] == 'set_write_target']
-        self.assertEqual(rows[0]['write_target_before'], dict(layer_group=0, layer=0))
+        self.assertEqual(rows[0]['write_target_at_plan_start'], dict(layer_group=0, layer=0))
         self.assertFalse((self.folder / 'edited.jww').exists())
         execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
         saved = CadDocument.open(self.folder / 'edited.jww')
