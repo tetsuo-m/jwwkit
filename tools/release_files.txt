@@ -85,6 +85,7 @@ src/jwwkit/model/summary.py
 src/jwwkit/model/text.py
 src/jwwkit/model/text_metrics.py
 src/jwwkit/model/transformations.py
+src/jwwkit/model/write_target.py
 src/jwwkit/normalization.py
 src/jwwkit/read_view.py
 src/jwwkit/reader/__init__.py

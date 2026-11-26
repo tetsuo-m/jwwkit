@@ -33,6 +33,13 @@ dist/
 !/tests/fixtures/jwcad_dimensions/d9.jww
 !/tests/fixtures/jwcad_dimensions/d10.jww
 !/tests/fixtures/jwcad_dimensions/d11.jww
+!/tests/fixtures/jwcad_write/w1.jww
+!/tests/fixtures/jwcad_write/w2.jww
+!/tests/fixtures/jwcad_write/w3.jww
+!/tests/fixtures/jwcad_write/w4.jww
+!/tests/fixtures/jwcad_write/w5.jww
+!/tests/fixtures/jwcad_write/w6.jww
+!/tests/fixtures/jwcad_write/w7.jww
 *.[jJ][wW][sS]
 *.[jJ][wW][cC]
 *.[jJ][wW][kK]
