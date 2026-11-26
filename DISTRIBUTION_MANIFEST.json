@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 34188,
-      "sha256": "55c350ac857cd62e18eb0c8fbb36a0dae2487dab9ef52a3628241626064d6510"
+      "size": 34233,
+      "sha256": "8e4f46c6547cd2bccaf3091baaf7719ba75cd4b865d7b40cf866c02cb8c8b289"
     },
     {
       "path": "CLAUDE.md",
@@ -118,8 +118,8 @@
     },
     {
       "path": "docs/plan_api_coverage.md",
-      "size": 9634,
-      "sha256": "5f144937e6cda189e5d25f257b0c8f85766fa71006978a4e8a37d468e0bd6bd0"
+      "size": 10196,
+      "sha256": "b325560da2ceb9f5b328ee466286b811571f67c30dee89c3984b0752828cddda"
     },
     {
       "path": "docs/read_view.md",
@@ -188,8 +188,8 @@
     },
     {
       "path": "README.md",
-      "size": 16708,
-      "sha256": "c210845f3100177d1e53035df51f389e6864747da06b10f8c50c2bc0c21f525f"
+      "size": 16949,
+      "sha256": "f511b9babf56bfe212b2a30623d68573ebb0d7358abbd1ceb622b1037d094c6e"
     },
     {
       "path": "requirements.txt",
@@ -383,8 +383,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/plan_api_coverage.md",
-      "size": 9634,
-      "sha256": "5f144937e6cda189e5d25f257b0c8f85766fa71006978a4e8a37d468e0bd6bd0"
+      "size": 10196,
+      "sha256": "b325560da2ceb9f5b328ee466286b811571f67c30dee89c3984b0752828cddda"
     },
     {
       "path": "src/jwwkit/guides/docs/read_view.md",
@@ -1318,8 +1318,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 104465,
-      "sha256": "11602ba0fa2634adc4ed98289decfe3ffc76bb926d5c8ad50e07d0af39bedc16"
+      "size": 104514,
+      "sha256": "1a76cc126237abd3c950546886b6daf5ffc2e009443fa599b21ad6515149927d"
     }
   ]
 }
