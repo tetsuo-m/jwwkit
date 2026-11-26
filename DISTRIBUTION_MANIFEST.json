@@ -758,8 +758,8 @@
     },
     {
       "path": "src/jwwkit/writer/preserved.py",
-      "size": 30611,
-      "sha256": "96a24c0ccd2e32f71a732c1dd983ee896b3eeccf69d4e1d69f3767e8050b21b1"
+      "size": 30758,
+      "sha256": "9ca3ee038a956763d28a9ae854d02fe98388c6740a692c327f4fff38dbb287db"
     },
     {
       "path": "src/jwwkit/writer/strings.py",
@@ -1163,8 +1163,8 @@
     },
     {
       "path": "tests/test_jwcad_write_target.py",
-      "size": 11180,
-      "sha256": "46c22a305a49a2fe5cbb6696754023e2acb2fdc1c23fa59ffaecb510a85d3b14"
+      "size": 12913,
+      "sha256": "08791c92ab022b01e6c35f542f5e4775ad66c3cf8af9519e830ec555c2805b7c"
     },
     {
       "path": "tests/test_layer_tidy.py",
