@@ -305,8 +305,10 @@ def _document_bytes(document):
         if record != original['entities'][source_index]:document._validate_addition(record)
         replacements[source_index] = record
     entities = []
+    metadata_positions = []  # where the settings texts are in the saved order (deleted elements close up)
     for index, record in enumerate(original['entities']):
         if index in metadata:
+            metadata_positions.append(len(entities))
             record = copy.deepcopy(record)
             if document._write_moves:
                 # #63: Jw_cad keeps its settings texts on the write group/layer; only these two fields change.
@@ -382,7 +384,7 @@ def _document_bytes(document):
         target = document._write_moves[-1]
         if (struct.unpack_from('<I', data, offsets[0] - 12)[0] != expected_header['write_layer_group']
                 or any((checked['entities'][i]['base']['layer_group'], checked['entities'][i]['base']['layer']) != target
-                       for i in document._source_metadata_indices)):
+                       for i in metadata_positions)):
             raise ValueError('Saved write group/layer differs from the expected one')
     if class_schema != document.version:
         # Only classes the source already declared may be written (no new declarations).

@@ -178,7 +178,36 @@ class JwcadWriteTargetTests(TempDirTestCase):
         document = CadDocument.open(D0, include_metadata=True)
         with self.assertRaises(ValueError):
             document.set_write_target(1, 2)
-            self.saved(document)
+
+    def test_moves_with_deleted_and_added_elements(self):
+        # Deleting closes up the saved order; the settings texts must still be found and moved.
+        for order in ('move first', 'delete first'):
+            with self.subTest(order):
+                document = CadDocument.open(D0)
+                if order == 'delete first':
+                    document.delete_entities([0, 1, 2])
+                document.set_write_target(1, 2)
+                if order == 'move first':
+                    document.delete_entities([0, 1, 2])
+                document.add_line((0, 0), (10, 0))
+                self.saved(document, f'{order}.jww')
+                reloaded = CadDocument.open(self.folder / f'{order}.jww')
+                self.assertEqual(len(reloaded.entities), len(CadDocument.open(D0).entities) - 2)
+                self.assertEqual(reloaded.header['write_layer_group'], 1)
+                self.assertEqual(len(reloaded._source_metadata_indices), 6)
+                self.assertTrue(all((reloaded._source_records['entities'][i]['base']['layer_group'],
+                                     reloaded._source_records['entities'][i]['base']['layer']) == (1, 2)
+                                    for i in reloaded._source_metadata_indices))
+
+    def test_moves_with_scale_and_name_changes(self):
+        document = CadDocument.open(D0)
+        document.set_group_scale(1, 100)
+        document.set_write_target(1, 2)
+        document.set_group_name(1, 'NEW')
+        self.saved(document)
+        reloaded = CadDocument.open(self.folder / 'out.jww')
+        self.assertEqual((reloaded.get_group_scale(1), reloaded.get_group_name(1)), (100.0, 'NEW'))
+        self.assertEqual(reloaded.get_layer_state(1, 2)['state'], 'writing')
 
     def test_state_change_first_is_refused(self):
         document = CadDocument.open(D0)
