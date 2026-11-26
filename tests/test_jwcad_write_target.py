@@ -276,6 +276,12 @@ class JwcadWriteTargetTests(TempDirTestCase):
         self.assertNotIn('write_target_before', report)
         self.assertNotIn('write_target_after', json.loads((self.folder / 'plain.changes.json').read_text(encoding='utf-8')))
 
+    def test_moving_back_to_the_start_is_reported_and_audited(self):
+        receipt = self.plan([dict(op='set_write_target', kwargs=dict(layer_group=1, layer=2)),
+                             dict(op='set_write_target', kwargs=dict(layer_group=0, layer=0))])
+        report = execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        self.assertEqual(report['write_target_before'], dict(layer_group=0, layer=0))
+        self.assertEqual(report['write_target_after'], dict(layer_group=0, layer=0))
     def test_audit_refuses_a_move_the_plan_does_not_list(self):
         receipt = self.plan([dict(op='set_write_target', kwargs=dict(layer_group=1, layer=2))])
         real = CadDocument.set_write_target
