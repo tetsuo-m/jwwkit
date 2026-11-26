@@ -17,7 +17,7 @@ jwwkitは、それらの図面資産を、AIやプログラムから安全に扱
 ## できること
 
 - **読み込み**：線・円・弧・点・文字・ソリッド・寸法・ブロックなどの要素と、レイヤ・グループ・縮尺・線色・線種などの属性の取得
-- **既存図面の安全な編集**：要素の移動・複写・回転・反転・拡大縮小・属性変更・削除・追加、レイヤ名・グループ名・縮尺・表示状態の変更など。編集していない要素は変わりません
+- **既存図面の安全な編集**：要素の移動・複写・回転・反転・拡大縮小・属性変更・削除・追加、レイヤ名・グループ名・縮尺・表示状態の変更、書込みのグループ・レイヤの切替え（v700）など。編集していない要素は変わりません
 - **登録図形（JWS）**：登録図形（230〜700形式）の読み込みと配置
 - **ブロック**：ブロック定義の読み込み、作成、配置、既存要素のブロック化と置換
 - **グループ（レイヤグループ）ごとの縮尺**に対応（実寸mm・紙面mmの両方で指定可能）
@@ -43,6 +43,9 @@ jwwkitは、それらの図面資産を、AIやプログラムから安全に扱
 - 要素の個数を普通と違う書き方（65535より小さい個数を、大きな個数と同じ形で書く）で保存したv700の図面は、その書き方のまま開いて編集・保存できます。受け付けるのは、手元の図面（作者の手元にある、非公開の図面）で確かめた形だけです
 - 今のJw_cadがv6形式（Ver.6.00〜6.21a）で保存した図面は、開いて、図面にすでにある種類の要素だけを使う編集を保存できます。図面にない種類の要素を足す保存と、別の図面からのグループの取り込みは拒否します（Jw_cadでVer.7.00形式に保存し直せば扱えます）
 - 画像を含む図面（BMP・JPEG・PNG・GIF・TIFF、複数枚も可）は、画像をそのまま保持して保存できます。画像の追加・削除・入替えは、v700の図面で、Jw_cadの見本で確かめた形の画像だけできます（トリミングはできません。透過色で透けて見えることと、印刷での画像の出方は確かめていません）。透過色の欄がない形の画像を含む図面では、画像の削除だけができ、追加と入替えはできません
+- 寸法図形のグループ・レイヤを変えると、Jw_cadと同じく寸法の外側だけが変わり、寸法の中の寸法線・文字などは元のレイヤのままです（Jw_cadで確かめた形の寸法だけ。確かめていない形の寸法は拒否します）
+- 見本に合わせた群・層の整理は、見本と形・位置が一致した要素だけを移します。行き先が1つに決まらない要素や、縮尺の違うグループへの移動は、移さずに理由を報告します
+- 書込みのグループ・レイヤの切替えは、v700の図面で、Jw_cadの決まりどおりの図面だけできます（保護されたグループ・レイヤや、v600の図面は拒否します）
 - 縮尺の異なるグループへ、文字種の付いた文字・寸法を取り込む操作は、拒否します
 - 新しい入れ子のブロック（ブロックの中のブロック）は作成できません
 - 特殊な属性の付いた文字（寸法の値の文字など）は、文字枠を「未判定」として扱います
@@ -160,4 +163,4 @@ JWW形式を扱うオープンソースには、ほかにも次のようなも�
 
 ## English summary
 
-jwwkit is an unofficial Python library for reading and **safely editing existing Jw_cad (.jww) drawings** without altering untouched elements (a no-edit save is byte-identical to the original). It supports registered figures (JWS), blocks, per-group scales, drawings with more than 65,535 elements, Jw_cad v6-format files, old JWW versions (v230/v300/v351/v420, read-only), embedded images (BMP/JPEG/PNG/GIF/TIFF, kept byte-for-byte), SXF extended line colors/types, importing layer groups from another drawing with two-point alignment, drawing comparison, structured search, and a two-step plan/approve/execute editing workflow designed for AI agents. It is tested on Windows with Python 3.14 and 3.15 and with Jw_cad 10.03.6, and uses ezjww (MIT) for header reading and cross-checking. Not affiliated with the authors of Jw_cad — please do not contact them about this library. Always back up your drawings before editing.
+jwwkit is an unofficial Python library for reading and **safely editing existing Jw_cad (.jww) drawings** without altering untouched elements (a no-edit save is byte-identical to the original). It supports registered figures (JWS), blocks, per-group scales, drawings with more than 65,535 elements, Jw_cad v6-format files, old JWW versions (v230/v300/v351/v420, read-only), embedded images (BMP/JPEG/PNG/GIF/TIFF, kept byte-for-byte; adding, deleting and replacing them in v700 drawings), moving the write layer group/layer (v700), tidying layer groups/layers to match a reference architectural drawing, SXF extended line colors/types, importing layer groups from another drawing with two-point alignment, drawing comparison, structured search, and a two-step plan/approve/execute editing workflow designed for AI agents. It is tested on Windows with Python 3.14 and 3.15 and with Jw_cad 10.03.6, and uses ezjww (MIT) for header reading and cross-checking. Not affiliated with the authors of Jw_cad — please do not contact them about this library. Always back up your drawings before editing.

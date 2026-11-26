@@ -38,13 +38,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 33493,
-      "sha256": "ba5afeec7923292bc44201fde0b22cc04c2bc79bcdcdd1c2c715e2f7f6630ecf"
+      "size": 34233,
+      "sha256": "8e4f46c6547cd2bccaf3091baaf7719ba75cd4b865d7b40cf866c02cb8c8b289"
     },
     {
       "path": "CLAUDE.md",
-      "size": 8429,
-      "sha256": "4cfd78e2a08aa842b378b788af941f4b92d3ac26edd4c1085be24345ac7149d9"
+      "size": 8713,
+      "sha256": "06dcdaade9abc316be402465378b649e4fea898dc8b93b1f4d2258a912c5e081"
     },
     {
       "path": "docs/api_list.md",
@@ -118,8 +118,8 @@
     },
     {
       "path": "docs/plan_api_coverage.md",
-      "size": 9634,
-      "sha256": "5f144937e6cda189e5d25f257b0c8f85766fa71006978a4e8a37d468e0bd6bd0"
+      "size": 10196,
+      "sha256": "b325560da2ceb9f5b328ee466286b811571f67c30dee89c3984b0752828cddda"
     },
     {
       "path": "docs/read_view.md",
@@ -183,13 +183,13 @@
     },
     {
       "path": "pyproject.toml",
-      "size": 1071,
-      "sha256": "4e4309241f2b0ee6c518161646a701aca9705ca32a7ff122eb1428388b6e660f"
+      "size": 1074,
+      "sha256": "75d164f493ae1d44f6e7b95cf18f8aaf79e3d52dcf1e116307afc06f28da7cb5"
     },
     {
       "path": "README.md",
-      "size": 15981,
-      "sha256": "8a020561c42f8071cac617a930611809966585039a32c5b801c2d5c070aa5d78"
+      "size": 16949,
+      "sha256": "f511b9babf56bfe212b2a30623d68573ebb0d7358abbd1ceb622b1037d094c6e"
     },
     {
       "path": "requirements.txt",
@@ -383,8 +383,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/plan_api_coverage.md",
-      "size": 9634,
-      "sha256": "5f144937e6cda189e5d25f257b0c8f85766fa71006978a4e8a37d468e0bd6bd0"
+      "size": 10196,
+      "sha256": "b325560da2ceb9f5b328ee466286b811571f67c30dee89c3984b0752828cddda"
     },
     {
       "path": "src/jwwkit/guides/docs/read_view.md",
@@ -1318,8 +1318,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 100915,
-      "sha256": "92703ad17df534b1f519a564b8e89aea3dbb9e0bc43164ec4c251a6a512c215a"
+      "size": 104514,
+      "sha256": "1a76cc126237abd3c950546886b6daf5ffc2e009443fa599b21ad6515149927d"
     }
   ]
 }

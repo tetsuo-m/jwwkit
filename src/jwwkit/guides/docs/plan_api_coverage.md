@@ -2,7 +2,7 @@
 
 ソースのクラスメソッドとsafe_editの許可表を照合した。公開API一覧全体はapi_list.md。計画の実行対象はCadDocument。
 
-CadDocumentの編集APIは27件が直接対応。4件は直接名が未登録で、既存の宣言操作による代替を示す。
+CadDocumentの編集APIは31件が直接対応。4件は直接名が未登録で、既存の宣言操作による代替を示す。
 
 | API | 対応 | 範囲・代替 |
 | --- | --- | --- |
@@ -37,6 +37,10 @@ CadDocumentの編集APIは27件が直接対応。4件は直接名が未登録で
 | CadDocument.replace_entities_with_block | 直接計画対応 | CadDocumentの同名APIを呼ぶ。 |
 | CadDocument.set_block_layer_priority | 直接計画対応 | CadDocumentの同名APIを呼ぶ。 |
 | CadDocument.import_group | 直接計画対応 | CadDocumentの同名APIを呼ぶ。 |
+| CadDocument.add_image | 直接計画対応 | CadDocumentの同名APIを呼ぶ。共通の結果の計画（schema5）は対象外。 |
+| CadDocument.delete_image | 直接計画対応 | CadDocumentの同名APIを呼ぶ。共通の結果の計画（schema5）は対象外。 |
+| CadDocument.replace_image | 直接計画対応 | CadDocumentの同名APIを呼ぶ。共通の結果の計画（schema5）は対象外。 |
+| CadDocument.set_write_target | 直接計画対応 | CadDocumentの同名APIを呼ぶ。共通の結果の計画（schema5）は対象外。 |
 | JwwDocument.set_layer_name | 別の保存経路：計画外 | 計画は既存CadDocumentを編集する。新規テンプレート/限定旧版のオブジェクトを直接操作しない。CadDocumentの同名操作は計画対応。 |
 | JwwDocument.set_group_name | 別の保存経路：計画外 | 計画は既存CadDocumentを編集する。新規テンプレート/限定旧版のオブジェクトを直接操作しない。CadDocumentの同名操作は計画対応。 |
 | JwwDocument.set_group_scale | 別の保存経路：計画外 | 計画は既存CadDocumentを編集する。新規テンプレート/限定旧版のオブジェクトを直接操作しない。CadDocumentの同名操作は計画対応。 |
