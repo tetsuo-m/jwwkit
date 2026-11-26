@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 127731,
-      "sha256": "0ab3633bd1644dff8293e3c20691d101f1ee83d024c36207bc1f76659b022421"
+      "size": 129458,
+      "sha256": "39f1a58fa6a7855a15b767b447aea78f66dea01f6f407f50ae88e49a3081a81a"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 84231,
-      "sha256": "b7ed649d1b1fe7adf71b515a0fd6a42232537892ae7a08a5a8486a14c3ff0bc6"
+      "size": 84338,
+      "sha256": "0ebdb26de68e8175f9137539df526eaa2f8ef203c86cf9f045a16a86fa7b122f"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 129379,
-      "sha256": "7c2ebbb343e79fc643df0c67c3c6e0a950a3d9d73c8023b0c5a30f28b7fe2cb3"
+      "size": 129458,
+      "sha256": "39f1a58fa6a7855a15b767b447aea78f66dea01f6f407f50ae88e49a3081a81a"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -613,8 +613,8 @@
     },
     {
       "path": "src/jwwkit/model/write_target.py",
-      "size": 4690,
-      "sha256": "8dfdcfaa1ebdb88edf0f568aca4bc0bd2f580460fdf0ac004cac6dc14a978530"
+      "size": 4692,
+      "sha256": "1219c1c8bcdbfa3ea71fa1adf6ed44f471ee0edf934cf16c2ac56e9a43230401"
     },
     {
       "path": "src/jwwkit/normalization.py",
@@ -713,8 +713,8 @@
     },
     {
       "path": "src/jwwkit/safe_edit.py",
-      "size": 38493,
-      "sha256": "da9ea80f40f5533dc41e3f1594a7f2df1c8ee1fc958a6b259c378e883ff23d85"
+      "size": 38500,
+      "sha256": "64028af9239b4a5d6a7d77df85d1f8e0a298f118db828ffac6fd0e1242549567"
     },
     {
       "path": "src/jwwkit/spatial_search.py",
@@ -758,8 +758,8 @@
     },
     {
       "path": "src/jwwkit/writer/preserved.py",
-      "size": 29904,
-      "sha256": "7496007fcae456a1e0e90ff12305370b678da9068fbcbdf6ce180d89d4fe8a5e"
+      "size": 30611,
+      "sha256": "96a24c0ccd2e32f71a732c1dd983ee896b3eeccf69d4e1d69f3767e8050b21b1"
     },
     {
       "path": "src/jwwkit/writer/strings.py",
@@ -1163,8 +1163,8 @@
     },
     {
       "path": "tests/test_jwcad_write_target.py",
-      "size": 9080,
-      "sha256": "e3e858962113166f026b0a20a24cb7924244abf38f3046ccff7165bd87653d71"
+      "size": 11180,
+      "sha256": "46c22a305a49a2fe5cbb6696754023e2acb2fdc1c23fa59ffaecb510a85d3b14"
     },
     {
       "path": "tests/test_layer_tidy.py",
