@@ -8,7 +8,7 @@ _OLD_OPS=frozenset(('set_text','move_entities','set_entity_attributes','delete_e
                'copy_entities','rotate_entities','reflect_entities','scale_entities',
                'replace_entities_with_block','place_jws','gui_acceptance'))
 _ADD_OPS=frozenset(('add_line','add_text','add_circle','add_arc','add_point','add_circle_solid','add_solid'))
-_GROUP_OPS=frozenset(('set_layer_name','set_group_name','set_group_scale','set_group_state','set_layer_state'))
+_GROUP_OPS=frozenset(('set_layer_name','set_group_name','set_group_scale','set_group_state','set_layer_state','set_write_target'))
 _SINGLE_OPS=frozenset(('set_text','set_entity_attributes','set_dimension_text','set_block_layer_priority'))
 _IMAGE_OPS=frozenset(('add_image','delete_image','replace_image'))  # embedded images (#57)
 _OPS=_OLD_OPS|_ADD_OPS|_GROUP_OPS|_IMAGE_OPS|{'set_dimension_text','set_block_layer_priority','add_block_definition','place_block','align_two_points','import_group'}
@@ -80,6 +80,11 @@ def save_checked(cad,before,source_sha256,output,*,approved_plan_sha256=None,ali
         report['workflow_sha256']=workflow_plan['workflow_sha256']
         report['workflow_audit']=workflow_audit
     _require(file_sha256(cad.source)==source_sha256,'Source changed during save')
+    if cad._write_moves:
+        from jwwkit.model.write_target import current
+        b,a=current(cad._source_header),current(reloaded.header)
+        _require(a==tuple(cad._write_moves[-1]),'Saved write group/layer differs from the expected one')
+        report.update(write_target_before=dict(layer_group=b[0],layer=b[1]),write_target_after=dict(layer_group=a[0],layer=a[1]))
     report.update(source_sha256=source_sha256,output_sha256=file_sha256(output),saved_all_fields_match=True,approved_plan_sha256=approved_plan_sha256)
     with report_path.open('x',encoding='utf-8') as stream:json.dump(report,stream,ensure_ascii=True,indent=2,allow_nan=False)
     return report
@@ -149,7 +154,13 @@ def _resource_targets(cad,actions):
             from jwwkit.writer.header import group_index
             g=group_index(kw['layer_group'])
             row=dict(action_index=action_index,kind=op,layer_group=g,before=before['groups'][g])
-            if op in ('set_layer_name','set_layer_state'):row['layer']=group_index(kw['layer'])
+            if op in ('set_layer_name','set_layer_state','set_write_target'):row['layer']=group_index(kw['layer'])
+            if op=='set_write_target':
+                header=cad.header
+                row['write_target_at_plan_start']=dict(layer_group=header['write_layer_group'],
+                    layer=header['layer_groups'][header['write_layer_group']]['write_layer'])
+                row['coordinate_effect']=('No entity, scale, name or protection changes. The new write group/layer '
+                    'becomes writing (3), the old one editable (2); the Jw_cad settings texts move with it.')
             if op in ('set_group_state','set_layer_state'):
                 from jwwkit.model.display_state import state_value,describe
                 row['requested_state']=describe(state_value(kw['state']))
@@ -451,7 +462,7 @@ def _execute_plan(plan_path,*,approved_sha256,operation_results=None,execution_c
         _require(all(a['op']in NAMES for a in plan['actions']),'PLAN_OPERATION_UNSUPPORTED for common results')
         execution_context.update(before=capture(cad),plan=plan,phase='executing')
     _require(all(a['op']!='gui_acceptance' for a in plan['actions']),'GUI acceptance uses the separate guide/tool after verify_plan')
-    import_results=[]
+    import_results=[];start_header=copy.deepcopy(cad.header)
     alignment_results=_apply_edit_actions(cad,plan,import_results=import_results,operation_results=operation_results)if operation_results is not None else _apply_edit_actions(cad,plan,import_results=import_results)
     if execution_context is not None:execution_context.update(after=capture(cad),phase='auditing')
     for dep in plan['dependencies']:_require(file_sha256(dep['path'])==dep['sha256'],'Dependency changed during execution')
@@ -467,7 +478,21 @@ def _execute_plan(plan_path,*,approved_sha256,operation_results=None,execution_c
                 if kw.get(option,default):
                     if field=='layers':group_fields.update((tg,'layers',layer) for layer in range(16))
                     else:group_fields.add((tg,field,None))
+        if op=='set_write_target':continue
         if op in _GROUP_OPS:group_fields.add((kw['layer_group'],{'set_group_name':'name','set_group_scale':'scale','set_layer_name':'layers','set_group_state':'state','set_layer_state':'layer_states'}[op],kw.get('layer')))
+    # #63: the write-target moves may change exactly the fields that replaying them changes.
+    from jwwkit.model.write_target import apply_to_header
+    replayed=copy.deepcopy(start_header);apply_to_header(replayed,cad._write_moves)
+    _require(cad.header['write_layer_group']==replayed['write_layer_group']
+             and all(a['write_layer']==b['write_layer'] for a,b in zip(cad.header['layer_groups'],replayed['layer_groups'])),
+             'Unapproved write group/layer change')
+    from jwwkit.model.write_target import planned_moves
+    from jwwkit.writer.header import group_index
+    planned=planned_moves(start_header,[(group_index(a['kwargs']['layer_group']),group_index(a['kwargs']['layer'])) for a in plan['actions'] if a['op']=='set_write_target'])
+    _require(tuple(cad._write_moves)==planned,'Unapproved write group/layer change')
+    for g,(old,new) in enumerate(zip(start_header['layer_groups'],replayed['layer_groups'])):
+        if old['state']!=new['state']:group_fields.add((g,'state',None))
+        group_fields.update((g,'layer_states',l) for l,(a,b) in enumerate(zip(old['layers'],new['layers'])) if a['state']!=b['state'])
     for g,(old,new) in enumerate(zip(before['groups'],after['groups'])):
         for field in ('name','scale','state'):
             _require(old[field]==new[field] or (g,field,None) in group_fields,'Unapproved group field changed')

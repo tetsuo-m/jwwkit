@@ -61,6 +61,26 @@ def patch_states(raw,groups,edits):
     return bytes(result)
 
 
+def patch_write_fields(raw, source_header, expected):
+    """Write the write group, the group/layer states and the group write layers of expected (#63).
+    The original bytes must match source_header; nothing else in the header changes."""
+    offsets = scale_offsets(raw, source_header['layer_groups'])
+    result = bytearray(raw)
+    write_group_offset = offsets[0] - 12
+    if struct.unpack_from('<I', raw, write_group_offset)[0] != source_header['write_layer_group']:
+        raise ValueError(f'Header structure mismatch: element=write_layer_group, offset={write_group_offset}')
+    struct.pack_into('<I', result, write_group_offset, group_index(expected['write_layer_group']))
+    for index, group in enumerate(expected['layer_groups']):
+        start = offsets[index] - 8
+        for value in [group['state']] + [layer['state'] for layer in group['layers']]:
+            if type(value) is not int or value not in (0, 1, 2, 3):
+                raise ValueError('Unverified display state edit')
+        struct.pack_into('<II', result, start, group['state'], group_index(group['write_layer']))
+        for layer_index, layer in enumerate(group['layers']):
+            struct.pack_into('<I', result, start + 20 + 8 * layer_index, layer['state'])
+    return bytes(result)
+
+
 def name_spans(raw, names):
     """既知ヘッダーの272 CStringを値と照合する。未知配置・不一致は拒否する。"""
     cursor = Cursor(raw)

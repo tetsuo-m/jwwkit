@@ -28,8 +28,8 @@
     },
     {
       "path": ".gitignore",
-      "size": 1647,
-      "sha256": "b4d8493da47aaf74aad3b4d87d6f6aefe5d9057e77f66e301a91f6f9f39fa5a0"
+      "size": 1899,
+      "sha256": "f073727a8ddf9b8990ce5577a2cf1c0b8a4461bd07d2bb832160c77c14ba18e1"
     },
     {
       "path": "AGENTS.md",
@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 32128,
-      "sha256": "b126723e98fd3df643e37f3252ee9e693b2e6a8157e68135cfff410a15694cf6"
+      "size": 33493,
+      "sha256": "ba5afeec7923292bc44201fde0b22cc04c2bc79bcdcdd1c2c715e2f7f6630ecf"
     },
     {
       "path": "CLAUDE.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 127731,
-      "sha256": "0ab3633bd1644dff8293e3c20691d101f1ee83d024c36207bc1f76659b022421"
+      "size": 129701,
+      "sha256": "661e66fbb395a7751393531664b53f64dea51b45bf7aeb1d92dc68efd3a27b65"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 84231,
-      "sha256": "b7ed649d1b1fe7adf71b515a0fd6a42232537892ae7a08a5a8486a14c3ff0bc6"
+      "size": 84338,
+      "sha256": "0ebdb26de68e8175f9137539df526eaa2f8ef203c86cf9f045a16a86fa7b122f"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 127731,
-      "sha256": "0ab3633bd1644dff8293e3c20691d101f1ee83d024c36207bc1f76659b022421"
+      "size": 129701,
+      "sha256": "661e66fbb395a7751393531664b53f64dea51b45bf7aeb1d92dc68efd3a27b65"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 84231,
-      "sha256": "b7ed649d1b1fe7adf71b515a0fd6a42232537892ae7a08a5a8486a14c3ff0bc6"
+      "size": 84338,
+      "sha256": "0ebdb26de68e8175f9137539df526eaa2f8ef203c86cf9f045a16a86fa7b122f"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -513,8 +513,8 @@
     },
     {
       "path": "src/jwwkit/model/document.py",
-      "size": 38743,
-      "sha256": "dd28e0bb6da8a783d9e2d0c98b4ff965a45d028d7b6b1fa17e25e7d2bf166901"
+      "size": 39349,
+      "sha256": "67859d68e20d959a2a0631e0dfec723dd0fb7ebd82b333a45435f9bb15e3420f"
     },
     {
       "path": "src/jwwkit/model/editing.py",
@@ -610,6 +610,11 @@
       "path": "src/jwwkit/model/transformations.py",
       "size": 9635,
       "sha256": "3997819051f85a2b2a2b4f084c00763ea8f4aca80ff21bf940d7ed56cd3830dc"
+    },
+    {
+      "path": "src/jwwkit/model/write_target.py",
+      "size": 5450,
+      "sha256": "fa5aa3d150b7ed408b38fcc67bc475eb955d683d33d326737a5fd1a8d80815c5"
     },
     {
       "path": "src/jwwkit/normalization.py",
@@ -708,8 +713,8 @@
     },
     {
       "path": "src/jwwkit/safe_edit.py",
-      "size": 36948,
-      "sha256": "67d75d189defea9c371718dd93081ac87d0bfecc8fc5bd8fe103b248f799815a"
+      "size": 39117,
+      "sha256": "1e24c8c20a19b86ee79e10e70cf53a05fd334b947a6ecb06975ed226b8e2f9f0"
     },
     {
       "path": "src/jwwkit/spatial_search.py",
@@ -733,8 +738,8 @@
     },
     {
       "path": "src/jwwkit/writer/header.py",
-      "size": 4799,
-      "sha256": "04c162d90f32ac74cd709c65f7222fe857e5697419489dd1fc07875c4e3c4573"
+      "size": 6095,
+      "sha256": "37d33ace521bfecc6765c7bc26152c563d90b199202e5c51450eeebdaecc82ca"
     },
     {
       "path": "src/jwwkit/writer/images.py",
@@ -753,8 +758,8 @@
     },
     {
       "path": "src/jwwkit/writer/preserved.py",
-      "size": 29051,
-      "sha256": "88fcc298a24e7c7e40ed6bd4222f947899186daea022e8c723807f6e9548941c"
+      "size": 30758,
+      "sha256": "9ca3ee038a956763d28a9ae854d02fe98388c6740a692c327f4fff38dbb287db"
     },
     {
       "path": "src/jwwkit/writer/strings.py",
@@ -1052,6 +1057,46 @@
       "sha256": "59661e65a722667a945ee103c6cf40692f848f79b9d820a82f8a1a5ec23a44dd"
     },
     {
+      "path": "tests/fixtures/jwcad_write/README.md",
+      "size": 3522,
+      "sha256": "d9b45fb709c9f0e5d9d307b96a1bc03d8a1e176de289065d893acce4f056c3ae"
+    },
+    {
+      "path": "tests/fixtures/jwcad_write/w1.jww",
+      "size": 23384,
+      "sha256": "4cb2e3e74a1dabd05b4be41f5536b4de639fd6cfccf4272ac1db956eed15367c"
+    },
+    {
+      "path": "tests/fixtures/jwcad_write/w2.jww",
+      "size": 23384,
+      "sha256": "11557104cb62f1eab9a96f291f9e892700ba8cd117ec063b171793dc9d41cda5"
+    },
+    {
+      "path": "tests/fixtures/jwcad_write/w3.jww",
+      "size": 23384,
+      "sha256": "9c9d0bc373f60eac0b778d73f3f283b58a5dd8b1404d700e0dcdfa12d8db0621"
+    },
+    {
+      "path": "tests/fixtures/jwcad_write/w4.jww",
+      "size": 23384,
+      "sha256": "d6a6d58a455e8ea45bdba1854c91b80eac1c37f92e3b4aceeff9a4681e3b07a6"
+    },
+    {
+      "path": "tests/fixtures/jwcad_write/w5.jww",
+      "size": 23384,
+      "sha256": "463126b8416ee886677bdab35f3b5d5bc221be8c90b9bfc442090a1a1b8ef901"
+    },
+    {
+      "path": "tests/fixtures/jwcad_write/w6.jww",
+      "size": 23384,
+      "sha256": "ebc78e8be92bc639f3dd58efa15ace24b4f553d5418acce3ddc697b6bf3f0587"
+    },
+    {
+      "path": "tests/fixtures/jwcad_write/w7.jww",
+      "size": 23384,
+      "sha256": "d0445df4798154a2cdabd30b7b15cfdbc8fa42c02aa5e33a755e9a66e6daf133"
+    },
+    {
       "path": "tests/test_block_definition_limit.py",
       "size": 5624,
       "sha256": "a63973c7fd43f8531799970bfbf42a7d9284c3bf070c306bb206dc16d35cf47b"
@@ -1115,6 +1160,11 @@
       "path": "tests/test_jwcad_dimensions.py",
       "size": 18947,
       "sha256": "2cc43260b4698176af3bea1572143442192edb695ecb63fa4add9ae5a85c8e59"
+    },
+    {
+      "path": "tests/test_jwcad_write_target.py",
+      "size": 16080,
+      "sha256": "944e45acae48613409bb409511fd030914ff26696a79bef8a07adbbe9a2501d1"
     },
     {
       "path": "tests/test_layer_tidy.py",
@@ -1258,8 +1308,8 @@
     },
     {
       "path": "tools/release_files.txt",
-      "size": 3855,
-      "sha256": "ced7479d6137fbb958b5cfc9c891074093a67e8e11ae913c0829644d1ac9544a"
+      "size": 3888,
+      "sha256": "238967db9d3c3f164d30699099d5c71d016c60d4309a99db20eafa812d0994fa"
     },
     {
       "path": "tools/summarize_drawing.py",

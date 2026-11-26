@@ -40,7 +40,7 @@ class CadDocument:
     _source_metadata_indices: tuple[int, ...] = field(default=(), repr=False, compare=False)
     _group_scale_edits: dict[int, float] = field(default_factory=dict, repr=False, compare=False)
     _state_edits: dict[tuple[int, int | None], int] = field(default_factory=dict, repr=False, compare=False)
-
+    _write_moves: tuple[tuple[int, int], ...] = field(default=(), repr=False, compare=False)  # set_write_target (#63), in order
     _name_edits: dict[int, str] = field(default_factory=dict, repr=False, compare=False)
     _new_block_records: dict[int, Mapping[str, Any]] = field(default_factory=dict, repr=False, compare=False)
     _readonly_state: Mapping[str, Any] | None = field(default=None, repr=False, compare=False)
@@ -628,3 +628,8 @@ class CadDocument:
         """画像を入れ替える（消して最後に入れる。位置・幅・角度・透過色・層は元のまま。#57）。"""
         from jwwkit.model.images_edit import replace_image
         return replace_image(self, index, path, name=name, keep_height=keep_height)
+
+    def set_write_target(self, layer_group, layer):
+        """書込みの群と、その群の書込みの層を移す（v700、Jw_cad 10.03.6 と同じ決まり）。移す先は状態3、元は2（編集可能）になる。Jw_cadの設定の文字6件も移す先へ移す。決まりどおりでない図面・保護・v700以外は拒否。"""
+        from jwwkit.model.write_target import set_write_target
+        return set_write_target(self, layer_group, layer)

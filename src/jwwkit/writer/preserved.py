@@ -269,6 +269,10 @@ def _document_bytes(document):
     expected_header = copy.deepcopy(document._source_header)
     for index, scale in document._group_scale_edits.items():
         expected_header['layer_groups'][index]['scale'] = scale
+    if document._write_moves:
+        # #63: replay the write-target moves first; display states changed afterwards win.
+        from jwwkit.model.write_target import apply_to_header
+        apply_to_header(expected_header, document._write_moves)
     for (group,layer),state in document._state_edits.items():
         target=expected_header['layer_groups'][group]
         if layer is not None:target=target['layers'][layer]
@@ -301,9 +305,15 @@ def _document_bytes(document):
         if record != original['entities'][source_index]:document._validate_addition(record)
         replacements[source_index] = record
     entities = []
+    metadata_positions = []  # where the settings texts are in the saved order (deleted elements close up)
     for index, record in enumerate(original['entities']):
         if index in metadata:
-            entities.append(copy.deepcopy(record))
+            metadata_positions.append(len(entities))
+            record = copy.deepcopy(record)
+            if document._write_moves:
+                # #63: Jw_cad keeps its settings texts on the write group/layer; only these two fields change.
+                record['base']['layer_group'], record['base']['layer'] = document._write_moves[-1]
+            entities.append(record)
         elif index in replacements:
             entities.append(replacements[index])
     entities.extend(appended)
@@ -343,7 +353,11 @@ def _document_bytes(document):
                           count_forms=save_count_forms(original, entities, definitions))
     from jwwkit.writer.header import patch_scales
     header = document._source_bytes[:original['header_end']]
-    if document._state_edits:
+    if document._write_moves:
+        # Write group, states and group write layers all come from the checked expected header (#63).
+        from jwwkit.writer.header import patch_write_fields
+        header = patch_write_fields(header, document._source_header, expected_header)
+    elif document._state_edits:
         from jwwkit.writer.header import patch_states
         header=patch_states(header,document._source_header['layer_groups'],document._state_edits)
     if document._group_scale_edits:
@@ -362,6 +376,16 @@ def _document_bytes(document):
     data = header + body
     # 作成前に再読取で確かめる。メモリ読取を使用し中間ファイルを作らない。
     checked = read_records_bytes(data)
+    if document._write_moves:
+        # #63: read the written write fields back and check the settings texts moved with them.
+        import struct
+        from jwwkit.writer.header import scale_offsets
+        offsets = scale_offsets(data, expected_header['layer_groups'])
+        target = document._write_moves[-1]
+        if (struct.unpack_from('<I', data, offsets[0] - 12)[0] != expected_header['write_layer_group']
+                or any((checked['entities'][i]['base']['layer_group'], checked['entities'][i]['base']['layer']) != target
+                       for i in metadata_positions)):
+            raise ValueError('Saved write group/layer differs from the expected one')
     if class_schema != document.version:
         # Only classes the source already declared may be written (no new declarations).
         declared = {d['name'] for d in original['class_declarations']}
@@ -469,7 +493,8 @@ def _readonly_bytes(document):
             or document.entities != expected
             or tuple(e.source_index for e in document.entities) != tuple(e.source_index for e in expected)
             or document.block_definitions != expected_blocks or document._name_edits or document._group_scale_edits
-            or document._state_edits or document._new_block_records or document._image_edits):
+            or document._state_edits or document._write_moves or document._new_block_records
+            or document._image_edits):
         raise ValueError(f'{label} is read-only; edited documents cannot be saved'
                          + (OLD_VERSION_HINT if is_read_only_version(original['version']) else ''))
     # The source records (including CString bytes and declaration metadata) must also stay intact.
