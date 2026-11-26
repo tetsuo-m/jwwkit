@@ -92,13 +92,13 @@ def _move(header, g, l):
 
 
 def current(header):
-    ""The write group and its write layer as stored, without checking the layout.""
+    """The write group and its write layer as stored, without checking the layout."""
     g = header['write_layer_group']
     return g, header['layer_groups'][g]['write_layer']
 
 
 def planned_moves(header, targets):
-    ""The moves the approved set_write_target actions make from this header, in order (same target skipped).""
+    """The moves the approved set_write_target actions make from this header, in order (same target skipped)."""
     header = copy.deepcopy(header)
     moves = []
     for g, l in targets:
