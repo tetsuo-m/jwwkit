@@ -613,8 +613,8 @@
     },
     {
       "path": "src/jwwkit/model/write_target.py",
-      "size": 5446,
-      "sha256": "d9a0e5f7ee0e97b5197310c48349e956627a9f11ac09a91734a54113cf823f3d"
+      "size": 5450,
+      "sha256": "fa5aa3d150b7ed408b38fcc67bc475eb955d683d33d326737a5fd1a8d80815c5"
     },
     {
       "path": "src/jwwkit/normalization.py",
