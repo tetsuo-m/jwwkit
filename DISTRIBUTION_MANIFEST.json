@@ -513,8 +513,8 @@
     },
     {
       "path": "src/jwwkit/model/document.py",
-      "size": 39383,
-      "sha256": "2a635f516de64c44a84c4f6be8e415e33ef87cfe29aec6d1c745b92044a60014"
+      "size": 39349,
+      "sha256": "67859d68e20d959a2a0631e0dfec723dd0fb7ebd82b333a45435f9bb15e3420f"
     },
     {
       "path": "src/jwwkit/model/editing.py",
@@ -613,8 +613,8 @@
     },
     {
       "path": "src/jwwkit/model/write_target.py",
-      "size": 4565,
-      "sha256": "df716a57e4ba1ec0c5ab902b7c3f2af465c3d55a905064ba9a82f03375e986e6"
+      "size": 4690,
+      "sha256": "8dfdcfaa1ebdb88edf0f568aca4bc0bd2f580460fdf0ac004cac6dc14a978530"
     },
     {
       "path": "src/jwwkit/normalization.py",
