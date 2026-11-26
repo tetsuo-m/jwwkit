@@ -38,6 +38,8 @@ def current_write_target(header):
 
 
 def set_write_target(document, layer_group, layer):
+    # Checked here, as the image edits do (#57): not one of the 31 common-result methods.
+    document._require_editable()
     g, l = group_index(layer_group), group_index(layer)
     version = document._source_records['version'] if document._source_records else document.version
     if version != 700:

@@ -631,6 +631,5 @@ class CadDocument:
 
     def set_write_target(self, layer_group, layer):
         """書込みの群と、その群の書込みの層を移す（v700、Jw_cad 10.03.6 と同じ決まり）。移す先は状態3、元は2（編集可能）になる。Jw_cadの設定の文字6件も移す先へ移す。決まりどおりでない図面・保護・v700以外は拒否。"""
-        self._require_editable()
         from jwwkit.model.write_target import set_write_target
         return set_write_target(self, layer_group, layer)
