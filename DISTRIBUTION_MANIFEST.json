@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 33494,
-      "sha256": "4b75014c9c0270defbe7b30837b9c40e0e35574d5d602470418a763b0b7c6ae5"
+      "size": 33493,
+      "sha256": "ba5afeec7923292bc44201fde0b22cc04c2bc79bcdcdd1c2c715e2f7f6630ecf"
     },
     {
       "path": "CLAUDE.md",
@@ -1163,8 +1163,8 @@
     },
     {
       "path": "tests/test_jwcad_write_target.py",
-      "size": 15561,
-      "sha256": "4999e1a143b1c203d9558a6e43257ff4231a39ef5dc4678d498251a123d5bbfd"
+      "size": 16080,
+      "sha256": "944e45acae48613409bb409511fd030914ff26696a79bef8a07adbbe9a2501d1"
     },
     {
       "path": "tests/test_layer_tidy.py",
