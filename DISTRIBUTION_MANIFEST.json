@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 34233,
-      "sha256": "e8860ed9b1abf574df7ce4763635915d7a3be5199676874680be424ee14bf070"
+      "size": 36493,
+      "sha256": "472e1f138154dfe5dc8b2ad09e28773a73f6595b7a1d495bf85ac67c450976cd"
     },
     {
       "path": "CLAUDE.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 129701,
-      "sha256": "661e66fbb395a7751393531664b53f64dea51b45bf7aeb1d92dc68efd3a27b65"
+      "size": 130887,
+      "sha256": "1ab51207573c2bc019451768e135dd6d01c95e76e01d527716b3abce4b22b834"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 129701,
-      "sha256": "661e66fbb395a7751393531664b53f64dea51b45bf7aeb1d92dc68efd3a27b65"
+      "size": 130887,
+      "sha256": "1ab51207573c2bc019451768e135dd6d01c95e76e01d527716b3abce4b22b834"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -518,8 +518,8 @@
     },
     {
       "path": "src/jwwkit/model/editing.py",
-      "size": 17322,
-      "sha256": "e88278e060b2ca522276a8f5a8abbf14eeed069fb4e5d56f0f3dd0d36c596875"
+      "size": 18304,
+      "sha256": "99421aba1fbdcb5ade37da815f4d00fc8a13cc2d131943544e4b1749983ac6a4"
     },
     {
       "path": "src/jwwkit/model/group_audit.py",
@@ -608,8 +608,8 @@
     },
     {
       "path": "src/jwwkit/model/transformations.py",
-      "size": 9635,
-      "sha256": "3997819051f85a2b2a2b4f084c00763ea8f4aca80ff21bf940d7ed56cd3830dc"
+      "size": 9758,
+      "sha256": "0b2c6b31374ffccc8c5f7ac826607389729fe56e0d0cd65a3e6260691bbf897d"
     },
     {
       "path": "src/jwwkit/model/write_target.py",
@@ -1132,6 +1132,11 @@
       "sha256": "7cf588367e0de7e94a092877c5052f61039b9605c1fbd55945afe8bb05ef8f31"
     },
     {
+      "path": "tests/test_dimension_aux_coordinates.py",
+      "size": 7374,
+      "sha256": "4a6b750222134482c95ba1f8d779b5521f9c4c765c60115a61d59d55d9e94e2a"
+    },
+    {
       "path": "tests/test_embedded_images.py",
       "size": 29425,
       "sha256": "6ca503ad902f3670d0159571b2d67c9cf3c7fafa63a5b89bed9f7ab49a1455da"
@@ -1318,8 +1323,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 104514,
-      "sha256": "1a76cc126237abd3c950546886b6daf5ffc2e009443fa599b21ad6515149927d"
+      "size": 106854,
+      "sha256": "64fdf18f1f2910ebdd3c1da074a843194bf7bdb03594ea71c7a8945761a5583f"
     }
   ]
 }
