@@ -149,6 +149,8 @@ def replace_entities_with_block(document,indices,name,*,base_point=(0,0),rotatio
     from jwwkit.writer.preserved import validate_records
     from jwwkit.writer.mfc import payload_bytes
     existing=[entity_record(e) for e in definition.entities];validate_records(existing,[],'group.children',set())
-    for record in existing:document._validate_addition(record)
+    from jwwkit.model.preflight import check
+    # The reused definition's children are children of a block (#68: no linetypes 11-19 there).
+    for record in existing:check(document,record,in_block=True)
     document.entities=tuple(entities);document.block_definitions=staged.block_definitions;document._new_block_records=staged._new_block_records
     return reference

@@ -103,6 +103,8 @@ def check_group_snapshot(source, group, snapshot_path):
 
 SXF定義はread_sxf_reportで読む。色のname/code/display_rgb/print_rgbは名前・保存番号・表示RGB・印刷RGB。線種のname/code/segment_count/lengths/patternsは名前・保存番号・区間数・生の区間長・表示パターン。色のdisplay_width/print_width/point_radiusも区別し、幅の単位や標準色との対応を推測しない。
 
+Jw_cadのランダム線1～5（線種の番号11～15）・倍長線1～4（16～19）は、v700の図面の直下の線・円・弧に限って、編集・保存の確かめで受け付ける（Issue #68）。所有者がJw_cad 10.03.6の画面で描いた見本で、線・円・弧の番号を確かめた。図面の頭のランダム線・倍長線の定め（印刷の間隔・幅など）は問わず、変えない。`set_entity_attributes(i, linetype=11)` と、線・円・弧の追加（`add_line`・`add_circle`・`add_arc`、`JwwDocument` の新しい図面を含む）でも、同じ範囲で付けられる。`JwwDocument.open`・`from_sample`・`from_cad_document` で図面の要素をひな形へ写すときは、頭の定めがひな形のものになるので、11～19の要素は拒否する。線種10は、見本がないので今までどおり拒否する。ブロックの中の要素（ブロックにする操作で中へ入れることと、同じ名前のある定義を使い回すことを含む）、寸法図形の外側と中の部品、ソリッド、v600の図面では、今までどおり拒否する。検索（`find_entities(linetype=18)`、queryの線種の条件）は、読むだけなので、版と要素の種類を問わず受け付ける。図面の比べ（`compare_drawings`）は、11～19の要素を今までどおり「比べられない」と報告する。
+
 get_sxf_color("red")はSXF名redの読取りであり、標準線色の赤ではない。get_sxf_linetype("dotted")も保存名の完全一致。欠落・同名複数・不正引数は拒否。get_sxf_colors/get_sxf_linetypesの既定は名前付き非予約行だけ。include_unnamed=Trueで色257行／線種33行の全保存欄（予約slot0・未使用欄を含む）を読む。数値で行を読めたことは、その番号の編集許可ではない。find_entities(color="red", linetype="dotted")はSXF名による検索。標準色は数値で指定する。追加やset_entity_attributesのcolor/linetypeにも完全一致SXF名を使える。未定義/予約/無名の未確認番号・欠落/重複名は変更前に拒否する。TEXT/POINT/BLOCK等の専用欄を線種検索/変更の対象にしない。
 
 確認：layer_groupsの各layers.count合計とentity_count/by_type。texts、dimension_texts、block_definitions内のtextsは別欄。ブロック集計は表示名別で直下参照のみ、入れ子を展開した数量ではない。設定と定義内要素は直下集計から除外。空の保存名をGUI代替名と混同しない。diagnosticsは無視しない。

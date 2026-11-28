@@ -31,9 +31,21 @@ def color_code(document,value,*,rgb=False):
     # payload discriminator, not an extra palette definition.
     return _code(value,colors,range(11 if rgb else 10),'Color')
 
-def linetype_code(document,value):
+# #68: Jw_cad's random lines 1-5 (11-15) and double-length lines 1-4 (16-19), seen in the owner's samples drawn in
+# Jw_cad 10.03.6 (tests/fixtures/sxf_linetypes) on v700 lines, arcs and circles of the drawing itself. Elsewhere
+# (inside blocks or dimensions, other kinds, v600) they stay unverified. The header's definitions are not looked at.
+STANDARD_LINETYPES=tuple(range(1,10))
+EXTENDED_LINETYPES=range(11,20)
+EXTENDED_KINDS=('LINE','ARC','CIRCLE')
+
+def extended_linetypes(document,kind,*,version=None,nested=False):
+    """May an element of this kind, at this place, carry the linetypes 11-19 (#68)?"""
+    if version is None:version=getattr(document,'version',700)
+    return version==700 and kind in EXTENDED_KINDS and not nested
+
+def linetype_code(document,value,*,extended=False):
     _,styles=_tables(_header(document))
-    return _code(value,styles,range(1,10),'Linetype')
+    return _code(value,styles,STANDARD_LINETYPES+(tuple(EXTENDED_LINETYPES) if extended else ()),'Linetype')
 
 def attributes(document,values,kind):
     result=copy.deepcopy(values)
@@ -42,26 +54,28 @@ def attributes(document,values,kind):
             raise ValueError('Invalid stored attribute: '+key)
     if 'color' in result:result['color']=color_code(document,result['color'],rgb=kind in ('SOLID','CIRCLE_SOLID'))
     if 'linetype' in result and kind in ('LINE','CIRCLE','ARC','SOLID','DIMENSION'):
-        result['linetype']=linetype_code(document,result['linetype'])
+        result['linetype']=linetype_code(document,result['linetype'],extended=extended_linetypes(document,kind))
     return result
 
-def normalize_record(document,record,*,dimension_member=False):
+def normalize_record(document,record,*,dimension_member=False,in_block=False,version=None):
     """Canonicalize only explicit color/style names in a private candidate."""
     r=copy.deepcopy(record);kind=r['type'];base=r['base']
     base['pen_color']=color_code(document,base['pen_color'],rgb=kind in ('SOLID','CIRCLE_SOLID'))
     if kind in ('LINE','CIRCLE','ARC','SOLID','DIMENSION'):
         # Zero-filled DIMENSION auxiliary LINEs are structural placeholders.
         placeholder=dimension_member and kind=='LINE' and base['pen_style']==0 and r['start_x']==r['end_x'] and r['start_y']==r['end_y']
-        if not placeholder:base['pen_style']=linetype_code(document,base['pen_style'])
+        extended=extended_linetypes(document,kind,version=version,nested=dimension_member or in_block)
+        if not placeholder:base['pen_style']=linetype_code(document,base['pen_style'],extended=extended)
     if kind=='DIMENSION':
-        for key in ('line','text'):r[key]=normalize_record(document,r[key],dimension_member=True)
-        for key in ('aux_lines','aux_points'):r[key]=[normalize_record(document,x,dimension_member=True) for x in r[key]]
-    if kind=='BLOCK_DEF':r['entities']=[normalize_record(document,x) for x in r['entities']]
+        for key in ('line','text'):r[key]=normalize_record(document,r[key],dimension_member=True,in_block=in_block,version=version)
+        for key in ('aux_lines','aux_points'):r[key]=[normalize_record(document,x,dimension_member=True,in_block=in_block,version=version) for x in r[key]]
+    if kind=='BLOCK_DEF':r['entities']=[normalize_record(document,x,in_block=True,version=version) for x in r['entities']]
     return r
 
-def check(document,record,*,defined_numbers=None,version=None,encoding=None):
-    """Check all integer slots and payload encoding without changing a record."""
-    canonical=normalize_record(document,record)
+def check(document,record,*,defined_numbers=None,version=None,encoding=None,in_block=False):
+    """Check all integer slots and payload encoding without changing a record.
+    in_block: the record is a child of a block definition (#68: no linetypes 11-19 there)."""
+    canonical=normalize_record(document,record,version=version,in_block=in_block)
     if canonical!=record:raise ValueError('Resolve color/linetype names before committing the record')
     def slots(r,dimension_member=False):
         b=r['base']
@@ -102,8 +116,9 @@ def check(document,record,*,defined_numbers=None,version=None,encoding=None):
     if parsed_entities!=entities or parsed_definitions!=definitions or c.pos!=len(body)-(4 if version==700 else 0):
         raise ValueError('Candidate cannot roundtrip without losing stored fields')
 
-def normalize_model(document,model):
-    """Independent mutable template model; caller-owned objects are untouched."""
+def normalize_model(document,model,*,nested=False):
+    """Independent mutable template model; caller-owned objects are untouched.
+    nested: a part of a dimension or a child of a block definition (#68: no linetypes 11-19 there)."""
     result=copy.deepcopy(model)
     from .solid import Solid
     if isinstance(result,Solid):
@@ -112,9 +127,9 @@ def normalize_model(document,model):
     record=result.record();kind=record['type']
     if hasattr(result,'color'):result.color=color_code(document,result.color,rgb=kind in ('SOLID','CIRCLE_SOLID'))
     if hasattr(result,'linetype') and kind in ('LINE','CIRCLE','ARC','SOLID','DIMENSION'):
-        result.linetype=linetype_code(document,result.linetype)
+        result.linetype=linetype_code(document,result.linetype,extended=extended_linetypes(document,kind,nested=nested))
     if kind=='DIMENSION':
-        for key in ('line','text'):setattr(result,key,normalize_model(document,getattr(result,key)))
-        for key in ('aux_lines','aux_points'):setattr(result,key,[normalize_model(document,x) for x in getattr(result,key)])
-    check(document,result.record())
+        for key in ('line','text'):setattr(result,key,normalize_model(document,getattr(result,key),nested=True))
+        for key in ('aux_lines','aux_points'):setattr(result,key,[normalize_model(document,x,nested=True) for x in getattr(result,key)])
+    check(document,result.record(),in_block=nested)
     return result

@@ -288,7 +288,8 @@ def set_entity_attributes(document, index, *, color=None, linetype=None,
     from .preflight import color_code,linetype_code
     if color is not None:color=color_code(document,color,rgb=original.entity_type in ('SOLID','CIRCLE_SOLID'))
     if linetype is not None and original.entity_type not in ('TEXT','POINT','BLOCK','CIRCLE_SOLID'):
-        linetype=linetype_code(document,linetype)
+        from .preflight import extended_linetypes
+        linetype=linetype_code(document,linetype,extended=extended_linetypes(document,original.entity_type))
     if preserve not in ('paper', 'real'):
         raise ValueError('preserveはpaperまたはrealを指定してください')
     updates = {}
@@ -369,7 +370,7 @@ def find_entities(document, *, layer=None, layer_group=None, entity_type=None,
     """返す番号は現在の公開要素列の番号。削除後の古い番号は無効になる。"""
     from .preflight import color_code,linetype_code
     if color is not None:color=color_code(document,color,rgb=True)
-    if linetype is not None:linetype=linetype_code(document,linetype)
+    if linetype is not None:linetype=linetype_code(document,linetype,extended=True)  # #68: reading only
     for value, label in ((layer, 'layer'), (layer_group, 'layer_group')):
         if value is not None:
             uint(value, 15, label)
