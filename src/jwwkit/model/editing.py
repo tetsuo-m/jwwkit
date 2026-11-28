@@ -67,6 +67,19 @@ def children(record):
     return [record['line'], record['text'], *record['aux_lines'], *record['aux_points']]
 
 
+AUX_COORDINATE_MESSAGE = ('補助線・補助点に座標がある寸法図形は、移動・複写・回転・拡大などの形の変更に対応していません'
+                          '（補助が元の場所に残るため）。Jw_cadで操作してください')
+
+
+def refuse_aux_coordinate_dimension(record):
+    """#73: an SXF-mode-0 dimension moves only its line and text, so one whose auxiliary lines/points carry
+    coordinates would leave them behind. Refuse a geometry change of such a dimension before anything changes."""
+    if (record['type'] == 'DIMENSION' and record['sxf_mode'] == 0
+            and (any(a[k] != 0 for a in record['aux_lines'] for k in ('start_x', 'start_y', 'end_x', 'end_y'))
+                 or any(p['x'] != 0 or p['y'] != 0 for p in record['aux_points']))):
+        raise ValueError(AUX_COORDINATE_MESSAGE)
+
+
 def jwcad_dimension_move(document, record, layer_group=None):
     """Jw_cadの寸法図形で、群・層の変更が外側の記録だけを書き換えると確かめた形か（#62）。
 
@@ -113,6 +126,8 @@ def transform(record, factor, delta):
     if factor != 1 and kind == 'TEXT' and record['text_type'] != 0:
         raise ValueError('文字種付き文字の異縮尺実寸保持は保留・要相談です')
     if kind == 'DIMENSION':
+        if factor != 1 or delta[0] != 0 or delta[1] != 0:
+            refuse_aux_coordinate_dimension(record)
         members=[record['line'],record['text']] if record['sxf_mode']==0 else children(record)
         for child in members:
             transform(child, factor, delta)

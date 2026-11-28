@@ -8,7 +8,7 @@ import math
 from dataclasses import replace
 
 from .common_entities import model_entity
-from .editing import selection
+from .editing import selection, refuse_aux_coordinate_dimension
 from jwwkit.writer.preserved import entity_record, validate_records
 from .preset_rigid import unit_rotation,validate_text,validate_dimension,has_preset
 
@@ -40,6 +40,7 @@ def transform_record(original, matrix, delta):
     if has_preset(r) and not rigid:
         raise ValueError('Preset text/dimension supports unit-scale rigid transforms only')
     if kind=='DIMENSION':
+        if not identity or delta[0]!=0 or delta[1]!=0:refuse_aux_coordinate_dimension(r)
         if r['text']['text_type']!=0 and not identity:
             validate_dimension(r)
             r['line']=transform_record(r['line'],matrix,delta)
