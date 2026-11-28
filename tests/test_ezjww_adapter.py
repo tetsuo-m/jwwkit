@@ -19,6 +19,7 @@ from jwwkit._ezjww_adapter import read_native_document
 FIXTURES = Path(__file__).resolve().parent / 'fixtures'
 
 # ezjww 0.2.13 の結果の欄の道筋（公開の見本の全図面の和）。[種類] は要素の種類、[] はそれ以外の並び。
+# CIRCLE の欄は、#73 で円を含む見本（fixtures/archicad_dimensions）を足したときに、ezjww 0.2.13 で読んで足した。
 KEY_PATHS_0213 = frozenset('''
 .block_def_names
 .block_def_names.0
@@ -103,6 +104,23 @@ KEY_PATHS_0213 = frozenset('''
 .entities[BLOCK].scale_x
 .entities[BLOCK].scale_y
 .entities[BLOCK].type
+.entities[CIRCLE].arc_angle
+.entities[CIRCLE].base
+.entities[CIRCLE].base.flag
+.entities[CIRCLE].base.group
+.entities[CIRCLE].base.layer
+.entities[CIRCLE].base.layer_group
+.entities[CIRCLE].base.pen_color
+.entities[CIRCLE].base.pen_style
+.entities[CIRCLE].base.pen_width
+.entities[CIRCLE].center_x
+.entities[CIRCLE].center_y
+.entities[CIRCLE].flatness
+.entities[CIRCLE].is_full_circle
+.entities[CIRCLE].radius
+.entities[CIRCLE].start_angle
+.entities[CIRCLE].tilt_angle
+.entities[CIRCLE].type
 .entities[CIRCLE_SOLID].arc_angle
 .entities[CIRCLE_SOLID].base
 .entities[CIRCLE_SOLID].base.flag
@@ -211,6 +229,7 @@ KEY_PATHS_0213 = frozenset('''
 .entity_counts
 .entity_counts.ARC
 .entity_counts.BLOCK
+.entity_counts.CIRCLE
 .entity_counts.CIRCLE_SOLID
 .entity_counts.DIMENSION
 .entity_counts.LINE

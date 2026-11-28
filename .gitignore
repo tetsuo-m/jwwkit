@@ -40,6 +40,17 @@ dist/
 !/tests/fixtures/jwcad_write/w5.jww
 !/tests/fixtures/jwcad_write/w6.jww
 !/tests/fixtures/jwcad_write/w7.jww
+# Fictional drawings: an Archicad export resaved, moved, copied, rotated and scaled by the owner in Jw_cad 10.03.6
+# (contents reviewed in Issues #69 and #73).
+!/tests/fixtures/archicad_dimensions/ac2_resave.jww
+!/tests/fixtures/archicad_dimensions/ac2_move.jww
+!/tests/fixtures/archicad_dimensions/ac2_copy.jww
+!/tests/fixtures/archicad_dimensions/ac2_rotate.jww
+!/tests/fixtures/archicad_dimensions/ac2_scale2.jww
+!/tests/fixtures/archicad_dimensions/ac2_rotate_move.jww
+!/tests/fixtures/archicad_dimensions/ac2_scale2_move.jww
+!/tests/fixtures/archicad_dimensions/ac2_scale21.jww
+!/tests/fixtures/archicad_dimensions/ac2_reflect.jww
 *.[jJ][wW][sS]
 *.[jJ][wW][cC]
 *.[jJ][wW][kK]

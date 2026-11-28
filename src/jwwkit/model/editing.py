@@ -67,6 +67,41 @@ def children(record):
     return [record['line'], record['text'], *record['aux_lines'], *record['aux_points']]
 
 
+AUX_COORDINATE_MESSAGE = ('補助線・補助点に座標がある寸法図形は、この形の変更に対応していません'
+                          '（Jw_cadでの動きを確かめていないため）。Jw_cadで操作してください')
+AUX_KEYS = ('start_x', 'start_y', 'end_x', 'end_y')
+
+
+def aux_coordinates(record):
+    """#73: for an SXF-mode-0 dimension, 'none' when every auxiliary line/point is all 0 (the Jw_cad samples),
+    'all' when every one has a coordinate that is not 0 (the Archicad export resaved by Jw_cad, #69), else 'mixed'.
+    None for other records."""
+    if record['type'] != 'DIMENSION' or record['sxf_mode'] != 0:
+        return None
+    flags = ([any(a[k] != 0 for k in AUX_KEYS) for a in record['aux_lines']]
+             + [p['x'] != 0 or p['y'] != 0 for p in record['aux_points']])
+    return 'none' if not any(flags) else 'all' if all(flags) else 'mixed'
+
+
+def refuse_aux_coordinate_dimension(record):
+    """#73: refuse a geometry change of a dimension whose auxiliaries carry coordinates, before anything changes."""
+    if aux_coordinates(record) in ('all', 'mixed'):
+        raise ValueError(AUX_COORDINATE_MESSAGE)
+
+
+def translate_aux(record, delta):
+    """#73: Jw_cad 10.03.6 moves the auxiliary lines/points of such a dimension with its line in a move/copy
+    (tests/fixtures/archicad_dimensions, ac2_move and ac2_copy). Only the 'all' shape was seen; 'mixed' is refused."""
+    shape = aux_coordinates(record)
+    if shape == 'mixed':
+        raise ValueError(AUX_COORDINATE_MESSAGE)
+    if shape == 'all':
+        for a in record['aux_lines']:
+            a['start_x'] += delta[0]; a['start_y'] += delta[1]; a['end_x'] += delta[0]; a['end_y'] += delta[1]
+        for p in record['aux_points']:
+            p['x'] += delta[0]; p['y'] += delta[1]
+
+
 def jwcad_dimension_move(document, record, layer_group=None):
     """Jw_cadの寸法図形で、群・層の変更が外側の記録だけを書き換えると確かめた形か（#62）。
 
@@ -113,6 +148,11 @@ def transform(record, factor, delta):
     if factor != 1 and kind == 'TEXT' and record['text_type'] != 0:
         raise ValueError('文字種付き文字の異縮尺実寸保持は保留・要相談です')
     if kind == 'DIMENSION':
+        if factor != 1:
+            # Scale conversions (group change keeping real size, group import): unverified in Jw_cad (#73).
+            refuse_aux_coordinate_dimension(record)
+        elif delta[0] != 0 or delta[1] != 0:
+            translate_aux(record, delta)
         members=[record['line'],record['text']] if record['sxf_mode']==0 else children(record)
         for child in members:
             transform(child, factor, delta)
