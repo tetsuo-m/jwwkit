@@ -17,12 +17,19 @@ from pathlib import Path
 LARGE_BYTES = 50 * 1024 * 1024
 EDITABLE = "編集できる"
 READ_ONLY = "読取り専用"
+RESAVE = "Jw_cadで保存し直す候補"
 EXPLICIT = "明示の読み方が要る"
 REJECTED = "拒否"
 UNEXPECTED = "拒否（予想外）"
-KINDS = (EDITABLE, READ_ONLY, EXPLICIT, REJECTED, UNEXPECTED)
+KINDS = (EDITABLE, READ_ONLY, RESAVE, EXPLICIT, REJECTED, UNEXPECTED)
 COLUMNS = ("相対の場所", "ファイル名", "大きさ（バイト）", "ファイルの版", "分け方", "理由の種類", "拒否の文", "備考")
 MESSAGE_LIMIT = 300
+# #69: a v700 file whose records are of class schema 1 (owner's Archicad 29 exports). jwwkit cannot read it, but
+# saved again by Jw_cad 10.03.6 as Ver.7.00 the owner's samples became editable drawings. Only these two facts are
+# used: not the layer names (Archicad's fixed names are also kept in later Jw_cad drawings, #68).
+RESAVE_MESSAGE = "Unsupported class schema: 1,"
+RESAVE_REASON = ("他のCADの書き出しとみられる形（クラスの版1）。Jw_cadで開いてVer.7.00形式で保存し直すと、"
+                 "編集できる図面になる候補（保存し直した後に、もう一度調べてください）")
 
 # (part of jwwkit's rejection message, reason in plain Japanese). The first match wins.
 REASONS = (
@@ -178,6 +185,8 @@ def classify(path):
             explicit = _explicit_reading(path, text)
             if explicit:
                 result.update(kind=EXPLICIT, reason=explicit, message=_scrub(text, path))
+            elif file_version(path) == 700 and RESAVE_MESSAGE in text:
+                result.update(kind=RESAVE, reason=RESAVE_REASON, message=_scrub(text, path))
             else:
                 result.update(kind=REJECTED, reason=reason_of(text), message=_scrub(text, path))
         else:

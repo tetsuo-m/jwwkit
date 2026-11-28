@@ -310,5 +310,240 @@ class JwcadDimensionTests(TempDirTestCase):
         self.assertEqual(members(after), members(expected))
 
 
+ARCHICAD = FIXTURES.parent / 'archicad_dimensions'
+ARCHICAD_SHA256 = {
+    'ac2_resave.jww': 'ff0be0a0d62ef26fc459bce1d5b1edb730ef941537e528e8986bbcac424c8403',
+    'ac2_gun1_sou2.jww': '051e36935e595104fc258790d56c0dcb60e85c6f5e5081ea3da18b65d6ac55db',
+    'ac2_sou3.jww': '6bd23ed504a7d986d8f8fdd7e6a60a7e6a312d92b47d1838bba0fdcc49ff7c51',
+    'ac2_gun2.jww': 'b336998f151d66816000239f6b2cf2cd0f85e1d3db3882ac44cdd5b2bf53accd',
+    'ac2_modoshi.jww': 'd7b8919d475f455bf3588411e40b66cb2c90767d00a6262478ef3738f2c581ec',
+}
+
+
+class ArchicadDimensionTests(TempDirTestCase):
+    """#69: the Archicad export resaved by Jw_cad 10.03.6 (tests/fixtures/archicad_dimensions, README). Jw_cad moves
+    its dimension figures by the outer record only, like its own (#62), and keeps their outer linetype 0."""
+
+    def test_fixtures_are_the_reviewed_samples(self):
+        for name, digest in ARCHICAD_SHA256.items():
+            self.assertEqual(hashlib.sha256((ARCHICAD / name).read_bytes()).hexdigest(), digest, name)
+
+    def move_all(self, source, name, **kwargs):
+        doc = CadDocument.open(ARCHICAD / source)
+        for i in range(len(doc.entities)):
+            doc.set_entity_attributes(i, **kwargs)
+        path = self.folder / name
+        doc.save(path)
+        return path.read_bytes()
+
+    def test_moving_like_jwcad_gives_jwcad_bytes_except_its_flag_and_state(self):
+        for source, target, kwargs in (('ac2_resave.jww', 'ac2_gun1_sou2.jww', dict(layer_group=1, layer=2)),
+                                       ('ac2_resave.jww', 'ac2_sou3.jww', dict(layer=3)),
+                                       ('ac2_resave.jww', 'ac2_gun2.jww', dict(layer_group=2)),
+                                       # Moved once by Jw_cad (outer flag 8194, inner parts elsewhere): back.
+                                       ('ac2_gun1_sou2.jww', 'ac2_modoshi.jww', dict(layer_group=0, layer=0))):
+            with self.subTest(target=target):
+                src = (ARCHICAD / source).read_bytes(); want = (ARCHICAD / target).read_bytes()
+                got = self.move_all(source, f'moved_{target}', **kwargs)
+                self.assertEqual(len(got), len(want))
+                rec, records = tops(got)
+                end = rec['header_end']
+                # jwwkit does not touch the header (Jw_cad's screen state and per-save values).
+                self.assertEqual(got[:end], src[:end])
+                # In the records, only Jw_cad's selection flag (bit 2; also on the one ordinary text) and the
+                # group/layer of the six setting texts (not public elements, so not moved by this loop) differ.
+                allowed = set()
+                for offset, r in records:
+                    if r['type'] == 'TEXT' and r['text_type'] == 1:
+                        allowed |= {offset + 9, offset + 10, offset + 11, offset + 12}
+                    else:
+                        allowed |= {offset + 13, offset + 14}
+                diff = {i for i in range(end, len(got)) if got[i] != want[i]}
+                self.assertLessEqual(diff, allowed)
+                for offset, r in records:
+                    if not (r['type'] == 'TEXT' and r['text_type'] == 1):
+                        flag, = struct.unpack_from('<H', got, offset + 13)
+                        self.assertEqual(struct.unpack_from('<H', want, offset + 13)[0], flag | 2)
+                _, theirs = tops(want); _, before = tops(src)
+                dims = [(a, b, c) for (_, a), (_, b), (_, c) in zip(records, theirs, before) if a['type'] == 'DIMENSION']
+                self.assertEqual(len(dims), 8)
+                for mine, jw, orig in dims:
+                    self.assertEqual((mine['base']['layer_group'], mine['base']['layer']),
+                                     (jw['base']['layer_group'], jw['base']['layer']))
+                    self.assertEqual(mine['base']['pen_style'], 0)   # kept, as Jw_cad keeps it
+                    self.assertEqual(members(mine), members(orig))
+                    self.assertEqual(members(mine), members(jw))
+
+    def dimensions(self, source='ac2_resave.jww'):
+        doc = CadDocument.open(ARCHICAD / source)
+        return doc, [i for i, e in enumerate(doc.entities) if e.entity_type == 'DIMENSION']
+
+    def test_other_changes_with_the_outer_linetype_0_stay_refused(self):
+        """Only a group/layer change keeps the outer linetype 0 out of the check; color, linetype or width with it,
+        and any change of coordinates (#73: move, copy), are refused as before."""
+        cases = dict(color=(lambda d, i: d.set_entity_attributes(i, layer=2, color=3), '文字種付き寸法の色'),
+                     linetype=(lambda d, i: d.set_entity_attributes(i, layer=2, linetype=1), '群・層だけの変更に限ります'),
+                     width=(lambda d, i: d.set_entity_attributes(i, layer=2, width=1), '線幅変更'),
+                     move=(lambda d, i: d.move_entities([i], (10, 5)), 'Linetype is not defined'),
+                     copy=(lambda d, i: d.copy_entities([i], (10, 5)), 'Linetype is not defined'),
+                     move_one=(lambda d, i: d.move_entity(i, (10, 5)), 'Linetype is not defined'))
+        for name, (operation, message) in cases.items():
+            with self.subTest(operation=name):
+                doc, dims = self.dimensions()
+                before = [entity_record(e) for e in doc.entities]
+                with self.assertRaisesRegex(ValueError, message):
+                    operation(doc, dims[0])
+                self.assertEqual([entity_record(e) for e in doc.entities], before)
+
+    def inject(self, doc, index, record):
+        """Put a changed stored record in memory without the edit check (to build unobserved shapes)."""
+        from dataclasses import replace
+        from jwwkit.model.common_entities import model_entity
+        updated = model_entity(record)
+        entities = list(doc.entities)
+        entities[index] = replace(entities[index], attributes=updated.attributes, geometry=updated.geometry)
+        doc.entities = tuple(entities)
+
+    def test_unobserved_shapes_are_refused(self):
+        def text_type(r): r['text']['text_type'] = 10001
+        def text_flag(r): r['text']['base']['flag'] = 16384
+        def line_flag(r): r['line']['base']['flag'] = 0
+        def line_style(r): r['line']['base']['pen_style'] = 2
+        def aux_line(r): r['aux_lines'][1]['end_x'] += 1.0
+        def aux_line_flag(r): r['aux_lines'][0]['base']['flag'] = 0
+        def aux_point(r): r['aux_points'][2]['y'] += 1.0
+        def aux_point_style(r): r['aux_points'][0]['base']['pen_style'] = 0   # the export before resaving
+        def aux_point_flag(r): r['aux_points'][3]['base']['flag'] = 8192
+        def mixed(r): r['text']['base']['layer'] = 4
+        def outer_flag(r): r['base']['flag'] = 8196
+        def sxf(r): r['sxf_mode'] = 1
+        cases = dict(text_type=text_type, text_flag=text_flag, line_flag=line_flag, line_style=line_style,
+                     aux_line=aux_line, aux_line_flag=aux_line_flag, aux_point=aux_point,
+                     aux_point_style=aux_point_style, aux_point_flag=aux_point_flag, mixed=mixed,
+                     outer_flag=outer_flag, sxf=sxf)
+        for name, edit in cases.items():
+            for kwargs in (dict(layer=2), dict(layer_group=1), dict(layer_group=1, layer=2)):
+                with self.subTest(shape=name, **kwargs):
+                    doc, dims = self.dimensions()
+                    record = entity_record(doc.entities[dims[0]])
+                    edit(record)
+                    self.inject(doc, dims[0], record)
+                    with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+                        doc.set_entity_attributes(dims[0], **kwargs)
+                    self.assertEqual(entity_record(doc.entities[dims[0]]), record)
+
+    def test_zero_moves_with_the_outer_linetype_0_stay_refused(self):
+        """A move keeps the linetype check, even by zero (#73 relation)."""
+        for name, operation in (('zero move', lambda d, i: d.move_entities([i], (0, 0))),
+                                ('zero move one', lambda d, i: d.move_entity(i, (0, 0)))):
+            with self.subTest(operation=name):
+                doc, dims = self.dimensions()
+                with self.assertRaisesRegex(ValueError, 'Linetype is not defined'):
+                    operation(doc, dims[0])
+
+    def test_the_group_and_layer_it_already_has_are_kept(self):
+        """PR #79 (commander): giving the group/layer the dimension already has changes nothing and is accepted, as for
+        any other element (a tidy-up sending everything to one layer does not stop). Before, this was refused by the
+        linetype check; the expectation changed with that decision."""
+        for source, kwargs in (('ac2_resave.jww', dict(layer_group=0, layer=0)), ('ac2_resave.jww', dict(layer=0)),
+                               ('ac2_gun1_sou2.jww', dict(layer_group=1, layer=2)), ('ac2_gun1_sou2.jww', dict(layer_group=1))):
+            with self.subTest(source=source, **kwargs):
+                doc, dims = self.dimensions(source)
+                before = [entity_record(e) for e in doc.entities]
+                for i in dims:
+                    doc.set_entity_attributes(i, **kwargs)
+                self.assertEqual([entity_record(e) for e in doc.entities], before)
+                path = self.folder / f'kept_{source}_{len(kwargs)}.jww'
+                doc.save(path)
+                self.assertEqual(path.read_bytes(), (ARCHICAD / source).read_bytes())
+
+    def test_a_scale_change_after_the_move_is_refused_with_its_own_message(self):
+        # Moved there, then the destination's scale; moved back from Jw_cad's move, then the old group's scale.
+        for source, kwargs, group in (('ac2_resave.jww', dict(layer_group=1), 1),
+                                      ('ac2_gun1_sou2.jww', dict(layer_group=0, layer=0), 1)):
+            with self.subTest(source=source):
+                doc, dims = self.dimensions(source)
+                doc.set_entity_attributes(dims[0], **kwargs)
+                doc.set_group_scale(group, 50)
+                with self.assertRaisesRegex(ValueError, '縮尺を変えられません'):
+                    doc.save(self.folder / f'scaled_{source}')
+                self.assertFalse((self.folder / f'scaled_{source}').exists())
+
+    def test_an_approved_plan_moves_them_like_the_api(self):
+        """safe_edit: plan -> approval -> execution gives the same drawing as the API (and so Jw_cad's, but its flag)."""
+        from jwwkit.safe_edit import execute_plan, write_plan
+        doc = CadDocument.open(ARCHICAD / 'ac2_resave.jww')
+        indices = list(range(len(doc.entities)))
+        actions = [dict(op='set_entity_attributes', indices=[i], kwargs=dict(layer_group=1, layer=2)) for i in indices]
+        receipt = write_plan(doc, indices, actions, self.folder / 'planned.jww', self.folder / 'planned.plan.json')
+        execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        direct = self.move_all('ac2_resave.jww', 'direct.jww', layer_group=1, layer=2)
+        self.assertEqual((self.folder / 'planned.jww').read_bytes(), direct)
+
+    def test_the_layer_tidy_leaves_them_alone_as_unsupported(self):
+        """layer_tidy matches by compare_drawings, which does not support the outer linetype 0 of these dimensions
+        ('Unverified standard line style number'): they are listed and left alone; the other elements move."""
+        from jwwkit.layer_tidy import analyze
+        result = analyze(ARCHICAD / 'ac2_gun1_sou2.jww', ARCHICAD / 'ac2_resave.jww')
+        doc, dims = self.dimensions()
+        left = {x['index']: x for x in result['review']['left_alone']}
+        self.assertEqual(sorted(i for i, x in left.items() if x['type'] == 'DIMENSION'), dims)
+        self.assertTrue(all(left[i]['kind'] == 'unsupported' for i in dims))
+        self.assertFalse(set(dims) & {int(k) for k in result['moves']})
+        self.assertTrue(result['moves'])
+
+    def test_a_changed_outer_linetype_is_not_this_shape(self):
+        """The samples all have the outer linetype 0. After a linetype-only change (kept from 0.5.1), the group/layer
+        change is refused (no Jw_cad sample), in either order."""
+        doc, dims = self.dimensions()
+        doc.set_entity_attributes(dims[0], linetype=1)
+        with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+            doc.set_entity_attributes(dims[0], layer=2)
+        doc, dims = self.dimensions()
+        doc.set_entity_attributes(dims[0], layer=2)
+        doc.set_entity_attributes(dims[0], linetype=1)
+        with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+            doc.set_entity_attributes(dims[0], layer=3)
+
+    def test_other_scales_stay_refused(self):
+        doc, dims = self.dimensions()
+        doc.set_group_scale(1, 50)
+        with self.assertRaisesRegex(ValueError, '文字種付き寸法の色・グループ変更'):
+            doc.set_entity_attributes(dims[0], layer_group=1)
+
+    def test_the_save_checks_the_same_way(self):
+        """A stored record changed beside the edit API: at the save, only an outer group/layer change of this shape
+        keeps the outer linetype 0 out of the check."""
+        doc, dims = self.dimensions()
+        record = entity_record(doc.entities[dims[0]])
+        record['base']['layer_group'], record['base']['layer'] = 3, 4
+        self.inject(doc, dims[0], record)
+        doc.save(self.folder / 'outer_only.jww')
+        saved = entity_record(CadDocument.open(self.folder / 'outer_only.jww').entities[dims[0]])
+        self.assertEqual(saved, record)
+        for name, edit in (('color', lambda r: r['base'].update(pen_color=3)),
+                           ('member', lambda r: r['line']['base'].update(layer=4)),
+                           ('coordinate', lambda r: r['line'].update(start_x=r['line']['start_x'] + 1))):
+            with self.subTest(change=name):
+                doc, dims = self.dimensions()
+                record = entity_record(doc.entities[dims[0]])
+                record['base']['layer'] = 4
+                edit(record)
+                self.inject(doc, dims[0], record)
+                with self.assertRaisesRegex(ValueError, 'Linetype is not defined'):
+                    doc.save(self.folder / f'refused_{name}.jww')
+                self.assertFalse((self.folder / f'refused_{name}.jww').exists())
+
+    def test_only_v700_drawings(self):
+        from jwwkit.model.editing import archicad_dimension_shape
+        doc, dims = self.dimensions()
+        record = entity_record(doc.entities[dims[0]])
+        self.assertTrue(archicad_dimension_shape(doc, record))
+
+        class V600:
+            version = 600
+        self.assertFalse(archicad_dimension_shape(V600(), record))
+
+
 if __name__ == '__main__':
     unittest.main()
