@@ -28,8 +28,8 @@
     },
     {
       "path": ".gitignore",
-      "size": 1899,
-      "sha256": "f073727a8ddf9b8990ce5577a2cf1c0b8a4461bd07d2bb832160c77c14ba18e1"
+      "size": 2535,
+      "sha256": "1fe5a5a1028eff65430b8f62c57a56e2b105494fac6c5d14b3750c8674a77f49"
     },
     {
       "path": "AGENTS.md",
@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 36493,
-      "sha256": "472e1f138154dfe5dc8b2ad09e28773a73f6595b7a1d495bf85ac67c450976cd"
+      "size": 37338,
+      "sha256": "548e176eafa233e4b1e426ee4fe3aa90cff76f7019f1a1ed6e073b014117532f"
     },
     {
       "path": "CLAUDE.md",
@@ -48,8 +48,8 @@
     },
     {
       "path": "docs/api_list.md",
-      "size": 130887,
-      "sha256": "1ab51207573c2bc019451768e135dd6d01c95e76e01d527716b3abce4b22b834"
+      "size": 134009,
+      "sha256": "28f9d24d16ce5974e96631d6ba54f78df7827320e202a7667e24a413a5c04fa7"
     },
     {
       "path": "docs/common_edit_result_coverage.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 84338,
-      "sha256": "0ebdb26de68e8175f9137539df526eaa2f8ef203c86cf9f045a16a86fa7b122f"
+      "size": 85650,
+      "sha256": "f30a466084c47d9dc72145a5e39761457579a96fe88bafcc08aa137ffb1ccc6a"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -348,8 +348,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/api_list.md",
-      "size": 130887,
-      "sha256": "1ab51207573c2bc019451768e135dd6d01c95e76e01d527716b3abce4b22b834"
+      "size": 134009,
+      "sha256": "28f9d24d16ce5974e96631d6ba54f78df7827320e202a7667e24a413a5c04fa7"
     },
     {
       "path": "src/jwwkit/guides/docs/common_edit_result_coverage.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 84338,
-      "sha256": "0ebdb26de68e8175f9137539df526eaa2f8ef203c86cf9f045a16a86fa7b122f"
+      "size": 85650,
+      "sha256": "f30a466084c47d9dc72145a5e39761457579a96fe88bafcc08aa137ffb1ccc6a"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -518,8 +518,8 @@
     },
     {
       "path": "src/jwwkit/model/editing.py",
-      "size": 18304,
-      "sha256": "99421aba1fbdcb5ade37da815f4d00fc8a13cc2d131943544e4b1749983ac6a4"
+      "size": 19438,
+      "sha256": "6850baac6554f339f238a0dc15c1bd667e14097ed2ae385bd1b1af6676e70b70"
     },
     {
       "path": "src/jwwkit/model/group_audit.py",
@@ -608,8 +608,8 @@
     },
     {
       "path": "src/jwwkit/model/transformations.py",
-      "size": 9758,
-      "sha256": "0b2c6b31374ffccc8c5f7ac826607389729fe56e0d0cd65a3e6260691bbf897d"
+      "size": 10564,
+      "sha256": "fa7b05eed2e3c57f00608429521a7e354d7bb6a888f0c4394130a5b74576738f"
     },
     {
       "path": "src/jwwkit/model/write_target.py",
@@ -643,13 +643,13 @@
     },
     {
       "path": "src/jwwkit/reader/jws.py",
-      "size": 9303,
-      "sha256": "7def14f593ca88f829fb7eec15a4ebb815884f7b43f8bfe7da385ff6dc4c275d"
+      "size": 9530,
+      "sha256": "3db2f2d7095540317b22f22f1c270b69e062bdb43051881ac3198706be128e4d"
     },
     {
       "path": "src/jwwkit/reader/jws_placement.py",
-      "size": 4277,
-      "sha256": "9fd102ebd0761e6f0c32b46cb2a36ef24c4695172cd51a9d4c5eaf39a52ec9cc"
+      "size": 4559,
+      "sha256": "df4fba4ed8dcbcb75690dffb07fee162c20c6ee0ffb50e1f6278aa4ff05f72b0"
     },
     {
       "path": "src/jwwkit/reader/sxf.py",
@@ -780,6 +780,56 @@
       "path": "tests/fixtures/approved_text_equivalence.json",
       "size": 31453,
       "sha256": "728067f39339efd4bd059ecac95d7e3724e4bd08111c34ce270147fc6c417624"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_copy.jww",
+      "size": 43089,
+      "sha256": "079f546e88ad99114aed7f7c66d0792f062bcca7b4c05f0f0e17e5c65b8ff160"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_move.jww",
+      "size": 37196,
+      "sha256": "e6ebb04cc5e061babab4006a02c885b89daba9e39a281ac51c0d7e5513765f5b"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_reflect.jww",
+      "size": 37164,
+      "sha256": "6e67fab1f1c61ad3f0e287cbc338fe55176c4ca444439add6db0be04c606c669"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_resave.jww",
+      "size": 37164,
+      "sha256": "ff0be0a0d62ef26fc459bce1d5b1edb730ef941537e528e8986bbcac424c8403"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_rotate.jww",
+      "size": 37196,
+      "sha256": "3ff3e59dd1ed8f2e81b2e0f77476f9d88c7752d7abcf2a8d686e0fb7784581e9"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_rotate_move.jww",
+      "size": 37196,
+      "sha256": "248a47f3dc94318987104a8839bf43f5130dea79372e1cf9dc9cb88ebe77a433"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_scale2.jww",
+      "size": 37212,
+      "sha256": "ba0bfca7811beaffb2c885da2c532d6ca8cdf4e58d788416c12008be16dbf1c5"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_scale21.jww",
+      "size": 37208,
+      "sha256": "f1a5346a05a6bfae9b944889fb0bc387a3e68ec26caf9789d169ef2f35bd7b5b"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/ac2_scale2_move.jww",
+      "size": 37212,
+      "sha256": "36254dfb490a576a8ad9f18e4bf209d6d8528087136fcc4d1a10adfe0e950a2d"
+    },
+    {
+      "path": "tests/fixtures/archicad_dimensions/README.md",
+      "size": 4798,
+      "sha256": "daf7915e3d600dd15a99ef0d182378079a3ed535df9366890632292eab32aaa8"
     },
     {
       "path": "tests/fixtures/jwcad_dimensions/d0.jww",
@@ -1133,8 +1183,8 @@
     },
     {
       "path": "tests/test_dimension_aux_coordinates.py",
-      "size": 7374,
-      "sha256": "4a6b750222134482c95ba1f8d779b5521f9c4c765c60115a61d59d55d9e94e2a"
+      "size": 17801,
+      "sha256": "a4d5866217e613a12b2a635e25f1dde269db77ee8c234602ddb71facb975c6af"
     },
     {
       "path": "tests/test_embedded_images.py",
@@ -1148,8 +1198,8 @@
     },
     {
       "path": "tests/test_ezjww_adapter.py",
-      "size": 16838,
-      "sha256": "5684546c437024d2a69fa91e35b3d3205d3d74b51c77d7316d9c24ebe06f1361"
+      "size": 17513,
+      "sha256": "9b60d37d108736025ba70d3eb61c1b062134b36800006c8acd3d7a62bc1e2edd"
     },
     {
       "path": "tests/test_geometry_guide.py",
@@ -1323,8 +1373,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 106854,
-      "sha256": "64fdf18f1f2910ebdd3c1da074a843194bf7bdb03594ea71c7a8945761a5583f"
+      "size": 108477,
+      "sha256": "3e28ed6078d0ea612faff879fd72a7f525aa7963a29d57c9bbbdc7576f6f2f1e"
     }
   ]
 }
