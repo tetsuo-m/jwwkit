@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 39629,
-      "sha256": "48b56b0c54528abbd7eb795b49dd89db92b46ba8bb51c90cda21c640185a5462"
+      "size": 39739,
+      "sha256": "afba7aa135490b6497e88dbcd34a780840ba98d54ef43773125e74d1e86cd0a7"
     },
     {
       "path": "CLAUDE.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 88443,
-      "sha256": "3755a56b467b253134729eace6816564e1ed28a147af484b17a28be95ecf846f"
+      "size": 88804,
+      "sha256": "c0e6ae369c27a873154c5bee5885884e3809f2f019e4e2c66c0b7f26226b3b18"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 88443,
-      "sha256": "3755a56b467b253134729eace6816564e1ed28a147af484b17a28be95ecf846f"
+      "size": 88804,
+      "sha256": "c0e6ae369c27a873154c5bee5885884e3809f2f019e4e2c66c0b7f26226b3b18"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
