@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 37706,
-      "sha256": "28047b9850fd847ea504457efaa210996ca521128c75e0f623bf70b9e6b0b6b7"
+      "size": 37761,
+      "sha256": "4ca9232c6eef96f6a59f2912af4847fcb19b8111bb0d990e01b09ac51f29e410"
     },
     {
       "path": "CLAUDE.md",
@@ -1373,8 +1373,8 @@
     },
     {
       "path": "VERIFICATION.md",
-      "size": 112778,
-      "sha256": "dff09d2d4422d294de2c1e9240a8ef47eb1b064b387b28a185cacd093040079e"
+      "size": 113068,
+      "sha256": "884dcbbe257388e93a7130d7d2086c28bc9fdf5847b6e666e0f782f00d673d54"
     }
   ]
 }
