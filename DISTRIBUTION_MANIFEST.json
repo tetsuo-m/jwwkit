@@ -38,8 +38,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 40575,
-      "sha256": "ca0328ec05a17288d79147fda5a9decafca2ff7adf6927586087a1fb4557c584"
+      "size": 40653,
+      "sha256": "556277a4e6927de4c0f8ad60c3fbb09ab09839fa3e18a3798cf8142327d7afdd"
     },
     {
       "path": "CLAUDE.md",
@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 90769,
-      "sha256": "efd966b64b672b8b153ff320049593d94059b7fa00626a9635262727630fa361"
+      "size": 91102,
+      "sha256": "3ff5f75a0af1142afadaa90515535f32bb31b0b3c553de463500d325825b4f22"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 90769,
-      "sha256": "efd966b64b672b8b153ff320049593d94059b7fa00626a9635262727630fa361"
+      "size": 91102,
+      "sha256": "3ff5f75a0af1142afadaa90515535f32bb31b0b3c553de463500d325825b4f22"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -478,8 +478,8 @@
     },
     {
       "path": "src/jwwkit/model/block_operations.py",
-      "size": 9195,
-      "sha256": "8e9137ebfac64dc2e0814ba7fe19e3d4f10e6072829b4841d30d5a5248d91c0d"
+      "size": 9337,
+      "sha256": "a4a5374d45ff417b26b73ef5af58d296404a521a2acef2ed82b3546e58a98562"
     },
     {
       "path": "src/jwwkit/model/block_reference.py",
@@ -548,8 +548,8 @@
     },
     {
       "path": "src/jwwkit/model/preflight.py",
-      "size": 9043,
-      "sha256": "ff4d5a8f3bc307bba579fa1ed690e402d93367f90c7ae574a4aeb6a24afc064e"
+      "size": 9233,
+      "sha256": "069d3dd40c2801ec999d7383345ae86564fbdd10777cb9de8a29dc252e0b81bb"
     },
     {
       "path": "src/jwwkit/model/preset_rigid.py",
@@ -773,8 +773,8 @@
     },
     {
       "path": "src/jwwkit/writer/template_document.py",
-      "size": 23287,
-      "sha256": "831d5b0deb09503439f79306ac6101233e9d5b5615d7423ec83c803b568d987f"
+      "size": 23653,
+      "sha256": "928b4863170a59a6e74f7c86266be5cc9ea0a91395f704038096156ce7ac7848"
     },
     {
       "path": "tests/fixtures/approved_text_equivalence.json",
@@ -1303,8 +1303,8 @@
     },
     {
       "path": "tests/test_random_double_linetypes.py",
-      "size": 8615,
-      "sha256": "983d54d4990cc25eb8af14e088889e179c7151a18e4de887d90acfce659a124d"
+      "size": 15098,
+      "sha256": "63d72623ce29523bd76909a84b8e96d1b768e3077ff4b58c6ac910d72ef4886c"
     },
     {
       "path": "tests/test_read_cycles.py",
@@ -1419,7 +1419,7 @@
     {
       "path": "VERIFICATION.md",
       "size": 119442,
-      "sha256": "3b3861d36df7e187daf3c320239e36eab6df5fb0ee04fb3769a2635b96b5865c"
+      "sha256": "59f980582fc32f2bd32b5805176bbc6a386ae67731b67a513d786f8b96fc79f0"
     }
   ]
 }
