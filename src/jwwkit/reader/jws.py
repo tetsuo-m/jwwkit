@@ -158,8 +158,11 @@ Unproven flag-bit2 combinations are refused atomically.
             children = flatten(self, target_scale)
         else:
             children = []
+            from jwwkit.model.editing import refuse_aux_coordinate_dimension
             for record in self._records['entities']:
                 ratio = self.group_scales[record['base']['layer_group']] / target_scale
+                if tuple(origin) != (0, 0) or ratio != 1:
+                    refuse_aux_coordinate_dimension(record)  # #73: unverified in Jw_cad
                 children.append(inverse_record(record, origin, 0, 1/ratio, 1/ratio))
         position = document.convert_point(position, layer_group=layer_group,
                                           from_units=units, to_units='paper')

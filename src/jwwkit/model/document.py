@@ -164,7 +164,14 @@ class CadDocument:
             distance_tolerance=distance_tolerance, angle_tolerance=angle_tolerance,
             angle_units=angle_units, allow_scale=allow_scale)
         if result['passed']:
-            self.transform_entities(indices, **result['transform'])
+            transform = result['transform']
+            if transform['rotation'] != 0 or transform['scale_x'] != 1 or transform['scale_y'] != 1:
+                # #73: a rotation or scale in a two-point alignment is unverified in Jw_cad for dimensions whose
+                # auxiliary lines/points carry coordinates (a pure translation moves them, as Jw_cad does).
+                from jwwkit.model.editing import entity_record, refuse_aux_coordinate_dimension, selection
+                for index in selection(self, indices):
+                    refuse_aux_coordinate_dimension(entity_record(self.entities[index]))
+            self.transform_entities(indices, **transform)
         return result
 
     def rotate_entities(self, indices, angle, **options):
