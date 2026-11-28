@@ -2,7 +2,6 @@
 import math
 from jwwkit.model.block_operations import inverse_record
 from jwwkit.model.transformations import transform_record
-from jwwkit.model.editing import refuse_aux_coordinate_dimension
 
 # E091 practical_all_flag_census.json: exact kind/value pairs from all stored
 # records in the six practical originals. This is preservation permission,
@@ -63,8 +62,6 @@ def flatten(figure, target_scale):
             # Normalization of observed kind/flag pairs, with identity geometry,
             # precedes affine geometry conversion. No inherited style substitution.
             child=inverse_record(record,(0.,0.),0.,1.,1.)
-            # #73: placing a JWS with a dimension whose auxiliaries carry coordinates is unverified in Jw_cad.
-            if matrix!=(1.,0.,0.,1.) or delta[0]!=0 or delta[1]!=0:refuse_aux_coordinate_dimension(child)
             converted=transform_record(child,matrix,delta)
             # E092 native registered-figure controls normalize stored curve
             # angles into [-pi,pi]. Change the output fields, never relax the
