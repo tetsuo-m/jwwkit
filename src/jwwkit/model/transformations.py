@@ -44,10 +44,11 @@ def transform_record(original, matrix, delta, *, aux_shift=None):
     if has_preset(r) and not rigid:
         raise ValueError('Preset text/dimension supports unit-scale rigid transforms only')
     if kind=='DIMENSION':
+        changes=not identity or delta[0]!=0 or delta[1]!=0
         if aux_shift is None and not identity:refuse_aux_coordinate_dimension(r)
         shift=delta if aux_shift is None else aux_shift
         if shift[0]!=0 or shift[1]!=0:translate_aux(r,shift)
-        elif aux_coordinates(r)=='mixed':refuse_aux_coordinate_dimension(r)
+        elif changes and aux_coordinates(r)=='mixed':refuse_aux_coordinate_dimension(r)  # only some auxiliaries: unverified
         if r['text']['text_type']!=0 and not identity:
             validate_dimension(r)
             r['line']=transform_record(r['line'],matrix,delta)

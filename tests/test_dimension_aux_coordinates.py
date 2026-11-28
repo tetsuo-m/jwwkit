@@ -291,6 +291,52 @@ class TextType0Tests(TempDirTestCase):
                        self.folder / 'mixed_out.jww', plan)
         self.assertFalse(plan.exists())
 
+    def test_mixed_auxiliaries_are_refused_for_any_change_of_coordinates_only(self):
+        path, index = self.make(mixed=True)
+        for name, operation in (('rotate', lambda d: d.rotate_entities([index], 0.5, base_point=(3, 4))),
+                                ('scale', lambda d: d.scale_entities([index], 2, base_point=(3, 4)))):
+            with self.subTest(operation=name):
+                self.assert_refused(path, index, operation)
+        # Changes that keep every coordinate are not geometry changes.
+        doc = CadDocument.open(path)
+        before = entity_record(doc.entities[index])
+        doc.transform_entities([index])
+        doc.move_entities([index], (0, 0))
+        self.assertEqual(entity_record(doc.entities[index]), before)
+
+    def test_a_refusal_among_several_elements_changes_nothing(self):
+        path, index = self.make(mixed=True)
+        doc = CadDocument.open(path)
+        others = [i for i in range(len(doc.entities)) if i != index]
+        for name, operation in (('move', lambda d: d.move_entities(others + [index], (10, 5))),
+                                ('translate', lambda d: d.transform_entities(others + [index], translation=(10, 5))),
+                                ('copy', lambda d: d.copy_entities(others + [index], (10, 5)))):
+            with self.subTest(operation=name):
+                doc = CadDocument.open(path)
+                before = [entity_record(e) for e in doc.entities]
+                with self.assertRaisesRegex(ValueError, REFUSED):
+                    operation(doc)
+                self.assertEqual([entity_record(e) for e in doc.entities], before)
+
+    def test_an_approved_move_plan_moves_the_auxiliaries(self):
+        from jwwkit.safe_edit import execute_plan
+        path, index = self.make()
+        for op, kwargs in (('move_entities', dict(delta=[10, 5])), ('copy_entities', dict(delta=[10, 5]))):
+            with self.subTest(op=op):
+                out = self.folder / f'plan_{op}.jww'
+                receipt = write_plan(CadDocument.open(path), [index], [dict(op=op, indices=[index], kwargs=kwargs)],
+                                     out, self.folder / f'plan_{op}.json')
+                execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+                saved = [entity_record(e) for e in CadDocument.open(out).entities]
+                moved = saved[index] if op == 'move_entities' else saved[-1]
+                line = tuple(moved['line'][k] for k in AUX_KEYS)
+                self.assertEqual(aux_of(moved), ([line, line], [line[:2], line[2:], line[:2], line[2:]]))
+        for op, kwargs in (('scale_entities', dict(scale_x=2, scale_y=3)),):
+            with self.subTest(op=op):
+                receipt = write_plan(CadDocument.open(path), [index], [dict(op=op, indices=[index], kwargs=kwargs)],
+                                     self.folder / f'plan_{op}.jww', self.folder / f'plan_{op}.json')
+                self.assertTrue(Path(receipt['path']).exists())
+
     def test_block_conversion_converts_the_auxiliaries_as_before(self):
         path, index = self.make()
         doc = CadDocument.open(path)
