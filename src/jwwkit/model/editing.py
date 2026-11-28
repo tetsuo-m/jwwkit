@@ -1,5 +1,6 @@
 """既存要素の編集。未確認の形状・符号の意味を推測して編集しない。"""
 from dataclasses import replace
+import copy
 import math
 
 from .common_entities import model_entity
@@ -17,7 +18,10 @@ def element(document, index):
 
 def commit(document, index, original, record):
     """原レコードと関連付けを残し、編集後の属性・幾何だけ更新する。"""
-    document._validate_addition(record)
+    if record.get('type') == 'DIMENSION' and record['base']['pen_style'] == 0:
+        validate_change(document, record, entity_record(original))
+    else:
+        document._validate_addition(record)
     updated = model_entity(record)
     result = replace(original, attributes=updated.attributes, geometry=updated.geometry)
     entities = list(document.entities)
@@ -122,6 +126,10 @@ def jwcad_dimension_move(document, record, layer_group=None):
     if not (all(all(c[k] == 0 for k in ('start_x', 'start_y', 'end_x', 'end_y')) for c in record['aux_lines'])
             and all(c['x'] == c['y'] == 0 for c in record['aux_points'])):
         return False
+    return _one_member_slot_at_equal_scales(document, record, layer_group)
+
+
+def _one_member_slot_at_equal_scales(document, record, layer_group):
     slots = {(c['base']['layer_group'], c['base']['layer']) for c in children(record)}
     if len(slots) != 1:
         return False
@@ -129,6 +137,69 @@ def jwcad_dimension_move(document, record, layer_group=None):
     if layer_group is not None:
         groups.add(layer_group)
     return len({document.get_group_scale(g) for g in groups}) == 1
+
+
+ARCHICAD_TEXT_TYPE = 10000
+
+
+def archicad_dimension_shape(document, record):
+    """Archicad 29 の JWW の書き出しを Jw_cad 10.03.6 で保存し直した寸法図形の形か（#69）。
+
+    所有者の見本（水平・垂直・斜め・連続・半径・直径の寸法図形 9 個。角度の寸法は寸法図形にならない）で、
+    どれも同じ形だった：v700、外側の印 8192 か 8194（8194 は Jw_cad で一度移した寸法）・SXF の形 0、
+    寸法線の印 8192・線種 1、文字の印 16400・文字種の欄 10000、補助線 2 本の印 8192・線種 1・座標は寸法線と同じ、
+    補助点 4 個の印 0・線種 1・座標は寸法線の始点・終点・始点・終点。見本に出た値の組み合わせのまま受け付け、
+    1 つでも違うものは受け付けない。色・線幅などのここにない欄は見ない（#62 と同じ）。
+    """
+    if (document.version != 700 or record['type'] != 'DIMENSION' or record['sxf_mode'] != 0
+            or record['base']['flag'] not in (8192, 8194)):
+        return False
+    line, text = record['line'], record['text']
+    if (line['base']['flag'] != 8192 or line['base']['pen_style'] != 1
+            or text['base']['flag'] != 16400 or text['text_type'] != ARCHICAD_TEXT_TYPE):
+        return False
+    ends = tuple(line[k] for k in ('start_x', 'start_y', 'end_x', 'end_y'))
+    if not all(c['base']['flag'] == 8192 and c['base']['pen_style'] == 1
+               and tuple(c[k] for k in ('start_x', 'start_y', 'end_x', 'end_y')) == ends
+               for c in record['aux_lines']):
+        return False
+    points = (ends[:2], ends[2:], ends[:2], ends[2:])
+    return (len(record['aux_points']) == len(points)
+            and all(c['base']['flag'] == 0 and c['base']['pen_style'] == 1 and (c['x'], c['y']) == p
+                    for c, p in zip(record['aux_points'], points)))
+
+
+def archicad_dimension_move(document, record, layer_group=None):
+    """#69: the Archicad shape above, whose group/layer change Jw_cad makes on the outer record only, like #62
+    (owner's samples: group 1 layer 2, layer 3, back to group 0 layer 0, group 2 only)."""
+    return (archicad_dimension_shape(document, record)
+            and _one_member_slot_at_equal_scales(document, record, layer_group))
+
+
+def outer_slot_change_only(document, record, original):
+    """#69 (案1): an Archicad-shape dimension whose outer linetype is 0, changed in its outer group/layer only.
+
+    Jw_cad keeps the outer linetype 0 when it moves these dimensions to another group/layer (owner's samples).
+    Only for this change is the outer linetype 0 kept out of the linetype check (at the edit and at the save);
+    a change of color/linetype/width, or of any coordinate, is checked as before (#73: a move stays refused)."""
+    if (record.get('type') != 'DIMENSION' or original.get('type') != 'DIMENSION'
+            or record['base']['pen_style'] != 0 or original['base']['pen_style'] != 0):
+        return False
+    same = copy.deepcopy(record)
+    same['base']['layer_group'] = original['base']['layer_group']
+    same['base']['layer'] = original['base']['layer']
+    return (same == original and archicad_dimension_move(document, original, record['base']['layer_group'])
+            and archicad_dimension_shape(document, record))
+
+
+def validate_change(document, record, original):
+    """Validate an edited record before it is kept (edit) or written (save). See outer_slot_change_only."""
+    if outer_slot_change_only(document, record, original):
+        probe = copy.deepcopy(record)
+        probe['base']['pen_style'] = 1  # only the outer linetype 0 is kept out of the check
+        document._validate_addition(probe)
+    else:
+        document._validate_addition(record)
 
 
 def transform(record, factor, delta):
@@ -241,10 +312,16 @@ def set_entity_attributes(document, index, *, color=None, linetype=None,
         and all(c['x']==c['y']==0 for c in record['aux_points'])
         and all(record[k]['base']['layer_group']==record['base']['layer_group'] for k in ('line','text')))
     # #62: a Jw_cad dimension figure of the observed shapes moves by its outer group/layer only, as Jw_cad does.
+    # #69: so does the Archicad export resaved by Jw_cad (archicad_dimension_shape).
     # Other shapes (aux coordinates, other member flags, other outer flags, unequal scales, ...) stay refused.
+    archicad_move = (record['type'] == 'DIMENSION' and (layer is not None or layer_group is not None)
+                     and archicad_dimension_move(document, record, layer_group))
+    if archicad_move and linetype is not None:
+        # #69: Jw_cad samples move these by group/layer only; a linetype change with it is not observed.
+        raise ValueError('Archicadの書き出しをJw_cadで保存し直した寸法図形は、群・層だけの変更に限ります')
     outer_move = (record['type'] == 'DIMENSION' and record['text']['text_type'] != 0 and not preset_group_only
                   and (layer is not None or layer_group is not None)
-                  and jwcad_dimension_move(document, record, layer_group))
+                  and (jwcad_dimension_move(document, record, layer_group) or archicad_move))
     # Historical mixed-attribute preset2 -> 0 control is still unresolved.
     # Other presets, unequal scales and combined overrides remain refused.
     if record['type'] == 'DIMENSION' and record['text']['text_type'] != 0 and not preset_group_only:

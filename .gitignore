@@ -51,6 +51,10 @@ dist/
 !/tests/fixtures/archicad_dimensions/ac2_scale2_move.jww
 !/tests/fixtures/archicad_dimensions/ac2_scale21.jww
 !/tests/fixtures/archicad_dimensions/ac2_reflect.jww
+!/tests/fixtures/archicad_dimensions/ac2_gun1_sou2.jww
+!/tests/fixtures/archicad_dimensions/ac2_sou3.jww
+!/tests/fixtures/archicad_dimensions/ac2_modoshi.jww
+!/tests/fixtures/archicad_dimensions/ac2_gun2.jww
 *.[jJ][wW][sS]
 *.[jJ][wW][cC]
 *.[jJ][wW][kK]

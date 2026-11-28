@@ -97,7 +97,8 @@ class CheckFolderTests(unittest.TestCase):
             ("", "12.jww"): cf.REJECTED,
             ("下", "v600_クラスの版600.jww"): cf.EDITABLE,
         })
-        self.assertEqual(counts, {cf.EDITABLE: 3, cf.READ_ONLY: 4, cf.EXPLICIT: 1, cf.REJECTED: 5, cf.UNEXPECTED: 0})
+        self.assertEqual(counts, {cf.EDITABLE: 3, cf.READ_ONLY: 4, cf.RESAVE: 0, cf.EXPLICIT: 1, cf.REJECTED: 5,
+                                  cf.UNEXPECTED: 0})
         for name in ("壊れた_途中で切れた.jww", "空.jww"):
             self.assertEqual(rows[("", name)]["理由の種類"], "ファイルが途中で切れている（空のファイルを含む）")
         # The rejection message is jwwkit's own, numbers included, even when the file name is a number.
@@ -148,6 +149,33 @@ class CheckFolderTests(unittest.TestCase):
             code, _counts, _output, _screen = self.run_check()
         self.assertEqual(code, 2)
         self.assertEqual(fixed.read_bytes(), b"old list")
+
+    def test_class_schema_1_of_v700_is_a_candidate_for_resaving_in_jwcad(self):
+        """#69: v700 with class schema 1 (like the owner's Archicad exports) gets its own kind; v600 with class
+        schema 1 and other class schemas stay plain rejections."""
+        folder = self.temp / "他のCAD"
+        folder.mkdir()
+        v700 = (self.folder / "v700_編集できる.jww").read_bytes()
+        (folder / "v700_クラスの版1.jww").write_bytes(patch_schemas(v700, 1))
+        (folder / "v700_クラスの版2.jww").write_bytes(patch_schemas(v700, 2))
+        (folder / "v600_クラスの版1.jww").write_bytes(patch_schemas(fixture(600).read_bytes(), 1))
+        before = snapshot(folder)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code, counts, output = cf.check_folder(folder)
+        self.assertEqual(code, 0)
+        rows = {(r[0], r[1]): dict(zip(cf.COLUMNS, r)) for r in read_list(output)[1:]}
+        resave = rows[("", "v700_クラスの版1.jww")]
+        self.assertEqual((resave["分け方"], resave["ファイルの版"], resave["理由の種類"]), (cf.RESAVE, "700", cf.RESAVE_REASON))
+        self.assertIn("Unsupported class schema: 1,", resave["拒否の文"])
+        for name in ("v700_クラスの版2.jww", "v600_クラスの版1.jww"):
+            self.assertEqual(rows[("", name)]["分け方"], cf.REJECTED, name)
+        self.assertIn("Unsupported class schema: 1,", rows[("", "v600_クラスの版1.jww")]["拒否の文"])
+        self.assertEqual(counts[cf.RESAVE], 1)
+        self.assertIn(f"{cf.RESAVE}：1 件", out.getvalue())
+        after = snapshot(folder)
+        after.pop(output.name)
+        self.assertEqual(after, before)
 
     def test_options(self):
         output = self.temp / "外の一覧.csv"

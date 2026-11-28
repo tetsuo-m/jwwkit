@@ -302,7 +302,10 @@ def _document_bytes(document):
                 or source_index >= len(original['entities']) or source_index in metadata
                 or source_index in replacements):
             raise ValueError('原要素の関連付けが不正または重複しています')
-        if record != original['entities'][source_index]:document._validate_addition(record)
+        if record != original['entities'][source_index]:
+            # #69: the same check as at the edit (editing.validate_change).
+            from jwwkit.model.editing import validate_change
+            validate_change(document, record, original['entities'][source_index])
         replacements[source_index] = record
     entities = []
     metadata_positions = []  # where the settings texts are in the saved order (deleted elements close up)
