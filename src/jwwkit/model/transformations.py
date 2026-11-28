@@ -8,7 +8,7 @@ import math
 from dataclasses import replace
 
 from .common_entities import model_entity
-from .editing import selection, refuse_aux_coordinate_dimension, translate_aux
+from .editing import selection, refuse_aux_coordinate_dimension, translate_aux, aux_coordinates
 from jwwkit.writer.preserved import entity_record, validate_records
 from .preset_rigid import unit_rotation,validate_text,validate_dimension,has_preset
 
@@ -25,10 +25,11 @@ def pair(value, label):
     return tuple(finite(x,label) for x in values)
 
 
-def transform_record(original, matrix, delta, *, aux='refuse'):
-    """aux (#73) is what to do with an SXF-mode-0 dimension whose auxiliaries carry coordinates when the
-    transform is not a pure translation: 'keep' leaves them (Jw_cad 10.03.6 does so when it rotates or scales
-    about a point), 'refuse' refuses (unverified). A pure translation moves them with the line, as Jw_cad does."""
+def transform_record(original, matrix, delta, *, aux_shift=None):
+    """aux_shift (#73): for an SXF-mode-0 dimension whose auxiliaries carry coordinates, Jw_cad 10.03.6 moves the
+    auxiliaries by the translation of the operation only (how far its base point moves) and applies no rotation,
+    scale or reflection to them (tests/fixtures/archicad_dimensions, eight samples). The caller passes that
+    translation; None refuses such a dimension unless the transform is a pure translation."""
     r=copy.deepcopy(original); kind=r['type']; a,b,c,d=matrix
     if kind=='SOLID' and r['base']['pen_style']>=101:
         raise ValueError('Unsupported circular-solid storage style')
@@ -43,9 +44,10 @@ def transform_record(original, matrix, delta, *, aux='refuse'):
     if has_preset(r) and not rigid:
         raise ValueError('Preset text/dimension supports unit-scale rigid transforms only')
     if kind=='DIMENSION':
-        if identity:
-            if delta[0]!=0 or delta[1]!=0:translate_aux(r,delta)
-        elif aux!='keep':refuse_aux_coordinate_dimension(r)
+        if aux_shift is None and not identity:refuse_aux_coordinate_dimension(r)
+        shift=delta if aux_shift is None else aux_shift
+        if shift[0]!=0 or shift[1]!=0:translate_aux(r,shift)
+        elif aux_coordinates(r)=='mixed':refuse_aux_coordinate_dimension(r)
         if r['text']['text_type']!=0 and not identity:
             validate_dimension(r)
             r['line']=transform_record(r['line'],matrix,delta)
@@ -138,10 +140,6 @@ reflect geometric data; mirrored TEXT is refused rather than made readable.
     angle=finite(rotation,'rotation');sx=finite(scale_x,'scale_x');sy=finite(scale_y,'scale_y')
     if sx==0 or sy==0:raise ValueError('Scales must be nonzero')
     co,si=math.cos(angle),math.sin(angle);matrix=(co*sx,-si*sy,si*sx,co*sy)
-    # #73: a rotation or an equal positive scale about base_point, with no translation, leaves the auxiliaries of
-    # a dimension with auxiliary coordinates where they are, as Jw_cad 10.03.6 does (archicad_dimensions ac2_rotate, ac2_scale2).
-    # Any other non-translation (with a translation, unequal or negative scales) is unverified and refused.
-    aux='keep' if shift==(0.,0.) and sx==sy>0 else 'refuse'
     updated=[];records=[]
     for index in indices:
         e=document.entities[index];group=e.attributes['layer_group']
@@ -152,7 +150,8 @@ reflect geometric data; mirrored TEXT is refused rather than made readable.
         a,b,c,d=matrix
         offset=(origin[0]+delta[0]-a*origin[0]-b*origin[1],
                 origin[1]+delta[1]-c*origin[0]-d*origin[1])
-        record=transform_record(entity_record(e),matrix,offset,aux=aux)
+        # #73: the auxiliaries of a dimension with auxiliary coordinates move by the translation only, as in Jw_cad.
+        record=transform_record(entity_record(e),matrix,offset,aux_shift=delta)
         records.append(record);model=model_entity(record)
         updated.append(model if copy_entities else replace(e,geometry=model.geometry,attributes=model.attributes))
     numbers={d.number for d in document.block_definitions}

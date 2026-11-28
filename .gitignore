@@ -47,6 +47,10 @@ dist/
 !/tests/fixtures/archicad_dimensions/ac2_copy.jww
 !/tests/fixtures/archicad_dimensions/ac2_rotate.jww
 !/tests/fixtures/archicad_dimensions/ac2_scale2.jww
+!/tests/fixtures/archicad_dimensions/ac2_rotate_move.jww
+!/tests/fixtures/archicad_dimensions/ac2_scale2_move.jww
+!/tests/fixtures/archicad_dimensions/ac2_scale21.jww
+!/tests/fixtures/archicad_dimensions/ac2_reflect.jww
 *.[jJ][wW][sS]
 *.[jJ][wW][cC]
 *.[jJ][wW][kK]
