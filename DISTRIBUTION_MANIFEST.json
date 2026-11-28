@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 89369,
-      "sha256": "e641022078b405accac62ab22046373353d041e5c321d4c51956ac7fdbc57465"
+      "size": 89708,
+      "sha256": "d0a9584ad2983e6a8f807c828da9c4140e59cfabd8e5a129336db18df9f5f842"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 89369,
-      "sha256": "e641022078b405accac62ab22046373353d041e5c321d4c51956ac7fdbc57465"
+      "size": 89708,
+      "sha256": "d0a9584ad2983e6a8f807c828da9c4140e59cfabd8e5a129336db18df9f5f842"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
@@ -518,8 +518,8 @@
     },
     {
       "path": "src/jwwkit/model/editing.py",
-      "size": 25211,
-      "sha256": "57fe2c1ab0626dde0489e5ce80ddf958155505f878c81472729c86f874cd3756"
+      "size": 25240,
+      "sha256": "6ee31b16a4ae93caf298068b77fd31b3cdd98de19f816014d9e1ae7108a5fcde"
     },
     {
       "path": "src/jwwkit/model/group_audit.py",
@@ -1233,8 +1233,8 @@
     },
     {
       "path": "tests/test_jwcad_dimensions.py",
-      "size": 33319,
-      "sha256": "98c2edf2730019b6a1252e3a015835968e48d6838c77998ba00d97d646a8f5a6"
+      "size": 33719,
+      "sha256": "7cafb374f3686b73edf131ed621a5e688cc50aefde8fb045c63fc08109ccc3bb"
     },
     {
       "path": "tests/test_jwcad_write_target.py",
