@@ -432,15 +432,61 @@ class ArchicadDimensionTests(TempDirTestCase):
                         doc.set_entity_attributes(dims[0], **kwargs)
                     self.assertEqual(entity_record(doc.entities[dims[0]]), record)
 
-    def test_no_op_changes_with_the_outer_linetype_0_stay_refused(self):
-        """Only a real change of the outer group/layer keeps the outer linetype 0 out of the check."""
+    def test_zero_moves_with_the_outer_linetype_0_stay_refused(self):
+        """A move keeps the linetype check, even by zero (#73 relation)."""
         for name, operation in (('zero move', lambda d, i: d.move_entities([i], (0, 0))),
-                                ('zero move one', lambda d, i: d.move_entity(i, (0, 0))),
-                                ('same layer', lambda d, i: d.set_entity_attributes(i, layer_group=0, layer=0))):
+                                ('zero move one', lambda d, i: d.move_entity(i, (0, 0)))):
             with self.subTest(operation=name):
                 doc, dims = self.dimensions()
                 with self.assertRaisesRegex(ValueError, 'Linetype is not defined'):
                     operation(doc, dims[0])
+
+    def test_the_group_and_layer_it_already_has_are_kept(self):
+        """PR #79 (commander): giving the group/layer the dimension already has changes nothing and is accepted, as for
+        any other element (a tidy-up sending everything to one layer does not stop). Before, this was refused by the
+        linetype check; the expectation changed with that decision."""
+        for source, kwargs in (('ac2_resave.jww', dict(layer_group=0, layer=0)), ('ac2_resave.jww', dict(layer=0)),
+                               ('ac2_gun1_sou2.jww', dict(layer_group=1, layer=2)), ('ac2_gun1_sou2.jww', dict(layer_group=1))):
+            with self.subTest(source=source, **kwargs):
+                doc, dims = self.dimensions(source)
+                before = [entity_record(e) for e in doc.entities]
+                for i in dims:
+                    doc.set_entity_attributes(i, **kwargs)
+                self.assertEqual([entity_record(e) for e in doc.entities], before)
+                path = self.folder / f'kept_{source}_{len(kwargs)}.jww'
+                doc.save(path)
+                self.assertEqual(path.read_bytes(), (ARCHICAD / source).read_bytes())
+
+    def test_a_scale_change_after_the_move_is_refused_with_its_own_message(self):
+        doc, dims = self.dimensions()
+        doc.set_entity_attributes(dims[0], layer_group=1)
+        doc.set_group_scale(1, 50)
+        with self.assertRaisesRegex(ValueError, '縮尺を変えられません'):
+            doc.save(self.folder / 'scaled.jww')
+        self.assertFalse((self.folder / 'scaled.jww').exists())
+
+    def test_an_approved_plan_moves_them_like_the_api(self):
+        """safe_edit: plan -> approval -> execution gives the same drawing as the API (and so Jw_cad's, but its flag)."""
+        from jwwkit.safe_edit import execute_plan, write_plan
+        doc = CadDocument.open(ARCHICAD / 'ac2_resave.jww')
+        indices = list(range(len(doc.entities)))
+        actions = [dict(op='set_entity_attributes', indices=[i], kwargs=dict(layer_group=1, layer=2)) for i in indices]
+        receipt = write_plan(doc, indices, actions, self.folder / 'planned.jww', self.folder / 'planned.plan.json')
+        execute_plan(receipt['path'], approved_sha256=receipt['sha256'])
+        direct = self.move_all('ac2_resave.jww', 'direct.jww', layer_group=1, layer=2)
+        self.assertEqual((self.folder / 'planned.jww').read_bytes(), direct)
+
+    def test_the_layer_tidy_leaves_them_alone_as_unsupported(self):
+        """layer_tidy matches by compare_drawings, which does not support the outer linetype 0 of these dimensions
+        ('Unverified standard line style number'): they are listed and left alone; the other elements move."""
+        from jwwkit.layer_tidy import analyze
+        result = analyze(ARCHICAD / 'ac2_gun1_sou2.jww', ARCHICAD / 'ac2_resave.jww')
+        doc, dims = self.dimensions()
+        left = {x['index']: x for x in result['review']['left_alone']}
+        self.assertEqual(sorted(i for i, x in left.items() if x['type'] == 'DIMENSION'), dims)
+        self.assertTrue(all(left[i]['kind'] == 'unsupported' for i in dims))
+        self.assertFalse(set(dims) & {int(k) for k in result['moves']})
+        self.assertTrue(result['moves'])
 
     def test_a_changed_outer_linetype_is_not_this_shape(self):
         """The samples all have the outer linetype 0. After a linetype-only change (kept from 0.5.1), the group/layer

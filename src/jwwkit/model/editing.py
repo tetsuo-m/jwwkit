@@ -129,17 +129,23 @@ def jwcad_dimension_move(document, record, layer_group=None):
     return _one_member_slot_at_equal_scales(document, record, layer_group)
 
 
-def _one_member_slot_at_equal_scales(document, record, layer_group):
-    slots = {(c['base']['layer_group'], c['base']['layer']) for c in children(record)}
-    if len(slots) != 1:
-        return False
-    groups = {record['base']['layer_group'], next(iter(slots))[0]}
+def _one_member_slot(record):
+    return len({(c['base']['layer_group'], c['base']['layer']) for c in children(record)}) == 1
+
+
+def _equal_scales(document, record, layer_group):
+    groups = {record['base']['layer_group'], children(record)[0]['base']['layer_group']}
     if layer_group is not None:
         groups.add(layer_group)
     return len({document.get_group_scale(g) for g in groups}) == 1
 
 
+def _one_member_slot_at_equal_scales(document, record, layer_group):
+    return _one_member_slot(record) and _equal_scales(document, record, layer_group)
+
+
 ARCHICAD_TEXT_TYPE = 10000
+ARCHICAD_SCALE_MESSAGE = 'Archicadの書き出しをJw_cadで保存し直した寸法図形を含む群は、縮尺を変えられません'
 
 
 def archicad_dimension_shape(document, record):
@@ -188,8 +194,14 @@ def outer_slot_change_only(document, record, original):
     same = copy.deepcopy(record)
     same['base']['layer_group'] = original['base']['layer_group']
     same['base']['layer'] = original['base']['layer']
-    return (same == original and archicad_dimension_move(document, original, record['base']['layer_group'])
-            and archicad_dimension_shape(document, record))
+    if same != original or not archicad_dimension_shape(document, original) or not archicad_dimension_shape(document, record):
+        return False
+    if not archicad_dimension_move(document, original, record['base']['layer_group']):
+        # Moved, then a group scale was changed (PR #79): refused, with a message about the scale.
+        if _one_member_slot(record) and not _equal_scales(document, record, None):
+            raise ValueError(ARCHICAD_SCALE_MESSAGE)
+        return False
+    return True
 
 
 def validate_change(document, record, original):
@@ -345,6 +357,10 @@ def set_entity_attributes(document, index, *, color=None, linetype=None,
                     raise ValueError('任意色ソリッド形式への切替は保留・要相談です')
             target['base'][key] = value
     if record['type'] == 'CIRCLE_SOLID':validate_circular_solid(record)
+    if archicad_move and record == entity_record(original):
+        # PR #79: the group/layer already given (nothing changes) is kept as for any other element, so a tidy-up
+        # that sends everything to one layer does not stop here. The stored values stay as they are.
+        return original
     return commit(document, index, original, record)
 
 
