@@ -198,7 +198,7 @@ def outer_slot_change_only(document, record, original):
         return False
     if not archicad_dimension_move(document, original, record['base']['layer_group']):
         # Moved, then a group scale was changed (PR #79): refused, with a message about the scale.
-        if _one_member_slot(record) and not _equal_scales(document, record, None):
+        if _one_member_slot(original) and not _equal_scales(document, original, record['base']['layer_group']):
             raise ValueError(ARCHICAD_SCALE_MESSAGE)
         return False
     return True

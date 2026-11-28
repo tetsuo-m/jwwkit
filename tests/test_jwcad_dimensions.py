@@ -458,12 +458,16 @@ class ArchicadDimensionTests(TempDirTestCase):
                 self.assertEqual(path.read_bytes(), (ARCHICAD / source).read_bytes())
 
     def test_a_scale_change_after_the_move_is_refused_with_its_own_message(self):
-        doc, dims = self.dimensions()
-        doc.set_entity_attributes(dims[0], layer_group=1)
-        doc.set_group_scale(1, 50)
-        with self.assertRaisesRegex(ValueError, '縮尺を変えられません'):
-            doc.save(self.folder / 'scaled.jww')
-        self.assertFalse((self.folder / 'scaled.jww').exists())
+        # Moved there, then the destination's scale; moved back from Jw_cad's move, then the old group's scale.
+        for source, kwargs, group in (('ac2_resave.jww', dict(layer_group=1), 1),
+                                      ('ac2_gun1_sou2.jww', dict(layer_group=0, layer=0), 1)):
+            with self.subTest(source=source):
+                doc, dims = self.dimensions(source)
+                doc.set_entity_attributes(dims[0], **kwargs)
+                doc.set_group_scale(group, 50)
+                with self.assertRaisesRegex(ValueError, '縮尺を変えられません'):
+                    doc.save(self.folder / f'scaled_{source}')
+                self.assertFalse((self.folder / f'scaled_{source}').exists())
 
     def test_an_approved_plan_moves_them_like_the_api(self):
         """safe_edit: plan -> approval -> execution gives the same drawing as the API (and so Jw_cad's, but its flag)."""
