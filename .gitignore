@@ -55,6 +55,10 @@ dist/
 !/tests/fixtures/archicad_dimensions/ac2_sou3.jww
 !/tests/fixtures/archicad_dimensions/ac2_modoshi.jww
 !/tests/fixtures/archicad_dimensions/ac2_gun2.jww
+# Issue #68: random/double-length lines and SXF colors/linetypes drawn by the owner in Jw_cad 10.03.6
+!/tests/fixtures/sxf_linetypes/sxf_random.jww
+!/tests/fixtures/sxf_linetypes/sxf_random_enko.jww
+!/tests/fixtures/sxf_linetypes/sxf_zenbu2.jww
 *.[jJ][wW][sS]
 *.[jJ][wW][cC]
 *.[jJ][wW][kK]

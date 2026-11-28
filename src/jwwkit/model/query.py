@@ -137,7 +137,8 @@ class Compiler:
         elif field in ('color','linetype'):
             from .preflight import color_code,linetype_code
             resolver=color_code if field=='color' else linetype_code
-            values=[resolver(self.document,v,**({'rgb':True} if field=='color' else {})) for v in values]
+            # #68: a search may name the linetypes 11-19 (reading only).
+            values=[resolver(self.document,v,**({'rgb':True} if field=='color' else {'extended':True})) for v in values]
             self.resolutions.append(dict(field=field,input=node['in'],codes=values))
         elif field=='block_name':
             if any(type(v) is not str for v in values): raise ValueError('Block names must be strings')

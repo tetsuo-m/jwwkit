@@ -167,7 +167,7 @@ class JwwDocument:
         number = max((d.number for d in self.block_definitions), default=-1)+1 if number is None else number
         definition = BlockDefinition(number,name,copy.deepcopy(list(entities)),timestamp)
         from jwwkit.model.preflight import normalize_model,check
-        definition.entities=[normalize_model(self,e) for e in definition.entities]
+        definition.entities=[normalize_model(self,e,nested=True) for e in definition.entities]
         check(self,definition.record(False),defined_numbers=set())
         if any(d.number == number for d in self.block_definitions):
             raise ValueError('Duplicate block definition number')
