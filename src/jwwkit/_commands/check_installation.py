@@ -513,7 +513,7 @@ def check(*, compare_command, inspect_jwf_command, summarize_command, check_fold
         listed_before={p.name:p.read_bytes() for p in listed.iterdir()}
         proc=_run_tool(check_folder_command,[str(listed)],folder)
         assert proc.returncode==0,proc.stderr
-        for kind,number in (('編集できる',1),('明示の読み方が要る',1),('拒否',1),('読取り専用',0),('拒否（予想外）',0)):
+        for kind,number in (('編集できる',1),('明示の読み方が要る',1),('拒否',1),('読取り専用',0),('Jw_cadで保存し直す候補',0),('拒否（予想外）',0)):
             assert f'{kind}：{number} 件' in proc.stdout,proc.stdout
         lists=[p for p in listed.iterdir() if p.name not in listed_before]
         assert len(lists)==1 and lists[0].suffix=='.csv' and lists[0].read_bytes().startswith(b'\xef\xbb\xbf')

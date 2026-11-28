@@ -432,6 +432,29 @@ class ArchicadDimensionTests(TempDirTestCase):
                         doc.set_entity_attributes(dims[0], **kwargs)
                     self.assertEqual(entity_record(doc.entities[dims[0]]), record)
 
+    def test_no_op_changes_with_the_outer_linetype_0_stay_refused(self):
+        """Only a real change of the outer group/layer keeps the outer linetype 0 out of the check."""
+        for name, operation in (('zero move', lambda d, i: d.move_entities([i], (0, 0))),
+                                ('zero move one', lambda d, i: d.move_entity(i, (0, 0))),
+                                ('same layer', lambda d, i: d.set_entity_attributes(i, layer_group=0, layer=0))):
+            with self.subTest(operation=name):
+                doc, dims = self.dimensions()
+                with self.assertRaisesRegex(ValueError, 'Linetype is not defined'):
+                    operation(doc, dims[0])
+
+    def test_a_changed_outer_linetype_is_not_this_shape(self):
+        """The samples all have the outer linetype 0. After a linetype-only change (kept from 0.5.1), the group/layer
+        change is refused (no Jw_cad sample), in either order."""
+        doc, dims = self.dimensions()
+        doc.set_entity_attributes(dims[0], linetype=1)
+        with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+            doc.set_entity_attributes(dims[0], layer=2)
+        doc, dims = self.dimensions()
+        doc.set_entity_attributes(dims[0], layer=2)
+        doc.set_entity_attributes(dims[0], linetype=1)
+        with self.assertRaisesRegex(ValueError, '文字種付き寸法'):
+            doc.set_entity_attributes(dims[0], layer=3)
+
     def test_other_scales_stay_refused(self):
         doc, dims = self.dimensions()
         doc.set_group_scale(1, 50)
@@ -457,7 +480,7 @@ class ArchicadDimensionTests(TempDirTestCase):
                 record['base']['layer'] = 4
                 edit(record)
                 self.inject(doc, dims[0], record)
-                with self.assertRaises(ValueError):
+                with self.assertRaisesRegex(ValueError, 'Linetype is not defined'):
                     doc.save(self.folder / f'refused_{name}.jww')
                 self.assertFalse((self.folder / f'refused_{name}.jww').exists())
 

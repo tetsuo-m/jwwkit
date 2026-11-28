@@ -146,13 +146,13 @@ def archicad_dimension_shape(document, record):
     """Archicad 29 の JWW の書き出しを Jw_cad 10.03.6 で保存し直した寸法図形の形か（#69）。
 
     所有者の見本（水平・垂直・斜め・連続・半径・直径の寸法図形 9 個。角度の寸法は寸法図形にならない）で、
-    どれも同じ形だった：v700、外側の印 8192 か 8194（8194 は Jw_cad で一度移した寸法）・SXF の形 0、
+    どれも同じ形だった：v700、外側の印 8192 か 8194（8194 は Jw_cad で一度移した寸法）・線種 0・SXF の形 0、
     寸法線の印 8192・線種 1、文字の印 16400・文字種の欄 10000、補助線 2 本の印 8192・線種 1・座標は寸法線と同じ、
     補助点 4 個の印 0・線種 1・座標は寸法線の始点・終点・始点・終点。見本に出た値の組み合わせのまま受け付け、
     1 つでも違うものは受け付けない。色・線幅などのここにない欄は見ない（#62 と同じ）。
     """
     if (document.version != 700 or record['type'] != 'DIMENSION' or record['sxf_mode'] != 0
-            or record['base']['flag'] not in (8192, 8194)):
+            or record['base']['flag'] not in (8192, 8194) or record['base']['pen_style'] != 0):
         return False
     line, text = record['line'], record['text']
     if (line['base']['flag'] != 8192 or line['base']['pen_style'] != 1
@@ -182,7 +182,7 @@ def outer_slot_change_only(document, record, original):
     Jw_cad keeps the outer linetype 0 when it moves these dimensions to another group/layer (owner's samples).
     Only for this change is the outer linetype 0 kept out of the linetype check (at the edit and at the save);
     a change of color/linetype/width, or of any coordinate, is checked as before (#73: a move stays refused)."""
-    if (record.get('type') != 'DIMENSION' or original.get('type') != 'DIMENSION'
+    if (record.get('type') != 'DIMENSION' or original.get('type') != 'DIMENSION' or record == original
             or record['base']['pen_style'] != 0 or original['base']['pen_style'] != 0):
         return False
     same = copy.deepcopy(record)
