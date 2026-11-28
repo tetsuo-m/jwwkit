@@ -91,7 +91,7 @@ def refuse_aux_coordinate_dimension(record):
 
 def translate_aux(record, delta):
     """#73: Jw_cad 10.03.6 moves the auxiliary lines/points of such a dimension with its line in a move/copy
-    (ac_sunpou2_idou, ac_sunpou2_fukusha). Only the 'all' shape was seen; 'mixed' is refused."""
+    (tests/fixtures/archicad_dimensions, ac2_move and ac2_copy). Only the 'all' shape was seen; 'mixed' is refused."""
     shape = aux_coordinates(record)
     if shape == 'mixed':
         raise ValueError(AUX_COORDINATE_MESSAGE)

@@ -139,7 +139,7 @@ reflect geometric data; mirrored TEXT is refused rather than made readable.
     if sx==0 or sy==0:raise ValueError('Scales must be nonzero')
     co,si=math.cos(angle),math.sin(angle);matrix=(co*sx,-si*sy,si*sx,co*sy)
     # #73: a rotation or an equal positive scale about base_point, with no translation, leaves the auxiliaries of
-    # a dimension with auxiliary coordinates where they are, as Jw_cad 10.03.6 does (ac_sunpou2_kaiten, _bai2).
+    # a dimension with auxiliary coordinates where they are, as Jw_cad 10.03.6 does (archicad_dimensions ac2_rotate, ac2_scale2).
     # Any other non-translation (with a translation, unequal or negative scales) is unverified and refused.
     aux='keep' if shift==(0.,0.) and sx==sy>0 else 'refuse'
     updated=[];records=[]
