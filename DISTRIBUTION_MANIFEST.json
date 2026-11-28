@@ -158,8 +158,8 @@
     },
     {
       "path": "docs/usage_guide.md",
-      "size": 89708,
-      "sha256": "d0a9584ad2983e6a8f807c828da9c4140e59cfabd8e5a129336db18df9f5f842"
+      "size": 89684,
+      "sha256": "88ee907810c6d3410454af3582e44206c67e87584dc2cd428ab8dfc4fd5a9ab1"
     },
     {
       "path": "docs/workflow_settings.md",
@@ -423,8 +423,8 @@
     },
     {
       "path": "src/jwwkit/guides/docs/usage_guide.md",
-      "size": 89708,
-      "sha256": "d0a9584ad2983e6a8f807c828da9c4140e59cfabd8e5a129336db18df9f5f842"
+      "size": 89684,
+      "sha256": "88ee907810c6d3410454af3582e44206c67e87584dc2cd428ab8dfc4fd5a9ab1"
     },
     {
       "path": "src/jwwkit/guides/docs/workflow_settings.md",
