@@ -34,6 +34,7 @@ def color_code(document,value,*,rgb=False):
 # #68: Jw_cad's random lines 1-5 (11-15) and double-length lines 1-4 (16-19), seen in the owner's samples drawn in
 # Jw_cad 10.03.6 (tests/fixtures/sxf_linetypes) on v700 lines, arcs and circles of the drawing itself. Elsewhere
 # (inside blocks or dimensions, other kinds, v600) they stay unverified. The header's definitions are not looked at.
+STANDARD_LINETYPES=tuple(range(1,10))
 EXTENDED_LINETYPES=range(11,20)
 EXTENDED_KINDS=('LINE','ARC','CIRCLE')
 
@@ -44,7 +45,7 @@ def extended_linetypes(document,kind,*,version=None,nested=False):
 
 def linetype_code(document,value,*,extended=False):
     _,styles=_tables(_header(document))
-    return _code(value,styles,range(1,20) if extended else range(1,10),'Linetype')
+    return _code(value,styles,STANDARD_LINETYPES+(tuple(EXTENDED_LINETYPES) if extended else ()),'Linetype')
 
 def attributes(document,values,kind):
     result=copy.deepcopy(values)
@@ -71,9 +72,10 @@ def normalize_record(document,record,*,dimension_member=False,in_block=False,ver
     if kind=='BLOCK_DEF':r['entities']=[normalize_record(document,x,in_block=True,version=version) for x in r['entities']]
     return r
 
-def check(document,record,*,defined_numbers=None,version=None,encoding=None):
-    """Check all integer slots and payload encoding without changing a record."""
-    canonical=normalize_record(document,record,version=version)
+def check(document,record,*,defined_numbers=None,version=None,encoding=None,in_block=False):
+    """Check all integer slots and payload encoding without changing a record.
+    in_block: the record is a child of a block definition (#68: no linetypes 11-19 there)."""
+    canonical=normalize_record(document,record,version=version,in_block=in_block)
     if canonical!=record:raise ValueError('Resolve color/linetype names before committing the record')
     def slots(r,dimension_member=False):
         b=r['base']
@@ -129,5 +131,5 @@ def normalize_model(document,model,*,nested=False):
     if kind=='DIMENSION':
         for key in ('line','text'):setattr(result,key,normalize_model(document,getattr(result,key),nested=True))
         for key in ('aux_lines','aux_points'):setattr(result,key,[normalize_model(document,x,nested=True) for x in getattr(result,key)])
-    if not nested:check(document,result.record())
+    check(document,result.record(),in_block=nested)
     return result

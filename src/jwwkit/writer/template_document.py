@@ -281,6 +281,10 @@ class JwwDocument:
     def _add_record(self, record):
         """既知の要素レコードを公開モデルに変換する。未知要素・未対応の寸法メンバーは拒否する。"""
         b = record['base']
+        if record['type'] in ('LINE', 'CIRCLE', 'ARC') and 11 <= b['pen_style'] <= 19:
+            # #68: this path writes the template's header, not the source's: the random/double-length line
+            # definitions of the source would not be kept.
+            raise ValueError('Random/double-length linetypes cannot be carried into a new template drawing')
         attributes = dict(color=b['pen_color'], linetype=b['pen_style'], width=b['pen_width'],
                           layer=b['layer'], layer_group=b['layer_group'], group=b['group'], flag=b['flag'])
         if record['type'] == 'LINE':
